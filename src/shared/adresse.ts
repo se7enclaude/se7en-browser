@@ -16,7 +16,8 @@ export const PAGES_INTERNES = {
   'se7en://parametres': 'Paramètres',
   'se7en://historique': 'Historique',
   'se7en://favoris': 'Favoris',
-  'se7en://telechargements': 'Téléchargements'
+  'se7en://telechargements': 'Téléchargements',
+  'se7en://ia': 'IA locale'
 } as const
 export type PageInterne = keyof typeof PAGES_INTERNES
 

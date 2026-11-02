@@ -2,7 +2,9 @@
 import { useState } from 'react'
 import type { InfosApp } from '../../../shared/ipc'
 import { MOTEURS, type Reglages } from '../../../shared/reglages'
+import { modelePresent } from '../../../shared/ia'
 import { ChoixDisposition, ChoixTeinte, ChoixTheme } from './ChoixApparence'
+import { useOllama } from './PageIA'
 
 interface Props {
   reglages: Reglages
@@ -29,6 +31,18 @@ function ChampModele({ valeur, changer }: { valeur: string; changer: (v: string)
 }
 
 export function Parametres({ reglages, modifier, infos }: Props): React.JSX.Element {
+  const ia = useOllama()
+  const texteEtatIA = !ia
+    ? ''
+    : ia.phase === 'absent'
+      ? "Ollama n'est pas installé."
+      : ia.phase === 'arrete'
+        ? "Ollama est installé mais arrêté."
+        : ia.phase === 'pret'
+          ? modelePresent(reglages.modeleTexte, ia.modeles)
+            ? `Prêt · Ollama ${ia.version}`
+            : 'Ollama tourne, le modèle texte manque.'
+          : 'Vérification…'
   return (
     <div className="page-interne">
       <h1>Paramètres</h1>
@@ -76,7 +90,7 @@ export function Parametres({ reglages, modifier, infos }: Props): React.JSX.Elem
 
       <section className="bloc verre-fort">
         <h2>IA locale (Ollama)</h2>
-        <p className="discret">L'installation guidée d'Ollama et des modèles arrive bientôt. Tout tourne sur ton PC.</p>
+        <p className="discret">Tout tourne sur ton PC : rien n'est envoyé sur Internet.</p>
         <div className="ligne-reglage">
           <span>Modèle texte</span>
           <ChampModele valeur={reglages.modeleTexte} changer={(v) => modifier({ modeleTexte: v })} />
@@ -84,6 +98,12 @@ export function Parametres({ reglages, modifier, infos }: Props): React.JSX.Elem
         <div className="ligne-reglage">
           <span>Modèle vision</span>
           <ChampModele valeur={reglages.modeleVision} changer={(v) => modifier({ modeleVision: v })} />
+        </div>
+        <div className="ligne-reglage">
+          <span className="discret">{texteEtatIA}</span>
+          <button className="bouton-verre" onClick={() => window.se7en.onglets.interne('se7en://ia')}>
+            Installer et gérer l'IA
+          </button>
         </div>
       </section>
 

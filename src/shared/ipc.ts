@@ -2,6 +2,7 @@
  * Le preload n'expose que ces canaux ; le main ne répond qu'à eux. */
 import type { PageInterne } from './adresse'
 import type { ActionTelechargement, EntreeHistorique, Favori, SitePopulaire, Telechargement } from './donnees'
+import type { EtatOllama } from './ia'
 import type { CommandeUi, EtatOnglets, ZoneOnglet } from './onglets'
 import type { Reglages } from './reglages'
 
@@ -54,7 +55,15 @@ export const CANAUX = {
   telechargementsLire: 'telechargements:lire',
   telechargementsAction: 'telechargements:action',
   telechargementsEffacer: 'telechargements:effacer',
-  telechargementsChange: 'telechargements:change' // main → interface
+  telechargementsChange: 'telechargements:change', // main → interface
+  // IA locale (Ollama)
+  iaEtat: 'ia:etat',
+  iaVerifier: 'ia:verifier',
+  iaInstaller: 'ia:installer',
+  iaDemarrer: 'ia:demarrer',
+  iaTelecharger: 'ia:telecharger',
+  iaAnnuler: 'ia:annuler',
+  iaChange: 'ia:change' // main → interface
 } as const
 
 export interface EtatFenetre {
@@ -136,5 +145,17 @@ export interface ApiSe7en {
     action(id: string, action: ActionTelechargement): void
     effacer(): void
     surChangement(rappel: (t: Telechargement[]) => void): () => void
+  }
+  ia: {
+    etat(): Promise<EtatOllama>
+    /** Regarde à nouveau si Ollama est installé, lancé, et quels modèles il a. */
+    verifier(): Promise<EtatOllama>
+    /** Télécharge l'installeur officiel d'Ollama, vérifie sa signature et l'installe. */
+    installer(): void
+    demarrer(): void
+    /** Télécharge ces modèles (noms Ollama, ex. « qwen3:8b »). */
+    telecharger(noms: string[]): void
+    annuler(): void
+    surChangement(rappel: (e: EtatOllama) => void): () => void
   }
 }

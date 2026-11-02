@@ -1,6 +1,6 @@
 /* Un onglet, dans l'une de ses trois formes : en haut, en ligne (barre latérale) ou en icône seule. */
 import type { EtatOnglet } from '../../../shared/onglets'
-import { IconeCroix, IconeEtoile, IconeGlobe, IconeHistorique, IconeReglages, IconeTelecharger } from './Icones'
+import { IconeCroix, IconeEtoile, IconeGlobe, IconeHistorique, IconeIA, IconeReglages, IconeTelecharger } from './Icones'
 import type { Glisser } from '../useGlisser'
 
 export function IconeOnglet({ onglet }: { onglet: EtatOnglet }): React.JSX.Element {
@@ -9,6 +9,7 @@ export function IconeOnglet({ onglet }: { onglet: EtatOnglet }): React.JSX.Eleme
   if (onglet.url === 'se7en://historique') return <IconeHistorique />
   if (onglet.url === 'se7en://favoris') return <IconeEtoile />
   if (onglet.url === 'se7en://telechargements') return <IconeTelecharger />
+  if (onglet.url === 'se7en://ia') return <IconeIA />
   if (onglet.favicon) return <img className="favicon" src={onglet.favicon} alt="" draggable={false} />
   return <IconeGlobe />
 }

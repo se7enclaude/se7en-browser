@@ -55,3 +55,6 @@ export const IconePause = () => (
 export const IconeLecture = () => (
   <svg {...base}><path d="M5.5 3.5v9l7-4.5Z" /></svg>
 )
+export const IconeIA = () => (
+  <svg {...base}><path d="M8 2.5 9.3 6.7 13.5 8 9.3 9.3 8 13.5 6.7 9.3 2.5 8 6.7 6.7Z" /></svg>
+)

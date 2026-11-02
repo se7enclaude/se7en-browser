@@ -1202,3 +1202,93 @@ kbd {
   animation: progression 1.1s ease-in-out infinite;
   position: relative;
 }
+/* ---------- Page IA locale ---------- */
+
+.message-erreur {
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid rgb(229 72 77 / 0.5);
+  background: rgb(229 72 77 / 0.14);
+}
+.etape-ia {
+  transition: opacity var(--anim);
+}
+.etape-ia:not(.active):not(.faite) {
+  opacity: 0.55;
+}
+.entete-etape {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.entete-etape h2 {
+  margin: 0;
+}
+.numero-etape,
+.pastille-etat {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1.5px solid var(--verre-bord);
+  font-weight: 700;
+  font-size: 12px;
+}
+.etape-ia.faite .numero-etape,
+.pastille-etat.ok {
+  border-color: transparent;
+  background: var(--accent);
+  color: white;
+}
+.etape-ia.active .numero-etape {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.progression-ia {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.barre-progres.grande {
+  height: 8px;
+  border-radius: 4px;
+}
+.liste-modeles {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ligne-modele {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+.infos-modele {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.infos-modele code {
+  font-family: 'Cascadia Code', Consolas, monospace;
+  font-size: 12px;
+}
+.petit {
+  font-size: 12px;
+}
+.tout-pret {
+  border-color: var(--accent);
+}
+.tout-pret h2 {
+  color: var(--accent);
+}
+.bouton-principal {
+  align-self: flex-start;
+}
+.accueil .bouton-principal {
+  align-self: auto;
+}

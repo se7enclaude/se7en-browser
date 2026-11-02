@@ -2,6 +2,7 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import { CANAUX, type ApiSe7en, type EtatFenetre } from '../shared/ipc'
 import type { Favori, Telechargement } from '../shared/donnees'
+import type { EtatOllama } from '../shared/ia'
 import type { CommandeUi, EtatOnglets } from '../shared/onglets'
 import type { Reglages } from '../shared/reglages'
 
@@ -78,6 +79,15 @@ const api: ApiSe7en = {
     action: envoyer(CANAUX.telechargementsAction),
     effacer: envoyer(CANAUX.telechargementsEffacer),
     surChangement: (rappel) => ecouter<Telechargement[]>(CANAUX.telechargementsChange, rappel)
+  },
+  ia: {
+    etat: demander(CANAUX.iaEtat),
+    verifier: demander(CANAUX.iaVerifier),
+    installer: envoyer(CANAUX.iaInstaller),
+    demarrer: envoyer(CANAUX.iaDemarrer),
+    telecharger: envoyer(CANAUX.iaTelecharger),
+    annuler: envoyer(CANAUX.iaAnnuler),
+    surChangement: (rappel) => ecouter<EtatOllama>(CANAUX.iaChange, rappel)
   }
 }
 

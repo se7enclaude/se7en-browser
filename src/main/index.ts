@@ -2,6 +2,7 @@
 import { app, BrowserWindow, session } from 'electron'
 import { CANAUX } from '../shared/ipc'
 import { creerFenetrePrincipale, appliquerTheme } from './fenetre/fenetrePrincipale'
+import { Ollama } from './ia/ollama'
 import { enregistrerIpc } from './ipc/enregistrer'
 import { creerGestionRaccourcis } from './navigateur/commandes'
 import { GestionnaireOnglets } from './navigateur/onglets'
@@ -43,7 +44,10 @@ if (!app.requestSingleInstanceLock()) {
     // l'historique est écrit par paquets : on vide ce qui attend avant de quitter
     app.on('before-quit', () => historique.vider())
 
-    enregistrerIpc({ reglages, historique, favoris, telechargements, ongletsDe: (f) => onglets.get(f.id) })
+    const ollama = new Ollama()
+    void ollama.verifier()
+
+    enregistrerIpc({ reglages, historique, favoris, telechargements, ollama, ongletsDe: (f) => onglets.get(f.id) })
 
     const fenetre = creerFenetrePrincipale()
     const idFenetre = fenetre.id

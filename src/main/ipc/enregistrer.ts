@@ -13,12 +13,15 @@ import { appliquerTheme, effetNatifDisponible } from '../fenetre/fenetrePrincipa
 import type { GestionnaireOnglets } from '../navigateur/onglets'
 import { ouvrirMenuOnglet, ouvrirMenuPrincipal } from '../navigateur/menuOnglet'
 import type { Telechargements } from '../navigateur/telechargements'
+import type { Ollama } from '../ia/ollama'
+import { RE_NOM_MODELE } from '../../shared/ia'
 
 export interface Services {
   reglages: MagasinReglages
   historique: Historique
   favoris: Favoris
   telechargements: Telechargements
+  ollama: Ollama
   ongletsDe: (f: BrowserWindow) => GestionnaireOnglets | undefined
 }
 
@@ -38,7 +41,7 @@ function diffuser(canal: string, valeur: unknown): void {
 }
 
 export function enregistrerIpc(s: Services): void {
-  const { reglages, historique, favoris, telechargements, ongletsDe } = s
+  const { reglages, historique, favoris, telechargements, ollama, ongletsDe } = s
 
   // ---------- fenêtre et application ----------
   ipcMain.on(CANAUX.fenetreReduire, (e) => fenetreDe(e)?.minimize())
@@ -124,4 +127,17 @@ export function enregistrerIpc(s: Services): void {
   })
   ipcMain.on(CANAUX.telechargementsEffacer, (e) => fenetreDe(e) && telechargements.effacer())
   telechargements.on('change', (liste) => diffuser(CANAUX.telechargementsChange, liste))
+
+  // ---------- IA locale ----------
+  ipcMain.handle(CANAUX.iaEtat, (e) => (fenetreDe(e) ? ollama.etat() : null))
+  ipcMain.handle(CANAUX.iaVerifier, (e) => (fenetreDe(e) ? ollama.verifier() : null))
+  ipcMain.on(CANAUX.iaInstaller, (e) => fenetreDe(e) && void ollama.installer())
+  ipcMain.on(CANAUX.iaDemarrer, (e) => fenetreDe(e) && void ollama.demarrer())
+  ipcMain.on(CANAUX.iaTelecharger, (e, noms: unknown) => {
+    if (!fenetreDe(e) || !Array.isArray(noms)) return
+    const valides = noms.filter((n): n is string => typeof n === 'string' && RE_NOM_MODELE.test(n)).slice(0, 4)
+    if (valides.length) void ollama.telecharger(valides)
+  })
+  ipcMain.on(CANAUX.iaAnnuler, (e) => fenetreDe(e) && ollama.annuler())
+  ollama.on('change', (etat) => diffuser(CANAUX.iaChange, etat))
 }

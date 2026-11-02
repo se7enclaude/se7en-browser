@@ -58,7 +58,14 @@ export function Accueil({ reglages, modifier }: { reglages: Reglages; modifier: 
               <button className="bouton-verre" onClick={() => setEtape(1)}>
                 Retour
               </button>
-              <button className="bouton-principal" onClick={() => modifier({ accueilTermine: true })}>
+              <button
+                className="bouton-principal"
+                onClick={() => {
+                  modifier({ accueilTermine: true })
+                  // on enchaîne sur la préparation de l'IA locale
+                  window.se7en.onglets.interne('se7en://ia')
+                }}
+              >
                 C'est parti
               </button>
             </div>

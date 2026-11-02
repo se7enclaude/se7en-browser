@@ -3,7 +3,7 @@
 Un navigateur web pour Windows au design « Liquid Glass », avec une IA qui tourne sur ton PC (Ollama + Qwen).
 Il fait partie de la suite se7en et s'installe depuis **Seventh OS**.
 
-> En construction : étapes 1 à 4 terminées. Voir « Avancement » plus bas.
+> En construction : étapes 1 à 5 terminées. Voir « Avancement » plus bas.
 
 ## Raccourcis
 
@@ -36,6 +36,11 @@ La poignée du milieu règle la largeur ; cliquer dans un volet le rend actif.
 (Zone.Identifier) pour que SmartScreen contrôle les fichiers avant leur ouverture.
 
 Historique, favoris et téléchargements restent sur le PC (`historique.json`, `favoris.json`, `telechargements.json`).
+
+**IA locale** (page `se7en://ia`, ouverte après l'écran d'accueil et depuis les Paramètres) : installe Ollama
+(installeur officiel téléchargé depuis ollama.com, signature Authenticode vérifiée, installation silencieuse sans droits
+administrateur), le démarre, puis télécharge les modèles avec leur progression. Par défaut : `qwen3:8b` (texte, ≈ 5,2 Go)
+et `qwen3-vl:8b` (vision, ≈ 6,1 Go, facultatif). Ollama ne répond que sur `127.0.0.1:11434`.
 
 ## Tester sans toucher à son profil
 
@@ -95,7 +100,7 @@ tests/         tests Vitest
 2. ✅ Navigation : onglets, barre d'adresse, raccourcis
 3. ✅ Barre latérale des onglets prioritaires (Ctrl+B), écran d'accueil, paramètres
 4. ✅ Historique, favoris, téléchargements, Nouvel onglet, vue partagée (Splits)
-5. Ollama : détection, installation, modèles
+5. ✅ Ollama : détection, installation, modèles
 6. Panneau IA (Ctrl+Espace), « Demande ou cherche », @onglets, Skills, résumé
 7. PDF : visionneuse, discuter avec un PDF
 8. Coffre chiffré et remplissage de PDF ; bloqueur, onglets rangés par l'IA, mémoire ; profils et amis

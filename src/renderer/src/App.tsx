@@ -7,6 +7,7 @@ import { BarreTitre } from './composants/BarreTitre'
 import { NouvelOnglet } from './composants/NouvelOnglet'
 import { OngletsHaut } from './composants/OngletsHaut'
 import { PageFavoris, PageHistorique, PageTelechargements } from './composants/PagesDonnees'
+import { PageIA } from './composants/PageIA'
 import { Parametres } from './composants/Parametres'
 import { ZonePage } from './composants/ZonePage'
 import { useGlisser } from './useGlisser'
@@ -40,6 +41,8 @@ export function App(): React.JSX.Element {
         return <PageFavoris idOnglet={o.id} />
       case 'se7en://telechargements':
         return <PageTelechargements />
+      case 'se7en://ia':
+        return reglages && <PageIA reglages={reglages} />
       default:
         return null
     }

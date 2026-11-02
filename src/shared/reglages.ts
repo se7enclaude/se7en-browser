@@ -29,7 +29,7 @@ export const REGLAGES_DEFAUT: Reglages = {
   accueilTermine: false,
   moteurRecherche: 'https://www.google.com/search?q=%s',
   modeleTexte: 'qwen3:8b',
-  modeleVision: 'qwen2.5vl:7b'
+  modeleVision: 'qwen3-vl:8b'
 }
 
 const THEMES: readonly Theme[] = ['clair', 'sombre', 'auto']
