@@ -1,6 +1,11 @@
 # se7en Browser
 
 Un navigateur web pour Windows au design « Liquid Glass », avec une IA qui tourne sur ton PC (Ollama + Qwen).
+
+**Design** (maquette « Navigateur Liquid Glass ») : verre fumé posé sur un fond ambiant flou, liseré lumineux, pilules
+partout ; l'ivoire marque la sélection et l'action principale, le champagne tout ce qui vient de l'IA (orbe, étincelle).
+Polices Urbanist (titres) et Figtree (interface), embarquées. Thème sombre (fidèle à la maquette), clair (brume ivoire,
+sélection en graphite) ou auto ; la « couleur de l'ambiance » teinte le fond. Tout est dans `src/renderer/src/theme/glass.css`.
 Il fait partie de la suite se7en et s'installe depuis **Seventh OS**.
 
 > En construction : étapes 1 à 8b terminées. Voir « Avancement » plus bas.

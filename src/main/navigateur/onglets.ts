@@ -31,7 +31,7 @@ export interface OptionsGestionnaire {
   documentPdf?: (id: string) => { url: string; nom: string } | undefined
 }
 
-const RAYON_PAGE = 13 // rayon de la zone (14) moins le liseré
+const RAYON_PAGE = 27 // rayon du cadre de page (28) moins le liseré
 const MAX_FERMES = 25
 
 export class GestionnaireOnglets {

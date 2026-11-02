@@ -51,7 +51,7 @@ export function Accueil({ reglages, modifier }: { reglages: Reglages; modifier: 
               <ChoixTheme reglages={reglages} modifier={modifier} />
             </div>
             <div className="ligne-reglage">
-              <span>Couleur du verre</span>
+              <span>Couleur de l’ambiance</span>
               <ChoixTeinte reglages={reglages} modifier={modifier} />
             </div>
             <div className="accueil-actions">

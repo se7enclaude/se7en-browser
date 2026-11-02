@@ -1,70 +1,164 @@
-/* Thème « Liquid Glass » de se7en Browser.
- * Tout passe par des variables : le thème (clair/sombre/auto), la teinte et l'effet natif ne font que les redéfinir. */
+/* Thème « Liquid Glass » de se7en Browser (maquette « Navigateur Liquid Glass »).
+ * Verre fumé posé sur un fond ambiant flou, liseré lumineux, pilules ; ivoire = sélection / action principale,
+ * champagne = tout ce qui vient de l'IA. Sombre (fidèle à la maquette) et clair (même matériau, en brume ivoire).
+ * Tout passe par des variables : le thème (clair/sombre/auto) et la teinte ne font que les redéfinir. */
 
+@font-face {
+  font-family: 'Figtree';
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('./polices/Figtree-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Figtree';
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('./polices/Figtree-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1E00-1E9F, U+20A0-20AB, U+20AD-20C4, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Urbanist';
+  font-weight: 300 700;
+  font-display: swap;
+  src: url('./polices/Urbanist-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Urbanist';
+  font-weight: 300 700;
+  font-display: swap;
+  src: url('./polices/Urbanist-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1E00-1E9F, U+20A0-20AB, U+20AD-20C4, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* ---------- Clair : brume ivoire ---------- */
 :root {
-  /* teinte « argent » par défaut */
-  --teinte: 214 222 235;
-  --accent: #6f7d95;
+  /* teinte du fond ambiant (thèmes de couleur), « argent » par défaut */
+  --teinte: 150 152 160;
 
-  --texte: #1c1f26;
-  --texte-discret: rgb(28 31 38 / 0.58);
+  --texte: #1b1b1e;
+  --texte-2: rgb(27 27 30 / 0.74);
+  --texte-discret: rgb(27 27 30 / 0.56);
   --verre: rgb(255 255 255 / 0.42);
   --verre-fort: rgb(255 255 255 / 0.62);
-  --verre-bord: rgb(255 255 255 / 0.75);
+  --verre-fin: rgb(255 255 255 / 0.28);
+  --verre-creux: rgb(0 0 0 / 0.05);
+  --verre-bord: rgb(255 255 255 / 0.7);
   --verre-bord-ombre: rgb(0 0 0 / 0.06);
-  --reflet: linear-gradient(180deg, rgb(255 255 255 / 0.65), rgb(255 255 255 / 0) 55%);
-  --ombre: 0 1px 2px rgb(0 0 0 / 0.06), 0 8px 28px rgb(20 30 50 / 0.12);
-  --survol: rgb(0 0 0 / 0.06);
-  --fond-repli: linear-gradient(135deg, rgb(var(--teinte) / 0.9), #f4f5f8 60%, rgb(var(--teinte) / 0.6));
+  --lisere: linear-gradient(140deg, rgb(255 255 255 / 0.95) 0%, rgb(255 255 255 / 0.35) 30%, rgb(255 255 255 / 0.12) 55%, rgb(255 255 255 / 0.6) 100%);
+  --reflet: inset 0 1px 0 rgb(255 255 255 / 0.8), inset 0 -1px 0 rgb(0 0 0 / 0.03);
+  --ombre: 0 10px 34px rgb(60 50 30 / 0.12), 0 2px 6px rgb(60 50 30 / 0.08);
+  --ombre-flottante: 0 22px 60px rgb(60 50 30 / 0.2), 0 4px 14px rgb(60 50 30 / 0.1);
+  --ombre-creux: inset 0 2px 6px rgb(0 0 0 / 0.08), inset 0 0 0 1px rgb(0 0 0 / 0.03);
+  --survol: rgb(0 0 0 / 0.05);
+  /* sélection / action principale : graphite plein en clair (l'ivoire ne ressortirait pas sur la brume) */
+  --accent: #26272b;
+  --accent-survol: #36373c;
+  --sur-accent: #fbf9f2;
+  --ia: #b8954b;
+  --ia-lueur: 0 0 0 1px rgb(184 149 75 / 0.35), 0 0 22px rgb(212 180 110 / 0.3);
+  --focus: rgb(184 149 75 / 0.6);
+  --fond:
+    radial-gradient(55% 45% at 82% 18%, rgb(var(--teinte) / 0.32), transparent 70%),
+    radial-gradient(60% 50% at 18% 30%, #e9e0cf 0%, transparent 70%),
+    radial-gradient(50% 60% at 85% 75%, #d9d8d6 0%, transparent 70%),
+    radial-gradient(70% 50% at 40% 95%, #e6e1d6 0%, transparent 70%),
+    linear-gradient(180deg, #f3f1eb 0%, #dedbd3 100%);
+  --fond-uni: #e8e5de;
 
-  --rayon: 14px;
-  --rayon-petit: 9px;
-  --flou: saturate(180%) blur(28px);
-  --anim: 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  --rayon: 24px;
+  --rayon-petit: 12px;
+  --rayon-fenetre: 28px;
+  --pilule: 999px;
+  --flou: saturate(170%) blur(24px);
+  --flou-fort: saturate(170%) blur(40px);
+  --anim: 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ressort: cubic-bezier(0.34, 1.45, 0.64, 1);
+
+  --police: 'Figtree', 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  --police-titre: 'Urbanist', 'Figtree', 'Segoe UI', system-ui, sans-serif;
 
   color-scheme: light;
-  font-family: 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
-  font-size: 13px;
+  font-family: var(--police);
+  font-size: 13.5px;
+  letter-spacing: -0.005em;
   color: var(--texte);
 }
 
-/* Sombre : choisi explicitement, ou « auto » quand Windows est en sombre (même valeurs dans les deux blocs). */
+/* ---------- Sombre : verre fumé (la maquette) — choisi, ou « auto » quand Windows est en sombre ---------- */
 :root[data-theme='sombre'] {
-  --texte: #eef0f5;
-  --texte-discret: rgb(238 240 245 / 0.55);
-  --verre: rgb(28 30 36 / 0.42);
-  --verre-fort: rgb(36 38 46 / 0.62);
-  --verre-bord: rgb(255 255 255 / 0.12);
-  --verre-bord-ombre: rgb(0 0 0 / 0.35);
-  --reflet: linear-gradient(180deg, rgb(255 255 255 / 0.1), rgb(255 255 255 / 0) 50%);
-  --ombre: 0 1px 2px rgb(0 0 0 / 0.3), 0 10px 32px rgb(0 0 0 / 0.35);
-  --survol: rgb(255 255 255 / 0.08);
-  --fond-repli: linear-gradient(135deg, rgb(var(--teinte) / 0.35), #16181d 55%, rgb(var(--teinte) / 0.25));
+  --texte: rgb(255 255 255 / 0.96);
+  --texte-2: rgb(255 255 255 / 0.74);
+  --texte-discret: rgb(255 255 255 / 0.56);
+  --verre: rgb(255 255 255 / 0.07);
+  --verre-fort: rgb(255 255 255 / 0.12);
+  --verre-fin: rgb(255 255 255 / 0.04);
+  --verre-creux: rgb(0 0 0 / 0.22);
+  --verre-bord: rgb(255 255 255 / 0.16);
+  --verre-bord-ombre: rgb(0 0 0 / 0.2);
+  --lisere: linear-gradient(140deg, rgb(255 255 255 / 0.5) 0%, rgb(255 255 255 / 0.1) 30%, rgb(255 255 255 / 0.03) 55%, rgb(255 255 255 / 0.22) 100%);
+  --reflet: inset 0 1px 0 rgb(255 255 255 / 0.18), inset 0 -1px 0 rgb(255 255 255 / 0.04);
+  --ombre: 0 12px 40px rgb(0 0 0 / 0.32), 0 2px 6px rgb(0 0 0 / 0.18);
+  --ombre-flottante: 0 24px 70px rgb(0 0 0 / 0.45), 0 4px 14px rgb(0 0 0 / 0.25);
+  --ombre-creux: inset 0 2px 6px rgb(0 0 0 / 0.35), inset 0 0 0 1px rgb(255 255 255 / 0.05);
+  --survol: rgb(255 255 255 / 0.06);
+  --accent: #f4f0e1;
+  --accent-survol: #fbf9f2;
+  --sur-accent: #1b1b1e;
+  --ia: #e6cf97;
+  --ia-lueur: 0 0 0 1px rgb(230 207 151 / 0.35), 0 0 24px rgb(230 207 151 / 0.25);
+  --focus: rgb(230 207 151 / 0.65);
+  --fond:
+    radial-gradient(50% 45% at 82% 18%, rgb(var(--teinte) / 0.22), transparent 70%),
+    radial-gradient(60% 50% at 18% 30%, #5b4a3f 0%, transparent 70%),
+    radial-gradient(50% 60% at 85% 25%, #6d6e72 0%, transparent 70%),
+    radial-gradient(70% 50% at 60% 90%, #2b2a2c 0%, transparent 70%),
+    linear-gradient(180deg, #3a3836 0%, #1c1b1c 100%);
+  --fond-uni: #2a2928;
   color-scheme: dark;
 }
 @media (prefers-color-scheme: dark) {
   :root[data-theme='auto'] {
-    --texte: #eef0f5;
-    --texte-discret: rgb(238 240 245 / 0.55);
-    --verre: rgb(28 30 36 / 0.42);
-    --verre-fort: rgb(36 38 46 / 0.62);
-    --verre-bord: rgb(255 255 255 / 0.12);
-    --verre-bord-ombre: rgb(0 0 0 / 0.35);
-    --reflet: linear-gradient(180deg, rgb(255 255 255 / 0.1), rgb(255 255 255 / 0) 50%);
-    --ombre: 0 1px 2px rgb(0 0 0 / 0.3), 0 10px 32px rgb(0 0 0 / 0.35);
-    --survol: rgb(255 255 255 / 0.08);
-    --fond-repli: linear-gradient(135deg, rgb(var(--teinte) / 0.35), #16181d 55%, rgb(var(--teinte) / 0.25));
+    --texte: rgb(255 255 255 / 0.96);
+    --texte-2: rgb(255 255 255 / 0.74);
+    --texte-discret: rgb(255 255 255 / 0.56);
+    --verre: rgb(255 255 255 / 0.07);
+    --verre-fort: rgb(255 255 255 / 0.12);
+    --verre-fin: rgb(255 255 255 / 0.04);
+    --verre-creux: rgb(0 0 0 / 0.22);
+    --verre-bord: rgb(255 255 255 / 0.16);
+    --verre-bord-ombre: rgb(0 0 0 / 0.2);
+    --lisere: linear-gradient(140deg, rgb(255 255 255 / 0.5) 0%, rgb(255 255 255 / 0.1) 30%, rgb(255 255 255 / 0.03) 55%, rgb(255 255 255 / 0.22) 100%);
+    --reflet: inset 0 1px 0 rgb(255 255 255 / 0.18), inset 0 -1px 0 rgb(255 255 255 / 0.04);
+    --ombre: 0 12px 40px rgb(0 0 0 / 0.32), 0 2px 6px rgb(0 0 0 / 0.18);
+    --ombre-flottante: 0 24px 70px rgb(0 0 0 / 0.45), 0 4px 14px rgb(0 0 0 / 0.25);
+    --ombre-creux: inset 0 2px 6px rgb(0 0 0 / 0.35), inset 0 0 0 1px rgb(255 255 255 / 0.05);
+    --survol: rgb(255 255 255 / 0.06);
+    --accent: #f4f0e1;
+    --accent-survol: #fbf9f2;
+    --sur-accent: #1b1b1e;
+    --ia: #e6cf97;
+    --ia-lueur: 0 0 0 1px rgb(230 207 151 / 0.35), 0 0 24px rgb(230 207 151 / 0.25);
+    --focus: rgb(230 207 151 / 0.65);
+    --fond:
+      radial-gradient(50% 45% at 82% 18%, rgb(var(--teinte) / 0.22), transparent 70%),
+      radial-gradient(60% 50% at 18% 30%, #5b4a3f 0%, transparent 70%),
+      radial-gradient(50% 60% at 85% 25%, #6d6e72 0%, transparent 70%),
+      radial-gradient(70% 50% at 60% 90%, #2b2a2c 0%, transparent 70%),
+      linear-gradient(180deg, #3a3836 0%, #1c1b1c 100%);
+    --fond-uni: #2a2928;
     color-scheme: dark;
   }
 }
 
-/* Thèmes de couleur : seule la teinte change, le verre la reprend partout. */
-:root[data-teinte='argent'] { --teinte: 214 222 235; --accent: #6f7d95; }
-:root[data-teinte='soleil'] { --teinte: 250 204 72; --accent: #c98a00; }
-:root[data-teinte='ocean'] { --teinte: 92 162 255; --accent: #2f6fe0; }
-:root[data-teinte='rose'] { --teinte: 255 140 180; --accent: #d9467f; }
-:root[data-teinte='menthe'] { --teinte: 110 220 175; --accent: #179a6a; }
-:root[data-teinte='lavande'] { --teinte: 170 150 255; --accent: #7559e6; }
+/* Thèmes de couleur : la teinte colore le fond ambiant (halo en haut à droite), rien d'autre. */
+:root[data-teinte='argent'] { --teinte: 150 152 160; }
+:root[data-teinte='soleil'] { --teinte: 232 176 74; }
+:root[data-teinte='ocean'] { --teinte: 70 140 220; }
+:root[data-teinte='rose'] { --teinte: 230 120 160; }
+:root[data-teinte='menthe'] { --teinte: 80 190 150; }
+:root[data-teinte='lavande'] { --teinte: 150 130 235; }
 
 * {
   box-sizing: border-box;
@@ -76,14 +170,15 @@ body,
   margin: 0;
   height: 100%;
   overflow: hidden;
-  /* Avec le verre natif, le fond reste transparent pour laisser voir l'acrylique de Windows. */
-  background: transparent;
   user-select: none;
 }
-
-/* Windows 10 : pas d'acrylique natif, on peint un fond dégradé teinté. */
-:root[data-natif='non'] body {
-  background: var(--fond-repli);
+/* Jamais de fond plat sous le verre : le fond ambiant, avec ou sans l'effet natif de Windows. */
+body {
+  background: var(--fond);
+  background-color: var(--fond-uni);
+}
+::selection {
+  background: rgb(230 207 151 / 0.4);
 }
 
 button {
@@ -92,6 +187,10 @@ button {
   border: 0;
   background: none;
   cursor: default;
+}
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 
 /* ---------- Surfaces de verre ---------- */
@@ -125,7 +224,7 @@ button {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: radial-gradient(120% 80% at 0% 0%, rgb(var(--teinte) / 0.22), transparent 60%);
+  background: none;
   pointer-events: none;
 }
 
@@ -136,7 +235,7 @@ button {
   flex-direction: column;
   height: 100%;
   padding: 0 8px 8px;
-  background: radial-gradient(140% 90% at 100% 0%, rgb(var(--teinte) / 0.18), transparent 60%);
+  background: none;
   transition: background var(--anim);
 }
 
@@ -377,7 +476,7 @@ button {
   margin: 1px;
   flex: none;
   border-radius: 50%;
-  border: 2px solid rgb(var(--teinte) / 0.35);
+  border: 2px solid var(--verre-bord);
   border-top-color: var(--accent);
   animation: tourne 0.8s linear infinite;
 }
@@ -413,7 +512,7 @@ button {
 .barre-adresse:focus-within {
   background: var(--verre-fort);
   border-color: var(--verre-bord);
-  box-shadow: 0 0 0 3px rgb(var(--teinte) / 0.35);
+  box-shadow: 0 0 0 2px var(--focus);
 }
 .barre-adresse-icone {
   display: grid;
@@ -492,7 +591,7 @@ button {
   transition: box-shadow var(--anim);
 }
 .grande-recherche:focus-within {
-  box-shadow: var(--ombre), 0 0 0 4px rgb(var(--teinte) / 0.35);
+  box-shadow: var(--ombre), 0 0 0 2px var(--focus);
 }
 .grande-recherche .icone {
   opacity: 0.6;
@@ -619,7 +718,7 @@ button {
 .depot-vide.actif,
 .depot-fin {
   border-color: var(--accent);
-  background: rgb(var(--teinte) / 0.15);
+  background: var(--verre-fort);
 }
 .depot-fin {
   margin: 0 4px;
@@ -721,7 +820,7 @@ button {
 }
 .carte-choix.actif {
   border-color: var(--accent);
-  background: rgb(var(--teinte) / 0.18);
+  background: var(--verre-fort);
 }
 .carte-choix .discret {
   margin: 0;
@@ -734,7 +833,7 @@ button {
 }
 .apercu-fenetre { fill: var(--verre); stroke: var(--verre-bord); }
 .apercu-onglet { fill: var(--texte-discret); opacity: 0.55; }
-.apercu-barre { fill: rgb(var(--teinte) / 0.35); }
+.apercu-barre { fill: var(--texte-discret); opacity: 0.5; }
 .apercu-page { fill: var(--verre-fort); stroke: var(--verre-bord); }
 
 .ligne-reglage {
@@ -785,7 +884,7 @@ button {
   user-select: text;
 }
 .champ:focus {
-  box-shadow: 0 0 0 3px rgb(var(--teinte) / 0.35);
+  box-shadow: 0 0 0 2px var(--focus);
 }
 kbd {
   margin-left: 6px;
@@ -800,9 +899,9 @@ kbd {
   padding: 9px 22px;
   border-radius: 11px;
   background: var(--accent);
-  color: white;
+  color: var(--sur-accent);
   font-weight: 600;
-  box-shadow: 0 4px 14px rgb(var(--teinte) / 0.45);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.5), 0 6px 18px rgb(0 0 0 / 0.22);
   transition: transform var(--anim), filter var(--anim);
 }
 .bouton-principal:hover {
@@ -1040,7 +1139,7 @@ kbd {
   display: grid;
   place-items: center;
   border-radius: 5px;
-  background: rgb(var(--teinte) / 0.45);
+  background: var(--verre-fort);
   font-size: 10px;
   font-weight: 700;
   position: relative;
@@ -1074,7 +1173,7 @@ kbd {
   border: 1px solid var(--verre-bord);
 }
 .recherche-page:focus-within {
-  box-shadow: 0 0 0 3px rgb(var(--teinte) / 0.35);
+  box-shadow: 0 0 0 2px var(--focus);
 }
 .recherche-page input {
   flex: 1;
@@ -1301,7 +1400,7 @@ kbd {
   margin: 0 0 6px;
   padding: 8px 10px 8px 14px;
   border-radius: 12px;
-  background: rgb(var(--teinte) / 0.22);
+  background: var(--verre-fort);
   border: 1px solid var(--verre-bord);
   animation: barre-info-entre 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
@@ -1403,7 +1502,7 @@ kbd {
   padding: 8px 12px;
   border-radius: 14px 14px 4px 14px;
   background: var(--accent);
-  color: white;
+  color: var(--sur-accent);
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -1511,7 +1610,7 @@ kbd {
   border: 1px solid var(--verre-bord);
 }
 .zone-saisie:focus-within {
-  box-shadow: 0 0 0 3px rgb(var(--teinte) / 0.35);
+  box-shadow: 0 0 0 2px var(--focus);
 }
 .zone-saisie textarea {
   flex: 1;
@@ -1533,7 +1632,7 @@ kbd {
   flex: none;
   border-radius: 10px;
   background: var(--accent);
-  color: white;
+  color: var(--sur-accent);
   font-weight: 700;
   font-size: 15px;
   display: grid;
@@ -1692,7 +1791,7 @@ kbd {
   font-size: 12.5px;
 }
 .bouton-ia .icone {
-  color: var(--accent);
+  color: inherit;
 }
 
 /* Éditeur de Skills */
@@ -1810,7 +1909,7 @@ kbd {
   padding: 8px 10px 8px 12px;
   border-radius: 12px;
   border: 1px solid var(--accent);
-  background: rgb(var(--teinte) / 0.18);
+  background: var(--verre-fort);
   font-size: 12.5px;
 }
 .carte-formulaire span {
@@ -2023,7 +2122,7 @@ button.lien {
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: linear-gradient(135deg, rgb(var(--teinte) / 0.9), var(--accent));
+  background: linear-gradient(135deg, #9a9284, #4d4a44);
   color: white;
   font-weight: 600;
   overflow: visible;
@@ -2085,7 +2184,7 @@ button.lien {
 }
 .bouton-avatar:hover {
   transform: scale(1.04);
-  box-shadow: 0 0 0 3px rgb(var(--teinte) / 0.45);
+  box-shadow: 0 0 0 2px var(--focus);
 }
 .infos-profil {
   flex: 1;
@@ -2135,7 +2234,7 @@ button.lien {
   display: grid;
   place-items: center;
   background: var(--accent);
-  color: white;
+  color: var(--sur-accent);
   font-size: 11px;
   font-weight: 700;
 }
@@ -2184,7 +2283,7 @@ button.lien {
   border-radius: 16px 16px 5px 16px;
   border-color: transparent;
   background: var(--accent);
-  color: white;
+  color: var(--sur-accent);
 }
 .bulle-ami.de-moi time {
   color: rgb(255 255 255 / 0.75);
@@ -2256,4 +2355,488 @@ button.lien {
   font: inherit;
   color: inherit;
   field-sizing: content;
+}
+
+/* =====================================================================================================
+ * Maquette « Navigateur Liquid Glass » : chrome et composants.
+ * Pilules partout, verre posé sur le fond ambiant, rien de collé au bord de la fenêtre.
+ * ===================================================================================================== */
+
+/* ---------- Matériau ---------- */
+
+.verre,
+.verre-fort {
+  position: relative;
+  isolation: isolate;
+  background: var(--verre);
+  backdrop-filter: var(--flou);
+  border: 0;
+  border-radius: var(--rayon);
+  box-shadow: var(--reflet), var(--ombre);
+}
+.verre-fort {
+  background: var(--verre-fort);
+  backdrop-filter: var(--flou-fort);
+  box-shadow: var(--reflet), var(--ombre-flottante);
+}
+/* liseré d'1 px en dégradé : plus clair en haut à gauche et en bas à droite */
+.verre::before,
+.verre-fort::before,
+.onglets-haut::before,
+.barre-adresse::before,
+.barre-laterale-contenu::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  padding: 1px;
+  border-radius: inherit;
+  background: var(--lisere);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 1;
+  pointer-events: none;
+}
+.verre::after {
+  display: none;
+}
+
+/* ---------- Coque et barre de titre ---------- */
+
+.coque {
+  padding: 4px 14px 14px;
+  gap: 0;
+}
+.barre-titre {
+  height: 56px;
+  gap: 10px;
+}
+.barre-titre.inactive {
+  opacity: 0.8;
+}
+.logo {
+  width: 34px;
+  height: 34px;
+  margin-left: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 28%, #fbf9f2, #d7cdaf 55%, #8f8571);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.8), 0 4px 14px rgb(0 0 0 / 0.25);
+}
+.logo-7 {
+  font-family: var(--police-titre);
+  font-size: 18px;
+  font-weight: 700;
+  color: #2c2b28;
+  transform: none;
+}
+.boutons-fenetre {
+  gap: 6px;
+}
+.bouton-fenetre {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--verre-fin);
+  box-shadow: var(--reflet);
+  transition: background var(--anim), transform 240ms var(--ressort);
+}
+.bouton-fenetre svg {
+  stroke-width: 1.3;
+}
+.bouton-fenetre:hover {
+  background: var(--verre-fort);
+}
+.bouton-fenetre:active {
+  transform: scale(0.92);
+}
+.bouton-fenetre.fermer:hover {
+  background: #e5554b;
+}
+
+/* ---------- Onglets du haut : une pilule de verre fin qui contient des pilules ---------- */
+
+.onglets-haut {
+  position: relative;
+  height: 42px;
+  padding: 4px;
+  gap: 4px;
+  border-radius: var(--pilule);
+  background: var(--verre-fin);
+  backdrop-filter: var(--flou);
+  box-shadow: var(--reflet);
+  overflow: hidden;
+}
+.onglets-haut:empty {
+  display: none;
+}
+.onglet {
+  height: 34px;
+  padding: 0 6px 0 8px;
+  border: 0;
+  border-radius: var(--pilule);
+  color: var(--texte-2);
+  font-weight: 500;
+}
+.onglet:hover {
+  background: var(--survol);
+  color: var(--texte);
+}
+.onglet.actif {
+  color: var(--texte);
+  background: var(--verre-fort);
+  box-shadow: var(--reflet), 0 4px 14px rgb(0 0 0 / 0.16);
+}
+.onglet .favicon {
+  border-radius: 50%;
+}
+.onglet-fermer {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+}
+.nouvel-onglet,
+.barre-titre .bouton-ranger {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--verre);
+  box-shadow: var(--reflet), var(--ombre);
+}
+
+/* ---------- Boutons ---------- */
+
+.bouton-icone {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  transition: background var(--anim), transform 240ms var(--ressort), opacity var(--anim), color var(--anim), box-shadow var(--anim);
+}
+.bouton-icone:active:not(:disabled) {
+  transform: scale(0.92);
+}
+.bouton-icone.enfonce {
+  background: var(--accent);
+  color: var(--sur-accent);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.5), 0 6px 18px rgb(0 0 0 / 0.22);
+}
+.icone {
+  stroke-width: 1.5;
+}
+.bouton-verre {
+  padding: 8px 18px;
+  border: 0;
+  border-radius: var(--pilule);
+  background: var(--verre-fort);
+  box-shadow: var(--reflet), var(--ombre);
+  font-weight: 600;
+  transition: background var(--anim), transform 240ms var(--ressort);
+}
+.bouton-verre:hover:not(:disabled) {
+  background: var(--verre-fort);
+  filter: brightness(1.08);
+}
+.bouton-principal {
+  border-radius: var(--pilule);
+  background: var(--accent);
+  color: var(--sur-accent);
+  transition: background var(--anim), transform 240ms var(--ressort);
+}
+.bouton-principal:hover:not(:disabled) {
+  background: var(--accent-survol);
+  filter: none;
+}
+.bouton-principal:disabled {
+  opacity: 0.45;
+}
+
+/* ---------- Barre d'outils : boutons ronds en verre, adresse en pilule ---------- */
+
+.barre-outils {
+  height: 54px;
+  gap: 8px;
+  padding: 0 0 12px;
+}
+.barre-outils > .bouton-icone,
+.barre-outils > button.bouton-icone {
+  background: var(--verre);
+  box-shadow: var(--reflet), var(--ombre);
+  backdrop-filter: var(--flou);
+}
+.barre-outils > .bouton-icone:hover:not(:disabled) {
+  background: var(--verre-fort);
+}
+.barre-outils > .bouton-icone:disabled {
+  opacity: 0.4;
+  box-shadow: var(--reflet);
+}
+.barre-outils > .bouton-icone.enfonce {
+  background: var(--accent);
+}
+.barre-adresse {
+  position: relative;
+  height: 42px;
+  margin-left: 0;
+  padding: 0 8px 0 16px;
+  gap: 10px;
+  border: 0;
+  border-radius: var(--pilule);
+  background: var(--verre);
+  backdrop-filter: var(--flou);
+  box-shadow: var(--reflet), var(--ombre);
+  font-size: 14px;
+}
+.barre-adresse:focus-within {
+  background: var(--verre-fort);
+  border-color: transparent;
+  box-shadow: var(--reflet), var(--ombre), 0 0 0 2px var(--focus);
+}
+/* l'IA : étincelle champagne, liseré lumineux ; ouverte, la pilule devient pleine */
+.bouton-ia {
+  color: var(--ia);
+}
+.barre-outils > .bouton-ia {
+  box-shadow: var(--reflet), var(--ia-lueur);
+}
+.barre-outils > .bouton-ia.enfonce {
+  color: var(--sur-accent);
+  background: var(--accent);
+}
+
+/* ---------- Barre latérale : panneau de verre flottant ---------- */
+
+.barre-laterale.ouverte {
+  width: 256px;
+}
+.barre-laterale-contenu {
+  position: relative;
+  width: 244px;
+  padding: 10px 8px;
+  border-radius: var(--rayon-fenetre);
+  background: var(--verre);
+  backdrop-filter: var(--flou);
+  box-shadow: var(--reflet), var(--ombre);
+}
+.titre-section {
+  padding: 6px 12px 6px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+.onglet-ligne {
+  height: 38px;
+  padding: 0 8px 0 12px;
+}
+.onglet-ligne.actif {
+  background: var(--accent);
+  color: var(--sur-accent);
+}
+.onglet-ligne.actif .onglet-fermer:hover {
+  background: rgb(0 0 0 / 0.08);
+}
+.ligne-nouvel-onglet {
+  height: 38px;
+  padding: 0 12px;
+  border-radius: var(--pilule);
+}
+.depot-vide {
+  border-radius: 18px;
+}
+.separateur {
+  margin: 6px 12px;
+  background: var(--verre-bord);
+  opacity: 0.6;
+}
+
+/* ---------- Zone de page : cadre arrondi 28 px ---------- */
+
+.volet {
+  border-radius: var(--rayon-fenetre);
+}
+.zone-page.partagee .volet.actif {
+  box-shadow: var(--reflet), var(--ombre), 0 0 0 2px var(--accent);
+}
+.progression {
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--ia), transparent);
+}
+
+/* ---------- Panneau IA : verre épais, détaché ---------- */
+
+.panneau-ia.ouvert {
+  width: 396px;
+}
+.panneau-ia-contenu {
+  width: 384px;
+  margin-left: 12px;
+  border-radius: var(--rayon-fenetre);
+}
+
+/* ---------- Nouvel onglet : orbe, salutation, grande pilule « Demander » ---------- */
+
+.nouvel-onglet-page {
+  width: min(680px, 88%);
+  gap: 18px;
+  margin-top: -6vh;
+}
+.orbe {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 28%, #fffaf0 0%, #f1e3be 18%, #d4b46e 52%, #8a6d36 100%);
+  box-shadow: inset -6px -10px 18px rgb(80 55 20 / 0.45), inset 4px 6px 10px rgb(255 255 255 / 0.5), 0 0 40px rgb(230 207 151 / 0.35), 0 14px 30px rgb(0 0 0 / 0.3);
+  animation: orbe 6s ease-in-out infinite;
+}
+@keyframes orbe {
+  50% {
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: inset -6px -10px 18px rgb(80 55 20 / 0.45), inset 4px 6px 10px rgb(255 255 255 / 0.5), 0 0 56px rgb(230 207 151 / 0.5), 0 18px 34px rgb(0 0 0 / 0.28);
+  }
+}
+.salutation {
+  margin: 6px 0 0;
+  font-family: var(--police-titre);
+  font-size: 56px;
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+.sous-salutation {
+  margin: -8px 0 6px;
+  font-size: 15px;
+  color: var(--texte-2);
+}
+.grande-recherche {
+  height: 62px;
+  padding: 0 14px 0 22px;
+  border-radius: var(--pilule);
+  font-size: 16px;
+}
+.grande-recherche:focus-within {
+  box-shadow: var(--reflet), var(--ombre-flottante), var(--ia-lueur);
+}
+.tuiles {
+  gap: 18px 14px;
+}
+.tuile-icone {
+  border-radius: 50%;
+}
+
+/* ---------- Formulaires ---------- */
+
+.champ {
+  height: 38px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: var(--pilule);
+  background: var(--verre-creux);
+  box-shadow: var(--ombre-creux);
+}
+.champ:focus {
+  box-shadow: var(--ombre-creux), 0 0 0 2px var(--focus);
+}
+textarea.champ {
+  border-radius: 18px;
+}
+.interrupteur {
+  width: 46px;
+  height: 28px;
+  border: 0;
+  border-radius: var(--pilule);
+  background: var(--verre-creux);
+  box-shadow: var(--ombre-creux);
+  transition: background var(--anim);
+}
+.interrupteur::after {
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  transition: transform 240ms var(--ressort), background var(--anim);
+}
+.interrupteur.actif {
+  background: var(--accent);
+}
+.interrupteur.actif::after {
+  transform: translateX(18px);
+  background: var(--sur-accent);
+}
+.segments {
+  padding: 4px;
+  border-radius: var(--pilule);
+  background: var(--verre-creux);
+  box-shadow: var(--ombre-creux);
+}
+.segments button {
+  border-radius: var(--pilule);
+}
+.chip {
+  border-radius: var(--pilule);
+  border-color: var(--verre-bord);
+  background: var(--verre);
+}
+.chip.actif {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--sur-accent);
+}
+
+/* ---------- Pages internes ---------- */
+
+.page-interne h1 {
+  font-family: var(--police-titre);
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.bloc {
+  padding: 20px 22px;
+  border-radius: var(--rayon);
+}
+.bloc h2 {
+  font-family: var(--police-titre);
+  font-size: 17px;
+  letter-spacing: -0.01em;
+}
+.ligne-liste {
+  border-radius: 14px;
+}
+.message-erreur {
+  border-radius: 16px;
+  border-color: rgb(242 125 112 / 0.45);
+  background: rgb(242 125 112 / 0.14);
+}
+.pastille-non-lus,
+.compteur-bloques {
+  background: var(--accent);
+  color: var(--sur-accent);
+}
+
+/* ---------- Écran d'accueil ---------- */
+
+.accueil {
+  background: rgb(0 0 0 / 0.35);
+  backdrop-filter: blur(6px);
+}
+.accueil-carte {
+  border-radius: 32px;
+}
+.accueil-carte h1 {
+  font-family: var(--police-titre);
+  font-size: 32px;
+}
+.points-etapes span.actif {
+  background: var(--accent);
+}
+.tuile-icone {
+  width: 64px;
+  height: 64px;
+}
+.tuile-titre {
+  color: var(--texte-2);
+  font-weight: 500;
+}
+.segments button.actif {
+  background: var(--accent);
+  color: var(--sur-accent);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.5), 0 4px 12px rgb(0 0 0 / 0.2);
 }

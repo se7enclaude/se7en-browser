@@ -58,7 +58,7 @@ export function Parametres({ reglages, modifier, infos }: Props): React.JSX.Elem
           <ChoixTheme reglages={reglages} modifier={modifier} />
         </div>
         <div className="ligne-reglage">
-          <span>Couleur du verre</span>
+          <span>Couleur de l’ambiance</span>
           <ChoixTeinte reglages={reglages} modifier={modifier} />
         </div>
       </section>

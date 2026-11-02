@@ -47,7 +47,9 @@ export function NouvelOnglet({ onglet, demanderIA }: { onglet: EtatOnglet; deman
 
   return (
     <div className="nouvel-onglet-page">
-      <h1 className="salutation">{salutation()}</h1>
+      <div className="orbe" aria-hidden />
+      <h1 className="salutation">{salutation()}.</h1>
+      <p className="sous-salutation">Que veux-tu explorer ?</p>
       <form
         className="grande-recherche verre-fort"
         onSubmit={(e) => {
@@ -70,7 +72,7 @@ export function NouvelOnglet({ onglet, demanderIA }: { onglet: EtatOnglet; deman
               setForce(mode === 'ia' ? 'recherche' : 'ia')
             }
           }}
-          placeholder="Chercher, saisir une adresse ou demander à l'IA"
+          placeholder="Demander à l’IA ou saisir une adresse"
           spellCheck={false}
         />
         {(mode === 'recherche' || mode === 'ia') && <ChoixRechercheIA mode={mode} changer={setForce} />}
