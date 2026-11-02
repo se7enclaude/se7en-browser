@@ -123,7 +123,8 @@ affichés en texte brut et un lien ne s'ouvre qu'en http(s), sur clic, dans un n
 
 ## Serveur se7en social (`server/`)
 
-Cloudflare Worker + D1 (profils, amis, messages) + R2 (photos) + Durable Objects (connexion directe par WebSocket).
+Cloudflare Worker + D1 (profils, amis, messages, photos de profil) + Durable Objects (connexion directe par WebSocket).
+En ligne sur `https://se7en-social.outil-frontiere.workers.dev` (serveur par défaut du navigateur).
 
 ```
 cd server
@@ -134,7 +135,7 @@ npm run dev        # serveur local sur http://127.0.0.1:8787 (base D1 locale)
 Pour tester en local : Paramètres › Profils et amis › Serveur = `http://127.0.0.1:8787`.
 
 Mise en ligne (compte Cloudflare) : `npx wrangler login`, `npx wrangler d1 create se7en-social` (copier l'id dans
-`wrangler.toml`), `npx wrangler r2 bucket create se7en-social-photos`, puis `npm run deploy`. L'adresse obtenue va
+`wrangler.toml`), puis `npm run deploy`. L'adresse obtenue va
 dans `SERVEUR_SOCIAL_OFFICIEL` (`src/shared/social.ts`) pour que tout le monde l'utilise par défaut.
 
 ## Tester sans toucher à son profil
@@ -227,6 +228,6 @@ tests/         tests Vitest
 7. ✅ PDF : visionneuse isolée, discuter avec un PDF
 8. ✅ Coffre chiffré et remplissage de PDF
 8b. ✅ Bloqueur de pubs et traqueurs, onglets rangés par l'IA, mémoire
-8c. ✅ Profils et amis (serveur Cloudflare, testé en local ; pas encore mis en ligne)
+8c. ✅ Profils et amis (serveur Cloudflare en ligne)
 9. ✅ Installeur Windows (Inno Setup)
 10. ✅ Publication (v1.0.0) et ajout dans Seventh OS

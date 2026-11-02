@@ -2840,3 +2840,16 @@ textarea.champ {
   color: var(--sur-accent);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.5), 0 4px 12px rgb(0 0 0 / 0.2);
 }
+.etat-connexion.connecte {
+  color: #2f9e5c;
+  background: rgb(116 212 158 / 0.18);
+  box-shadow: inset 0 0 0 1px rgb(116 212 158 / 0.35);
+}
+:root[data-theme='sombre'] .etat-connexion.connecte {
+  color: #74d49e;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-theme='auto'] .etat-connexion.connecte {
+    color: #74d49e;
+  }
+}

@@ -4,17 +4,12 @@ name = "se7en-social"
 main = "src/index.ts"
 compatibility_date = "2026-10-01"
 
-# Base de données : profils, amitiés, messages
+# Base de données : profils, amitiés, messages, photos de profil
 [[d1_databases]]
 binding = "DB"
 database_name = "se7en-social"
-database_id = "a-remplir-apres-wrangler-d1-create"
+database_id = "cd80c883-ae42-4cde-9cbb-bd67b228f576"
 migrations_dir = "migrations"
-
-# Photos de profil
-[[r2_buckets]]
-binding = "PHOTOS"
-bucket_name = "se7en-social-photos"
 
 # Le « direct » : une boîte par utilisateur, qui garde ses connexions ouvertes (messages instantanés, présence)
 [[durable_objects.bindings]]

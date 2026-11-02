@@ -8,7 +8,6 @@ export { Boite }
 
 export interface Env {
   DB: D1Database
-  PHOTOS: R2Bucket
   BOITES: DurableObjectNamespace<Boite>
 }
 
@@ -22,7 +21,7 @@ interface Utilisateur {
 
 const RE_PSEUDO = /^[\p{L}\p{N}_ .-]{2,24}$/u
 const MAX_MESSAGE = 2000
-const MAX_PHOTO = 512 * 1024
+const MAX_PHOTO = 256 * 1024
 const MESSAGES_PAR_MINUTE = 30
 const TYPES_PHOTO = ['image/jpeg', 'image/png', 'image/webp']
 
@@ -112,9 +111,9 @@ async function routeur(req: Request, env: Env): Promise<Response> {
       await env.DB.batch([
         env.DB.prepare('DELETE FROM messages WHERE de = ?1 OR a = ?1').bind(moi.id),
         env.DB.prepare('DELETE FROM amities WHERE a = ?1 OR b = ?1').bind(moi.id),
+        env.DB.prepare('DELETE FROM photos WHERE id = ?').bind(moi.id),
         env.DB.prepare('DELETE FROM utilisateurs WHERE id = ?').bind(moi.id)
       ])
-      if (moi.photo) await env.PHOTOS.delete(moi.photo)
       return json({ ok: true })
     }
   }
@@ -125,10 +124,11 @@ async function routeur(req: Request, env: Env): Promise<Response> {
   if (chemin[0] === 'photo') {
     if (req.method === 'PUT' && !chemin[1]) {
       const type = (req.headers.get('Content-Type') ?? '').split(';')[0]
-      if (!TYPES_PHOTO.includes(type) || corps.byteLength > MAX_PHOTO || corps.byteLength < 100) return erreur('Photo invalide (JPEG, PNG ou WebP, 512 Ko au plus).')
-      const cleR2 = `photos/${moi.id}`
-      await env.PHOTOS.put(cleR2, corps, { httpMetadata: { contentType: type } })
-      await env.DB.prepare('UPDATE utilisateurs SET photo = ? WHERE id = ?').bind(cleR2, moi.id).run()
+      if (!TYPES_PHOTO.includes(type) || corps.byteLength > MAX_PHOTO || corps.byteLength < 100) return erreur('Photo invalide (JPEG, PNG ou WebP, 256 Ko au plus).')
+      await env.DB.batch([
+        env.DB.prepare('INSERT OR REPLACE INTO photos (id, type, donnees) VALUES (?, ?, ?)').bind(moi.id, type, corps),
+        env.DB.prepare('UPDATE utilisateurs SET photo = ? WHERE id = ?').bind(type, moi.id)
+      ])
       return json({ ok: true })
     }
     if (req.method === 'GET' && chemin[1]) {
@@ -136,10 +136,10 @@ async function routeur(req: Request, env: Env): Promise<Response> {
       const cible = chemin[1]
       const lien = cible === moi.id || (await amis(env, moi.id)).some((x) => x.id === cible)
       if (!lien) return erreur('introuvable', 404)
-      const u = await env.DB.prepare('SELECT photo FROM utilisateurs WHERE id = ?').bind(cible).first<{ photo: string | null }>()
-      const obj = u?.photo ? await env.PHOTOS.get(u.photo) : null
-      if (!obj) return erreur('introuvable', 404)
-      return new Response(obj.body, { headers: { 'Content-Type': obj.httpMetadata?.contentType ?? 'image/jpeg', 'Cache-Control': 'private, max-age=300' } })
+      const ph = await env.DB.prepare('SELECT type, donnees FROM photos WHERE id = ?').bind(cible).first<{ type: string; donnees: ArrayBuffer | number[] }>()
+      if (!ph) return erreur('introuvable', 404)
+      const octets = ph.donnees instanceof ArrayBuffer ? new Uint8Array(ph.donnees) : Uint8Array.from(ph.donnees)
+      return new Response(octets, { headers: { 'Content-Type': ph.type, 'Cache-Control': 'private, max-age=300' } })
     }
   }
 

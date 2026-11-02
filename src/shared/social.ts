@@ -47,8 +47,8 @@ export type EvenementSocial =
   | { type: 'amis' }
   | { type: 'presence'; id: string; enLigne: boolean }
 
-/** Serveur officiel (rempli une fois le serveur déployé sur Cloudflare) ; vide = profils et amis désactivés. */
-export const SERVEUR_SOCIAL_OFFICIEL = ''
+/** Serveur officiel (Cloudflare) ; le réglage « Serveur » des paramètres peut le remplacer. */
+export const SERVEUR_SOCIAL_OFFICIEL = 'https://se7en-social.outil-frontiere.workers.dev'
 
 export const MAX_MESSAGE = 2000
 export const RE_PSEUDO = /^[\p{L}\p{N}_ .-]{2,24}$/u
