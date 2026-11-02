@@ -3,7 +3,7 @@
 Un navigateur web pour Windows au design « Liquid Glass », avec une IA qui tourne sur ton PC (Ollama + Qwen).
 Il fait partie de la suite se7en et s'installe depuis **Seventh OS**.
 
-> En construction : étapes 1 à 7 terminées. Voir « Avancement » plus bas.
+> En construction : étapes 1 à 8 terminées. Voir « Avancement » plus bas.
 
 ## Raccourcis
 
@@ -78,6 +78,22 @@ politique de sécurité stricte) : un PDF piégé qui exploiterait une faille de
 ni au coffre. Les PDF venus d'Internet sont gardés dans un dossier temporaire vidé à la fermeture ; chaque document a un
 identifiant impossible à deviner, et un site web ne peut pas les lire (requêtes d'une autre origine refusées).
 
+**Coffre personnel et remplissage de PDF** : dans Paramètres › Coffre personnel, on enregistre ses informations (nom,
+prénom, date et lieu de naissance, adresse, e-mail, téléphone, n° de sécurité sociale, champs libres). Le coffre est
+**chiffré avec le compte Windows** (`safeStorage` → DPAPI, fichier `coffre.bin`) et ne quitte jamais le PC.
+
+Sur un PDF qui contient un formulaire, le panneau IA propose « Remplir avec mon coffre » (ou on écrit « remplis ce PDF ») :
+1. le navigateur lit les champs du PDF et le texte écrit à côté de chacun (pdf.js + pdf-lib) ;
+2. l'IA associe les champs aux informations du coffre **sans voir les valeurs** : elle ne reçoit que les libellés des
+   champs et les *noms* des informations, et sa réponse est contrainte par un schéma JSON ; un garde-fou écarte les
+   associations absurdes (date de naissance dans « Le : », n° de sécu hors de son champ). Sans IA, repérage par libellé ;
+3. un **aperçu modifiable** montre chaque valeur, avec une case pour l'inclure ou non ;
+4. **rien n'est écrit avant le clic sur « Remplir »** ; le PDF rempli est un nouveau fichier (l'original ne change pas),
+   affiché dans l'onglet, avec « Enregistrer sous… ».
+
+Testé sur un formulaire façon CERFA (15 champs, noms techniques f1…f15, libellé piégé) : 11 champs remplis
+correctement, « employeur », « Fait à », « Le » et le champ piégé laissés vides.
+
 ## Tester sans toucher à son profil
 
 `SE7EN_PROFIL_TEST=<dossier>` lance le navigateur avec un profil à part (réglages, onglets, cookies),
@@ -142,6 +158,8 @@ tests/         tests Vitest
 5. ✅ Ollama : détection, installation, modèles
 6. ✅ Panneau IA (Ctrl+Espace), « Demande ou cherche », @onglets, Skills, résumé, protection anti-injection
 7. ✅ PDF : visionneuse isolée, discuter avec un PDF
-8. Coffre chiffré et remplissage de PDF ; bloqueur, onglets rangés par l'IA, mémoire ; profils et amis
+8. ✅ Coffre chiffré et remplissage de PDF
+8b. Bloqueur de pubs et traqueurs, onglets rangés par l'IA, mémoire
+8c. Profils et amis (serveur Cloudflare)
 9. Installeur Windows
 10. Publication et ajout dans Seventh OS

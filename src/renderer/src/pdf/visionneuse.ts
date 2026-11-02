@@ -101,7 +101,7 @@ const observateur = new IntersectionObserver(
 /** Taille de chaque feuille selon le zoom ; les pages visibles sont redessinées. */
 function dimensionner(): void {
   if (ajusterLargeur && pages.length) {
-    const dispo = conteneur.clientWidth - 48
+    const dispo = conteneur.clientWidth - 52 // marges de 24 px de chaque côté, et un peu d'air
     echelle = Math.max(0.4, Math.min(3, dispo / pages[0].largeur))
   }
   $('zoom').textContent = `${Math.round(echelle * 100)} %`
@@ -216,7 +216,13 @@ conteneur.addEventListener('scroll', () => {
   const p = pages.find((x) => x.el.offsetTop + x.el.offsetHeight > milieu)
   if (p && document.activeElement !== champPage) champPage.value = String(p.n)
 })
-window.addEventListener('resize', () => ajusterLargeur && dimensionner())
+// la largeur utile change aussi quand la barre de défilement apparaît : on suit la zone elle-même
+let largeurConnue = 0
+new ResizeObserver(() => {
+  if (conteneur.clientWidth === largeurConnue) return
+  largeurConnue = conteneur.clientWidth
+  if (ajusterLargeur) dimensionner()
+}).observe(conteneur)
 window.addEventListener(
   'wheel',
   (e) => {

@@ -3,6 +3,8 @@ import { app, BrowserWindow, dialog, session } from 'electron'
 import { CANAUX } from '../shared/ipc'
 import { idDocDeVisionneuse } from '../shared/pdf'
 import { DocumentsPdf } from './pdf/documents'
+import { ServiceFormulaire } from './pdf/serviceFormulaire'
+import { CoffreChiffre } from './coffre/coffre'
 import { brancherProtocolePdf, declarerProtocolePdf, redirigerPdfVersVisionneuse } from './pdf/protocole'
 import { creerFenetrePrincipale, appliquerTheme } from './fenetre/fenetrePrincipale'
 import { ServiceChat } from './ia/chat'
@@ -95,7 +97,11 @@ if (!app.requestSingleInstanceLock()) {
     // le chat lit les onglets de la fenêtre principale (une seule fenêtre pour l'instant)
     const chat = new ServiceChat(ollama, conversations, skills, documents, () => reglages.get(), () => [...onglets.values()][0])
 
-    enregistrerIpc({ reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, ouvrirFichier: (f) => void ouvrirFichier(f), ongletsDe: (f) => onglets.get(f.id) })
+    // coffre personnel chiffré, et remplissage des formulaires PDF avec ses informations
+    const coffre = new CoffreChiffre(dossier)
+    const formulaires = new ServiceFormulaire(documents, coffre, ollama, () => reglages.get())
+
+    enregistrerIpc({ reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, coffre, formulaires, ouvrirFichier: (f) => void ouvrirFichier(f), ongletsDe: (f) => onglets.get(f.id) })
 
     const fenetre = creerFenetrePrincipale()
     const idFenetre = fenetre.id

@@ -103,6 +103,16 @@ const api: ApiSe7en = {
     lire: demander(CANAUX.skillsLire),
     sauver: demander(CANAUX.skillsSauver),
     reinitialiser: demander(CANAUX.skillsReinitialiser)
+  },
+  coffre: {
+    lire: demander(CANAUX.coffreLire),
+    sauver: demander(CANAUX.coffreSauver)
+  },
+  formulaire: {
+    compter: demander(CANAUX.formulaireCompter),
+    analyser: demander(CANAUX.formulaireAnalyser),
+    remplir: demander(CANAUX.formulaireRemplir),
+    enregistrerSous: demander(CANAUX.formulaireEnregistrer)
   }
 }
 

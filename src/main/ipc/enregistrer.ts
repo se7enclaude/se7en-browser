@@ -16,6 +16,8 @@ import type { Telechargements } from '../navigateur/telechargements'
 import type { Ollama } from '../ia/ollama'
 import type { ServiceChat } from '../ia/chat'
 import type { Conversations, Skills } from '../ia/conversations'
+import type { CoffreChiffre } from '../coffre/coffre'
+import type { ServiceFormulaire } from '../pdf/serviceFormulaire'
 import { RE_NOM_MODELE } from '../../shared/ia'
 
 export interface Services {
@@ -27,6 +29,8 @@ export interface Services {
   chat: ServiceChat
   conversations: Conversations
   skills: Skills
+  coffre: CoffreChiffre
+  formulaires: ServiceFormulaire
   /** Fenêtre « Ouvrir » pour choisir un PDF du PC. */
   ouvrirFichier: (f: BrowserWindow) => void
   ongletsDe: (f: BrowserWindow) => GestionnaireOnglets | undefined
@@ -48,7 +52,7 @@ function diffuser(canal: string, valeur: unknown): void {
 }
 
 export function enregistrerIpc(s: Services): void {
-  const { reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, ongletsDe } = s
+  const { reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, coffre, formulaires, ongletsDe } = s
 
   // ---------- fenêtre et application ----------
   ipcMain.on(CANAUX.fenetreReduire, (e) => fenetreDe(e)?.minimize())
@@ -171,4 +175,31 @@ export function enregistrerIpc(s: Services): void {
   ipcMain.handle(CANAUX.skillsLire, (e) => (fenetreDe(e) ? skills.lire() : []))
   ipcMain.handle(CANAUX.skillsSauver, (e, liste: unknown) => (fenetreDe(e) ? skills.sauver(liste) : []))
   ipcMain.handle(CANAUX.skillsReinitialiser, (e) => (fenetreDe(e) ? skills.reinitialiser() : []))
+
+  // ---------- coffre (chiffré) et formulaires PDF ----------
+  const erreur = (err: unknown): { erreur: string } => ({ erreur: (err as Error)?.message || 'Erreur inconnue.' })
+  ipcMain.handle(CANAUX.coffreLire, (e) => (fenetreDe(e) ? coffre.etat() : null))
+  ipcMain.handle(CANAUX.coffreSauver, async (e, c: unknown) => (fenetreDe(e) ? coffre.sauver(c).catch(erreur) : null))
+  ipcMain.handle(CANAUX.formulaireCompter, async (e, id: unknown) => {
+    const go = g(e)
+    return go && estId(id) ? formulaires.compter(go, id) : 0
+  })
+  ipcMain.handle(CANAUX.formulaireAnalyser, async (e, id: unknown) => {
+    const go = g(e)
+    return go && estId(id) ? formulaires.analyser(go, id).catch(erreur) : erreur(new Error('Onglet introuvable.'))
+  })
+  ipcMain.handle(CANAUX.formulaireRemplir, async (e, id: unknown, valeurs: unknown) => {
+    const go = g(e)
+    if (!go || !estId(id) || !Array.isArray(valeurs)) return erreur(new Error('Demande invalide.'))
+    const propres = valeurs
+      .filter((v): v is { nom: string; valeur: string } => !!v && typeof v.nom === 'string' && typeof v.valeur === 'string')
+      .slice(0, 500)
+      .map((v) => ({ nom: v.nom.slice(0, 500), valeur: v.valeur.slice(0, 2000) }))
+    return formulaires.remplir(go, id, propres).catch(erreur)
+  })
+  ipcMain.handle(CANAUX.formulaireEnregistrer, async (e, id: unknown) => {
+    const f = fenetreDe(e)
+    const go = f && ongletsDe(f)
+    return f && go && estId(id) ? formulaires.enregistrerSous(f, go, id).catch(erreur) : null
+  })
 }

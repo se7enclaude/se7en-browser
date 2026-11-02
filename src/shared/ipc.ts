@@ -3,6 +3,8 @@
 import type { PageInterne } from './adresse'
 import type { ActionTelechargement, EntreeHistorique, Favori, SitePopulaire, Telechargement } from './donnees'
 import type { Conversation, DemandeChat, FluxChat, ReponseEnvoi, ResumeConversation, Skill } from './chat'
+import type { Coffre, EtatCoffre } from './coffre'
+import type { AnalyseFormulaire, ResultatRemplissage, ValeurARemplir } from './formulaire'
 import type { EtatOllama } from './ia'
 import type { CommandeUi, EtatOnglets, ZoneOnglet } from './onglets'
 import type { Reglages } from './reglages'
@@ -75,7 +77,14 @@ export const CANAUX = {
   conversationsSupprimer: 'conversations:supprimer',
   skillsLire: 'skills:lire',
   skillsSauver: 'skills:sauver',
-  skillsReinitialiser: 'skills:reinitialiser'
+  skillsReinitialiser: 'skills:reinitialiser',
+  // coffre et formulaires PDF
+  coffreLire: 'coffre:lire',
+  coffreSauver: 'coffre:sauver',
+  formulaireCompter: 'formulaire:compter',
+  formulaireAnalyser: 'formulaire:analyser',
+  formulaireRemplir: 'formulaire:remplir',
+  formulaireEnregistrer: 'formulaire:enregistrer'
 } as const
 
 export interface EtatFenetre {
@@ -186,5 +195,18 @@ export interface ApiSe7en {
     lire(): Promise<Skill[]>
     sauver(liste: Skill[]): Promise<Skill[]>
     reinitialiser(): Promise<Skill[]>
+  }
+  coffre: {
+    lire(): Promise<EtatCoffre>
+    sauver(c: Coffre): Promise<EtatCoffre | { erreur: string }>
+  }
+  formulaire: {
+    /** Nombre de champs de texte du PDF de l'onglet (0 : pas un formulaire). */
+    compter(idOnglet: number): Promise<number>
+    /** Champs, libellés et valeurs proposées (l'IA ne voit pas les valeurs). */
+    analyser(idOnglet: number): Promise<AnalyseFormulaire | { erreur: string }>
+    /** Remplit, après confirmation de l'utilisateur, dans un nouveau fichier affiché dans l'onglet. */
+    remplir(idOnglet: number, valeurs: ValeurARemplir[]): Promise<ResultatRemplissage | { erreur: string }>
+    enregistrerSous(idOnglet: number): Promise<string | null | { erreur: string }>
   }
 }

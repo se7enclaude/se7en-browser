@@ -7,6 +7,7 @@ import type { EtatOnglet, EtatOnglets } from '../../../shared/onglets'
 import type { Reglages } from '../../../shared/reglages'
 import { IconeCroix, IconeHistorique, IconeIA, IconePlus } from './Icones'
 import { Markdown } from './Markdown'
+import { RemplissagePdf } from './RemplissagePdf'
 import { IconeOnglet } from './OngletItem'
 
 /** Question envoyée depuis ailleurs (barre « Demande ou cherche »). `n` change à chaque nouvelle demande. */
@@ -66,6 +67,9 @@ export function PanneauIA({ etat, actif, ia, reglages, ouvert, fermer, demande }
   const [skills, setSkills] = useState<Skill[]>([])
   const [choix, setChoix] = useState(0)
   const [avertissement, setAvertissement] = useState<string | null>(null)
+  /** Formulaire PDF : nombre de champs à remplir dans l'onglet actif, et aperçu de remplissage ouvert ou non. */
+  const [champsPdf, setChampsPdf] = useState(0)
+  const [remplissage, setRemplissage] = useState(false)
   const champ = useRef<HTMLTextAreaElement>(null)
   const fil = useRef<HTMLDivElement>(null)
   const enCoursRef = useRef(enCours)
@@ -73,6 +77,17 @@ export function PanneauIA({ etat, actif, ia, reglages, ouvert, fermer, demande }
 
   const pret = ia?.phase === 'pret' && modelePresent(reglages.modeleTexte, ia.modeles)
   const pageActive = estWeb(actif) ? actif : undefined
+
+  // un PDF avec des champs : on propose de le remplir avec le coffre
+  useEffect(() => {
+    setChampsPdf(0)
+    if (!pageActive?.pdf) return setRemplissage(false)
+    let actuel = true
+    window.se7en.formulaire.compter(pageActive.id).then((n) => actuel && setChampsPdf(n))
+    return () => {
+      actuel = false
+    }
+  }, [pageActive?.id, pageActive?.pdf])
 
   // à l'ouverture : Skills à jour et clavier dans la zone de saisie
   useEffect(() => {
@@ -121,6 +136,12 @@ export function PanneauIA({ etat, actif, ia, reglages, ouvert, fermer, demande }
 
   const envoyer = async (texte: string, options: { avecPage?: boolean; nouvelle?: boolean } = {}): Promise<void> => {
     if (!texte.trim() || enCoursRef.current) return
+    // « remplis ce PDF » sur un formulaire : on ouvre l'aperçu de remplissage plutôt que le chat
+    if (pageActive?.pdf && champsPdf > 0 && /\b(rempli[rst]?|compl[eè]te[rz]?)\b/i.test(texte)) {
+      setSaisie('')
+      setRemplissage(true)
+      return
+    }
     const avecPageActive = options.avecPage ?? (avecPage && !!pageActive)
     const id = options.nouvelle ? null : idConversation
     setAvertissement(null)
@@ -251,7 +272,11 @@ export function PanneauIA({ etat, actif, ia, reglages, ouvert, fermer, demande }
           </button>
         </header>
 
-        {!pret ? (
+        {remplissage && pageActive ? (
+          <div className="fil-ia">
+            <RemplissagePdf key={pageActive.id} idOnglet={pageActive.id} fermer={() => setRemplissage(false)} />
+          </div>
+        ) : !pret ? (
           corpsInactif()
         ) : vue === 'historique' ? (
           <div className="fil-ia">
@@ -308,7 +333,17 @@ export function PanneauIA({ etat, actif, ia, reglages, ouvert, fermer, demande }
           </div>
         )}
 
-        {pret && vue === 'chat' && (
+        {!remplissage && pageActive?.pdf && champsPdf > 0 && (
+          <div className="carte-formulaire">
+            <span>
+              Ce PDF est un formulaire ({champsPdf} champ{champsPdf > 1 ? 's' : ''}).
+            </span>
+            <button className="bouton-principal" onClick={() => setRemplissage(true)}>
+              Remplir avec mon coffre
+            </button>
+          </div>
+        )}
+        {pret && vue === 'chat' && !remplissage && (
           <div className="saisie-ia">
             {suggestion && nbSuggestions > 0 && (
               <div className="suggestions verre-fort">

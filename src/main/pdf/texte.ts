@@ -24,7 +24,7 @@ export async function lireTextePdf(chemin: string): Promise<string> {
   // pdf.js est un module ES : chargé à la demande (le processus principal est en CommonJS)
   const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
   const donnees = new Uint8Array(await fs.readFile(chemin))
-  const chargement = pdfjs.getDocument({ data: donnees, disableFontFace: true, useSystemFonts: false, enableXfa: false })
+  const chargement = pdfjs.getDocument({ data: donnees, disableFontFace: true, useSystemFonts: false, enableXfa: false, verbosity: 0 })
   const doc = await chargement.promise
   try {
     const pages: string[] = []
