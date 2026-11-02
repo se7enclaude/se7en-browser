@@ -60,6 +60,13 @@ export class GestionnaireOnglets {
     return this.onglets.find((o) => o.etat.id === this.actifId)
   }
 
+  /** La page web chargée dans un onglet (null pour un Nouvel onglet, une page interne ou un onglet en veille). */
+  pageDe(id: number): { etat: EtatOnglet; wc: WebContents } | null {
+    const o = this.trouver(id)
+    if (!o?.vue || o.vue.webContents.isDestroyed() || !estAdresseAutorisee(o.etat.url)) return null
+    return { etat: { ...o.etat }, wc: o.vue.webContents }
+  }
+
   // ---------- création ----------
 
   private creer(prioritaire: boolean, sauve?: OngletPrioritaireSauve): Onglet {

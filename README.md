@@ -3,7 +3,7 @@
 Un navigateur web pour Windows au design « Liquid Glass », avec une IA qui tourne sur ton PC (Ollama + Qwen).
 Il fait partie de la suite se7en et s'installe depuis **Seventh OS**.
 
-> En construction : étapes 1 à 5 terminées. Voir « Avancement » plus bas.
+> En construction : étapes 1 à 6 terminées. Voir « Avancement » plus bas.
 
 ## Raccourcis
 
@@ -23,6 +23,7 @@ Il fait partie de la suite se7en et s'installe depuis **Seventh OS**.
 | Ctrl+J | téléchargements |
 | Ctrl+D | ajouter / retirer des favoris |
 | Ctrl+Maj+O | favoris |
+| Ctrl+Espace | panneau IA |
 
 Clic molette sur un onglet : le fermer. Glisser un onglet : le déplacer. Clic droit : épingler en prioritaire, dupliquer, fermer les autres.
 
@@ -46,6 +47,25 @@ Ollama **ne démarre jamais avec Windows** : à l'ouverture du navigateur, une b
 (réglable dans les Paramètres : me demander / toujours / jamais). Le navigateur lance alors `ollama serve` sans fenêtre
 et l'arrête en se fermant. Après l'installation, l'appli Ollama lancée par l'installeur est fermée et tout démarrage
 automatique (dossier Démarrage, clé Run) est retiré.
+
+**Panneau IA** (Ctrl+Espace, ou l'étincelle à droite de la barre d'adresse) : chat en flux avec l'IA locale, historique des
+conversations, page actuelle jointe à la question (« discute avec la page »), autres onglets avec `@`, Skills avec `/`
+(`/resume`, `/points`, `/explique`, `/traduis`, `/reponds`, modifiables dans les Paramètres), bouton « Résumer ».
+Une page sans texte lisible est envoyée en capture au modèle vision.
+
+**Demande ou cherche** : dans la barre d'adresse et la page Nouvel onglet, une adresse s'ouvre, une recherche part sur le
+moteur choisi, et une question (« ? » final, « comment… », « pourquoi… ») part dans le panneau IA. Tab change de mode.
+
+**Protection contre l'injection de prompt** (`src/main/ia/prompts.ts`, `lecturePage.ts`) :
+- le texte des pages est lu dans un monde isolé, **sans le texte invisible** (blanc sur blanc, minuscule, transparent, hors écran) ;
+- il est envoyé entre des balises à identifiant aléatoire que la page ne peut ni deviner ni refermer ;
+- la consigne système dit que ce contenu est une donnée, jamais une instruction, et la demande de l'utilisateur et un
+  rappel des règles viennent **après** le contenu (« sandwich ») ;
+- les formules de manipulation (« ignore tes instructions », demande de mot de passe…) sont repérées : le modèle est
+  prévenu et un avertissement s'affiche ;
+- l'IA n'a aucun outil : elle ne peut que répondre ; ses réponses sont affichées sans HTML, et ses liens ne s'ouvrent qu'au clic.
+
+Testé avec des pages piégées (ordre caché en texte blanc de 1 px, ordre écrit en clair) : l'IA résume la page sans obéir.
 
 ## Tester sans toucher à son profil
 
@@ -106,7 +126,7 @@ tests/         tests Vitest
 3. ✅ Barre latérale des onglets prioritaires (Ctrl+B), écran d'accueil, paramètres
 4. ✅ Historique, favoris, téléchargements, Nouvel onglet, vue partagée (Splits)
 5. ✅ Ollama : détection, installation, modèles
-6. Panneau IA (Ctrl+Espace), « Demande ou cherche », @onglets, Skills, résumé
+6. ✅ Panneau IA (Ctrl+Espace), « Demande ou cherche », @onglets, Skills, résumé, protection anti-injection
 7. PDF : visionneuse, discuter avec un PDF
 8. Coffre chiffré et remplissage de PDF ; bloqueur, onglets rangés par l'IA, mémoire ; profils et amis
 9. Installeur Windows

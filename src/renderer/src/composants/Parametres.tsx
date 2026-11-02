@@ -4,6 +4,7 @@ import type { InfosApp } from '../../../shared/ipc'
 import { MOTEURS, type Reglages } from '../../../shared/reglages'
 import { modelePresent } from '../../../shared/ia'
 import { ChoixDisposition, ChoixTeinte, ChoixTheme } from './ChoixApparence'
+import { EditeurSkills } from './EditeurSkills'
 import { useOllama } from './PageIA'
 
 interface Props {
@@ -114,6 +115,8 @@ export function Parametres({ reglages, modifier, infos }: Props): React.JSX.Elem
           </button>
         </div>
       </section>
+
+      <EditeurSkills />
 
       <section className="bloc verre-fort">
         <h2>À propos</h2>

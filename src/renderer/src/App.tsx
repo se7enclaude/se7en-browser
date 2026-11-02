@@ -1,4 +1,5 @@
 /* Interface du navigateur : barre de titre (onglets du haut), barre latérale (prioritaires), barre d'outils, zone de page. */
+import { useEffect, useState } from 'react'
 import type { EtatOnglet } from '../../shared/onglets'
 import { Accueil } from './composants/Accueil'
 import { BarreLaterale } from './composants/BarreLaterale'
@@ -8,6 +9,7 @@ import { NouvelOnglet } from './composants/NouvelOnglet'
 import { OngletsHaut } from './composants/OngletsHaut'
 import { PageFavoris, PageHistorique, PageTelechargements } from './composants/PagesDonnees'
 import { PageIA, useOllama } from './composants/PageIA'
+import { PanneauIA, type DemandeExterne } from './composants/PanneauIA'
 import { QuestionIA } from './composants/QuestionIA'
 import { Parametres } from './composants/Parametres'
 import { ZonePage } from './composants/ZonePage'
@@ -22,6 +24,15 @@ export function App(): React.JSX.Element {
   const { etat, actif } = useOnglets()
   const glisser = useGlisser()
   const ia = useOllama()
+  const [iaOuverte, setIaOuverte] = useState(false)
+  const [demande, setDemande] = useState<DemandeExterne | null>(null)
+  // Ctrl+Espace, même quand le clavier est dans une page
+  useEffect(() => window.se7en.app.surCommande((c) => c.type === 'basculer-ia' && setIaOuverte((v) => !v)), [])
+  /** « Demande ou cherche » : la question part dans le panneau IA. */
+  const demanderIA = (texte: string, avecPage: boolean): void => {
+    setIaOuverte(true)
+    setDemande((d) => ({ texte, avecPage, n: (d?.n ?? 0) + 1 }))
+  }
 
   const disposition = reglages?.disposition ?? 'les-deux'
   const barreDispo = disposition !== 'haut'
@@ -34,7 +45,7 @@ export function App(): React.JSX.Element {
   const contenu = (o: EtatOnglet): React.ReactNode => {
     switch (o.url) {
       case '':
-        return <NouvelOnglet key={o.id} onglet={o} />
+        return <NouvelOnglet key={o.id} onglet={o} demanderIA={(t) => demanderIA(t, false)} />
       case 'se7en://parametres':
         return reglages && <Parametres reglages={reglages} modifier={modifier} infos={infos} />
       case 'se7en://historique':
@@ -61,11 +72,15 @@ export function App(): React.JSX.Element {
           <BarreOutils
             actif={actif}
             enSplit={enSplit}
+            ia={{ ouverte: iaOuverte, basculer: () => setIaOuverte((v) => !v), demander: (t) => demanderIA(t, true) }}
             barre={barreDispo ? { ouverte: barreOuverte, basculer: () => modifier({ barreLaterale: !barreOuverte }) } : null}
           />
           {reglages && <QuestionIA reglages={reglages} modifier={modifier} ia={ia} />}
           <ZonePage etat={etat} contenu={contenu} />
         </div>
+        {reglages && (
+          <PanneauIA etat={etat} actif={actif} ia={ia} reglages={reglages} ouvert={iaOuverte} fermer={() => setIaOuverte(false)} demande={demande} />
+        )}
       </div>
       {reglages && !reglages.accueilTermine && <Accueil reglages={reglages} modifier={modifier} />}
     </div>

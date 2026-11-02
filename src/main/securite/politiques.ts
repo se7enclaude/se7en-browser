@@ -59,7 +59,8 @@ export function verrouillerInterface(wc: WebContents): void {
     if (!estAdresseInterface(url)) e.preventDefault()
   })
   wc.setWindowOpenHandler(() => ({ action: 'deny' }))
-  wc.session.setPermissionRequestHandler((_wc, _perm, rappel) => rappel(false))
+  // seule permission de l'interface : écrire dans le presse-papiers (bouton « Copier » des réponses de l'IA)
+  wc.session.setPermissionRequestHandler((_wc, perm, rappel) => rappel(perm === 'clipboard-sanitized-write'))
 }
 
 /** Bloque, pour toute l'appli, l'ajout de <webview> et les preloads injectés par une page. */

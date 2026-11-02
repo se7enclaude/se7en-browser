@@ -1,9 +1,10 @@
 /* Page « Nouvel onglet » : grande barre de recherche, puis raccourcis vers tes favoris et tes sites les plus visités.
- * (La barre deviendra « Demande ou cherche » à l'étape 6.) */
+ * La barre fait « Demande ou cherche » : une adresse, une recherche, ou une question pour l'IA. */
 import { useEffect, useState } from 'react'
 import type { SitePopulaire } from '../../../shared/donnees'
 import type { EtatOnglet } from '../../../shared/onglets'
 import { initiale, useFavoris } from '../useDonnees'
+import { ChoixRechercheIA, modeSaisie } from './ChoixRechercheIA'
 import { IconeRecherche } from './Icones'
 
 function salutation(): string {
@@ -15,8 +16,10 @@ function salutation(): string {
 
 const MAX_TUILES = 8
 
-export function NouvelOnglet({ onglet }: { onglet: EtatOnglet }): React.JSX.Element {
+export function NouvelOnglet({ onglet, demanderIA }: { onglet: EtatOnglet; demanderIA: (texte: string) => void }): React.JSX.Element {
   const [saisie, setSaisie] = useState('')
+  const [force, setForce] = useState<'recherche' | 'ia' | null>(null)
+  const mode = modeSaisie(saisie, force)
   const [populaires, setPopulaires] = useState<SitePopulaire[]>([])
   const favoris = useFavoris()
   useEffect(() => {
@@ -50,8 +53,10 @@ export function NouvelOnglet({ onglet }: { onglet: EtatOnglet }): React.JSX.Elem
         onSubmit={(e) => {
           e.preventDefault()
           if (!saisie.trim()) return
-          aller(saisie)
+          if (mode === 'ia') demanderIA(saisie.trim())
+          else aller(saisie)
           setSaisie('')
+          setForce(null)
         }}
       >
         <IconeRecherche />
@@ -59,9 +64,16 @@ export function NouvelOnglet({ onglet }: { onglet: EtatOnglet }): React.JSX.Elem
           autoFocus
           value={saisie}
           onChange={(e) => setSaisie(e.target.value)}
-          placeholder="Rechercher sur Google ou saisir une adresse"
+          onKeyDown={(e) => {
+            if (e.key === 'Tab' && (mode === 'recherche' || mode === 'ia')) {
+              e.preventDefault()
+              setForce(mode === 'ia' ? 'recherche' : 'ia')
+            }
+          }}
+          placeholder="Chercher, saisir une adresse ou demander à l'IA"
           spellCheck={false}
         />
+        {(mode === 'recherche' || mode === 'ia') && <ChoixRechercheIA mode={mode} changer={setForce} />}
       </form>
       {tuiles.length > 0 && (
         <div className="tuiles">

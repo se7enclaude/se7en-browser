@@ -14,6 +14,8 @@ import type { GestionnaireOnglets } from '../navigateur/onglets'
 import { ouvrirMenuOnglet, ouvrirMenuPrincipal } from '../navigateur/menuOnglet'
 import type { Telechargements } from '../navigateur/telechargements'
 import type { Ollama } from '../ia/ollama'
+import type { ServiceChat } from '../ia/chat'
+import type { Conversations, Skills } from '../ia/conversations'
 import { RE_NOM_MODELE } from '../../shared/ia'
 
 export interface Services {
@@ -22,6 +24,9 @@ export interface Services {
   favoris: Favoris
   telechargements: Telechargements
   ollama: Ollama
+  chat: ServiceChat
+  conversations: Conversations
+  skills: Skills
   ongletsDe: (f: BrowserWindow) => GestionnaireOnglets | undefined
 }
 
@@ -41,7 +46,7 @@ function diffuser(canal: string, valeur: unknown): void {
 }
 
 export function enregistrerIpc(s: Services): void {
-  const { reglages, historique, favoris, telechargements, ollama, ongletsDe } = s
+  const { reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, ongletsDe } = s
 
   // ---------- fenêtre et application ----------
   ipcMain.on(CANAUX.fenetreReduire, (e) => fenetreDe(e)?.minimize())
@@ -141,4 +146,27 @@ export function enregistrerIpc(s: Services): void {
   ipcMain.on(CANAUX.iaAnnuler, (e) => fenetreDe(e) && ollama.annuler())
   ipcMain.on(CANAUX.iaArreter, (e) => fenetreDe(e) && ollama.arreter())
   ollama.on('change', (etat) => diffuser(CANAUX.iaChange, etat))
+
+  // ---------- chat ----------
+  ipcMain.handle(CANAUX.chatEnvoyer, (e, d: unknown) => {
+    if (!fenetreDe(e) || !d || typeof d !== 'object') return { erreur: 'Demande invalide.' }
+    const o = d as Record<string, unknown>
+    if (!estTexte(o.texte) || !o.texte.trim()) return { erreur: 'Question vide.' }
+    return chat.envoyer({
+      idConversation: typeof o.idConversation === 'string' ? o.idConversation : null,
+      texte: o.texte.slice(0, 8000),
+      avecPageActive: o.avecPageActive === true,
+      idsOnglets: Array.isArray(o.idsOnglets) ? o.idsOnglets.filter(estId) : []
+    })
+  })
+  ipcMain.on(CANAUX.chatArreter, (e) => fenetreDe(e) && chat.arreter())
+  chat.on('flux', (f) => diffuser(CANAUX.chatFlux, f))
+  ipcMain.handle(CANAUX.conversationsLister, (e) => (fenetreDe(e) ? conversations.resumes() : []))
+  ipcMain.handle(CANAUX.conversationsLire, (e, id: unknown) => (fenetreDe(e) && typeof id === 'string' ? (conversations.lire(id) ?? null) : null))
+  ipcMain.handle(CANAUX.conversationsSupprimer, (e, id: unknown) => {
+    if (fenetreDe(e) && typeof id === 'string') conversations.supprimer(id)
+  })
+  ipcMain.handle(CANAUX.skillsLire, (e) => (fenetreDe(e) ? skills.lire() : []))
+  ipcMain.handle(CANAUX.skillsSauver, (e, liste: unknown) => (fenetreDe(e) ? skills.sauver(liste) : []))
+  ipcMain.handle(CANAUX.skillsReinitialiser, (e) => (fenetreDe(e) ? skills.reinitialiser() : []))
 }

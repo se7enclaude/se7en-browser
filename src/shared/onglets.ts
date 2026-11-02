@@ -54,4 +54,4 @@ export interface ZoneOnglet {
 }
 
 /** Commandes que le main envoie à l'interface (ex. raccourci Ctrl+L capté dans une page). */
-export type CommandeUi = { type: 'focus-adresse' }
+export type CommandeUi = { type: 'focus-adresse' } | { type: 'basculer-ia' }

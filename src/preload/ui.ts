@@ -2,6 +2,7 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import { CANAUX, type ApiSe7en, type EtatFenetre } from '../shared/ipc'
 import type { Favori, Telechargement } from '../shared/donnees'
+import type { FluxChat } from '../shared/chat'
 import type { EtatOllama } from '../shared/ia'
 import type { CommandeUi, EtatOnglets } from '../shared/onglets'
 import type { Reglages } from '../shared/reglages'
@@ -89,6 +90,19 @@ const api: ApiSe7en = {
     telecharger: envoyer(CANAUX.iaTelecharger),
     annuler: envoyer(CANAUX.iaAnnuler),
     surChangement: (rappel) => ecouter<EtatOllama>(CANAUX.iaChange, rappel)
+  },
+  chat: {
+    envoyer: demander(CANAUX.chatEnvoyer),
+    arreter: envoyer(CANAUX.chatArreter),
+    surFlux: (rappel) => ecouter<FluxChat>(CANAUX.chatFlux, rappel),
+    conversations: demander(CANAUX.conversationsLister),
+    conversation: demander(CANAUX.conversationsLire),
+    supprimer: demander(CANAUX.conversationsSupprimer)
+  },
+  skills: {
+    lire: demander(CANAUX.skillsLire),
+    sauver: demander(CANAUX.skillsSauver),
+    reinitialiser: demander(CANAUX.skillsReinitialiser)
   }
 }
 

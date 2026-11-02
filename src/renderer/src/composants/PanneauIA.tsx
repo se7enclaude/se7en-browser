@@ -1,0 +1,383 @@
+/* Panneau IA, à droite (Ctrl+Espace) : chat en flux avec l'IA locale, « discute avec la page », @onglets, /Skills,
+ * résumé en un clic, historique des conversations. L'IA ne fait que répondre : aucune action sur les pages. */
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { FluxChat, MessageChat, PageJointe, ResumeConversation, Skill } from '../../../shared/chat'
+import { modelePresent, type EtatOllama } from '../../../shared/ia'
+import type { EtatOnglet, EtatOnglets } from '../../../shared/onglets'
+import type { Reglages } from '../../../shared/reglages'
+import { IconeCroix, IconeHistorique, IconeIA, IconePlus } from './Icones'
+import { Markdown } from './Markdown'
+import { IconeOnglet } from './OngletItem'
+
+/** Question envoyée depuis ailleurs (barre « Demande ou cherche »). `n` change à chaque nouvelle demande. */
+export interface DemandeExterne {
+  texte: string
+  avecPage: boolean
+  n: number
+}
+
+interface Props {
+  etat: EtatOnglets
+  actif: EtatOnglet | undefined
+  ia: EtatOllama | null
+  reglages: Reglages
+  ouvert: boolean
+  fermer: () => void
+  demande: DemandeExterne | null
+}
+
+type Etape = FluxChat['etape']
+const estWeb = (o: EtatOnglet | undefined): o is EtatOnglet => !!o && /^https?:\/\//.test(o.url)
+
+const TEXTES_ETAPE: Partial<Record<Etape, string>> = {
+  lecture: 'Lecture de la page…',
+  preparation: 'Préparation du modèle…'
+}
+
+function ChipsPages({ pages, image, alertes }: { pages?: PageJointe[]; image?: boolean; alertes?: string[] }): React.JSX.Element | null {
+  if (!pages?.length) return null
+  return (
+    <div className="pages-lues">
+      {!!alertes?.length && (
+        <div className="alerte-manipulation">
+          ⚠ {alertes.length > 1 ? 'Ces pages contiennent' : 'Cette page contient'} du texte qui essaie de donner des ordres à l'IA. Elle a été prévenue de ne pas le suivre : reste prudent avec ce que la page te demande.
+        </div>
+      )}
+      {pages.map((p) => (
+        <span key={p.url} className="chip petit" title={p.url}>
+          {p.titre || p.url}
+        </span>
+      ))}
+      {image && <span className="chip petit">capture d'écran</span>}
+    </div>
+  )
+}
+
+export function PanneauIA({ etat, actif, ia, reglages, ouvert, fermer, demande }: Props): React.JSX.Element {
+  const [idConversation, setIdConversation] = useState<string | null>(null)
+  const [messages, setMessages] = useState<MessageChat[]>([])
+  const [enCours, setEnCours] = useState<{ idReponse: string; etape: Etape } | null>(null)
+  const [saisie, setSaisie] = useState('')
+  const [avecPage, setAvecPage] = useState(true)
+  const [mentions, setMentions] = useState<number[]>([])
+  const [vue, setVue] = useState<'chat' | 'historique'>('chat')
+  const [historique, setHistorique] = useState<ResumeConversation[]>([])
+  const [skills, setSkills] = useState<Skill[]>([])
+  const [choix, setChoix] = useState(0)
+  const [avertissement, setAvertissement] = useState<string | null>(null)
+  const champ = useRef<HTMLTextAreaElement>(null)
+  const fil = useRef<HTMLDivElement>(null)
+  const enCoursRef = useRef(enCours)
+  enCoursRef.current = enCours
+
+  const pret = ia?.phase === 'pret' && modelePresent(reglages.modeleTexte, ia.modeles)
+  const pageActive = estWeb(actif) ? actif : undefined
+
+  // à l'ouverture : Skills à jour et clavier dans la zone de saisie
+  useEffect(() => {
+    if (!ouvert) return
+    window.se7en.skills.lire().then(setSkills)
+    requestAnimationFrame(() => champ.current?.focus())
+  }, [ouvert])
+
+  // la réponse arrive en morceaux
+  useEffect(
+    () =>
+      window.se7en.chat.surFlux((f) => {
+        const courant = enCoursRef.current
+        if (!courant || f.idReponse !== courant.idReponse) return
+        setMessages((liste) =>
+          liste.map((m, i) => {
+            if (m.id === f.idReponse) {
+              if (f.etape === 'erreur') return { ...m, texte: f.erreur ?? "L'IA n'a pas pu répondre.", erreur: true }
+              return f.delta ? { ...m, texte: m.texte + f.delta } : m
+            }
+            // les pages lues s'affichent sous la question
+            if (f.pages && liste[i + 1]?.id === f.idReponse) return { ...m, pages: f.pages, image: f.image, alertes: f.alertes }
+            return m
+          })
+        )
+        setEnCours(f.etape === 'fini' || f.etape === 'erreur' ? null : { idReponse: f.idReponse, etape: f.etape })
+      }),
+    []
+  )
+
+  // défilement automatique tant qu'on est en bas du fil
+  useEffect(() => {
+    const el = fil.current
+    if (el && el.scrollHeight - el.scrollTop - el.clientHeight < 120) el.scrollTop = el.scrollHeight
+  }, [messages, enCours])
+
+  const nouvelleConversation = (): void => {
+    if (enCours) window.se7en.chat.arreter()
+    setIdConversation(null)
+    setMessages([])
+    setEnCours(null)
+    setAvertissement(null)
+    setVue('chat')
+    champ.current?.focus()
+  }
+
+  const envoyer = async (texte: string, options: { avecPage?: boolean; nouvelle?: boolean } = {}): Promise<void> => {
+    if (!texte.trim() || enCoursRef.current) return
+    const avecPageActive = options.avecPage ?? (avecPage && !!pageActive)
+    const id = options.nouvelle ? null : idConversation
+    setAvertissement(null)
+    const r = await window.se7en.chat.envoyer({ idConversation: id, texte, avecPageActive, idsOnglets: mentions })
+    if ('erreur' in r) {
+      setAvertissement(r.erreur)
+      return
+    }
+    const date = Date.now()
+    setIdConversation(r.idConversation)
+    setMessages((liste) => [
+      ...(options.nouvelle ? [] : liste),
+      { id: r.idQuestion, role: 'user', texte, date },
+      { id: r.idReponse, role: 'assistant', texte: '', date }
+    ])
+    setEnCours({ idReponse: r.idReponse, etape: 'lecture' })
+    setSaisie('')
+    setMentions([])
+    setVue('chat')
+  }
+
+  // question posée depuis la barre « Demande ou cherche »
+  useEffect(() => {
+    if (demande && ouvert) void envoyer(demande.texte, { avecPage: demande.avecPage, nouvelle: true })
+    // seulement quand une nouvelle demande arrive (pas à chaque changement de envoyer)
+  }, [demande?.n])
+
+  // ---------- suggestions : /skill et @onglet ----------
+  const suggestion = useMemo(() => {
+    const slash = /^\/([a-z0-9-]*)$/i.exec(saisie)
+    if (slash) {
+      const f = slash[1].toLowerCase()
+      return { type: 'skill' as const, liste: skills.filter((s) => s.commande.startsWith(f)) }
+    }
+    const at = /(^|\s)@([^\s@]*)$/.exec(saisie)
+    if (at) {
+      const f = at[2].toLowerCase()
+      const liste = etat.onglets.filter((o) => estWeb(o) && o.id !== pageActive?.id && !mentions.includes(o.id) && `${o.titre} ${o.url}`.toLowerCase().includes(f))
+      return { type: 'onglet' as const, liste }
+    }
+    return null
+  }, [saisie, skills, etat.onglets, mentions, pageActive?.id])
+  const nbSuggestions = suggestion?.liste.length ?? 0
+  useEffect(() => setChoix(0), [nbSuggestions, suggestion?.type])
+
+  const appliquerSuggestion = (i: number): void => {
+    if (!suggestion) return
+    if (suggestion.type === 'skill') {
+      const s = suggestion.liste[i]
+      if (s) setSaisie(`/${s.commande} `)
+    } else {
+      const o = suggestion.liste[i]
+      if (!o) return
+      setMentions((m) => [...m, o.id])
+      setSaisie((t) => t.replace(/(^|\s)@[^\s@]*$/, '$1'))
+    }
+    champ.current?.focus()
+  }
+
+  // ---------- historique ----------
+  const ouvrirHistorique = async (): Promise<void> => {
+    setHistorique(await window.se7en.chat.conversations())
+    setVue('historique')
+  }
+  const ouvrirConversation = async (id: string): Promise<void> => {
+    const c = await window.se7en.chat.conversation(id)
+    if (!c) return
+    setIdConversation(c.id)
+    setMessages(c.messages)
+    setVue('chat')
+  }
+
+  // ---------- rendu ----------
+  const corpsInactif = (): React.JSX.Element => {
+    const t = ia?.tache
+    return (
+      <div className="ia-inactive">
+        <IconeIA />
+        {!ia || ia.phase === 'verification' ? (
+          <p className="discret">Recherche de l'IA locale…</p>
+        ) : ia.phase === 'absent' ? (
+          <>
+            <p>L'IA locale n'est pas encore installée.</p>
+            <button className="bouton-principal" onClick={() => window.se7en.onglets.interne('se7en://ia')}>
+              Installer l'IA
+            </button>
+          </>
+        ) : ia.phase === 'arrete' ? (
+          <>
+            <p>L'IA locale n'est pas activée.</p>
+            <p className="discret">Elle tourne sur ton PC et s'arrête quand tu fermes le navigateur.</p>
+            <button className="bouton-principal" disabled={!!t} onClick={() => window.se7en.ia.demarrer()}>
+              {t?.type === 'demarrage' ? 'Activation…' : "Activer l'IA"}
+            </button>
+          </>
+        ) : (
+          <>
+            <p>Le modèle {reglages.modeleTexte} n'est pas téléchargé.</p>
+            <button className="bouton-principal" onClick={() => window.se7en.onglets.interne('se7en://ia')}>
+              Télécharger le modèle
+            </button>
+          </>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <aside className={`panneau-ia${ouvert ? ' ouvert' : ''}`} aria-hidden={!ouvert}>
+      <div className="panneau-ia-contenu verre-fort">
+        <header className="entete-ia">
+          <IconeIA />
+          <strong>IA locale</strong>
+          <span className="espace" />
+          {pret && pageActive && (
+            <button className="bouton-verre petit" disabled={!!enCours} onClick={() => void envoyer('/resume', { avecPage: true, nouvelle: true })} title="Résumer la page">
+              Résumer
+            </button>
+          )}
+          <button className="bouton-icone" title="Nouvelle conversation" onClick={nouvelleConversation}>
+            <IconePlus />
+          </button>
+          <button className={`bouton-icone${vue === 'historique' ? ' enfonce' : ''}`} title="Conversations" onClick={() => (vue === 'historique' ? setVue('chat') : void ouvrirHistorique())}>
+            <IconeHistorique />
+          </button>
+          <button className="bouton-icone" title="Fermer (Ctrl+Espace)" onClick={fermer}>
+            <IconeCroix />
+          </button>
+        </header>
+
+        {!pret ? (
+          corpsInactif()
+        ) : vue === 'historique' ? (
+          <div className="fil-ia">
+            {historique.length === 0 && <p className="vide">Aucune conversation.</p>}
+            {historique.map((c) => (
+              <div key={c.id} className="ligne-liste">
+                <button className="lien-liste" onClick={() => void ouvrirConversation(c.id)}>
+                  <span className="titre-liste">{c.titre}</span>
+                  <span className="adresse-liste">{new Date(c.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
+                </button>
+                <button
+                  className="bouton-icone discret-survol"
+                  title="Supprimer"
+                  onClick={async () => {
+                    await window.se7en.chat.supprimer(c.id)
+                    if (c.id === idConversation) nouvelleConversation()
+                    setHistorique(await window.se7en.chat.conversations())
+                  }}
+                >
+                  <IconeCroix />
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="fil-ia" ref={fil}>
+            {messages.length === 0 && (
+              <div className="accueil-ia">
+                <p>Pose une question{pageActive ? ' sur la page, ou sur ce que tu veux' : ''}.</p>
+                <p className="discret">
+                  <kbd>/</kbd> pour une Skill (/resume, /traduis…), <kbd>@</kbd> pour joindre un autre onglet.
+                </p>
+              </div>
+            )}
+            {messages.map((m) =>
+              m.role === 'user' ? (
+                <div key={m.id} className="message-ia utilisateur">
+                  <div className="bulle">{m.texte}</div>
+                  <ChipsPages pages={m.pages} image={m.image} alertes={m.alertes} />
+                </div>
+              ) : (
+                <div key={m.id} className={`message-ia assistant${m.erreur ? ' erreur' : ''}`}>
+                  {m.texte ? <Markdown texte={m.texte} /> : enCours?.idReponse === m.id && <p className="discret attente">{TEXTES_ETAPE[enCours.etape] ?? '…'}</p>}
+                  {enCours?.idReponse === m.id && m.texte && <span className="curseur" />}
+                  {!enCours && m.texte && !m.erreur && (
+                    <button className="copier" onClick={() => void navigator.clipboard.writeText(m.texte)}>
+                      Copier
+                    </button>
+                  )}
+                </div>
+              )
+            )}
+            {avertissement && <div className="message-erreur">{avertissement}</div>}
+          </div>
+        )}
+
+        {pret && vue === 'chat' && (
+          <div className="saisie-ia">
+            {suggestion && nbSuggestions > 0 && (
+              <div className="suggestions verre-fort">
+                {suggestion.type === 'skill'
+                  ? suggestion.liste.map((s, i) => (
+                      <button key={s.id} className={i === choix ? 'actif' : ''} onMouseDown={(e) => (e.preventDefault(), appliquerSuggestion(i))}>
+                        <code>/{s.commande}</code> <span className="discret">{s.titre}</span>
+                      </button>
+                    ))
+                  : suggestion.liste.map((o, i) => (
+                      <button key={o.id} className={i === choix ? 'actif' : ''} onMouseDown={(e) => (e.preventDefault(), appliquerSuggestion(i))}>
+                        <IconeOnglet onglet={o} /> <span className="titre-liste">{o.titre}</span>
+                      </button>
+                    ))}
+              </div>
+            )}
+            <div className="chips-saisie">
+              {pageActive && (
+                <button className={`chip${avecPage ? ' actif' : ''}`} title={avecPage ? 'La page est jointe à ta question' : 'Joindre la page'} onClick={() => setAvecPage((v) => !v)}>
+                  <IconeOnglet onglet={pageActive} />
+                  <span>{avecPage ? pageActive.titre : 'Joindre la page'}</span>
+                </button>
+              )}
+              {mentions.map((id) => {
+                const o = etat.onglets.find((x) => x.id === id)
+                if (!o) return null
+                return (
+                  <button key={id} className="chip actif" title="Retirer" onClick={() => setMentions((m) => m.filter((x) => x !== id))}>
+                    <IconeOnglet onglet={o} />
+                    <span>{o.titre}</span>
+                    <IconeCroix />
+                  </button>
+                )
+              })}
+            </div>
+            <div className="zone-saisie">
+              <textarea
+                ref={champ}
+                rows={1}
+                value={saisie}
+                placeholder={pageActive && avecPage ? 'Demande quelque chose sur cette page…' : 'Demande quelque chose…'}
+                onChange={(e) => setSaisie(e.target.value)}
+                onKeyDown={(e) => {
+                  if (suggestion && nbSuggestions > 0) {
+                    if (e.key === 'ArrowDown') return (e.preventDefault(), setChoix((c) => (c + 1) % nbSuggestions))
+                    if (e.key === 'ArrowUp') return (e.preventDefault(), setChoix((c) => (c - 1 + nbSuggestions) % nbSuggestions))
+                    if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey && suggestion.type === 'onglet'))
+                      return (e.preventDefault(), appliquerSuggestion(choix))
+                  }
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    void envoyer(saisie)
+                  }
+                  if (e.key === 'Escape') fermer()
+                }}
+              />
+              {enCours ? (
+                <button className="bouton-envoi arret" title="Arrêter" onClick={() => window.se7en.chat.arreter()}>
+                  <span />
+                </button>
+              ) : (
+                <button className="bouton-envoi" title="Envoyer (Entrée)" disabled={!saisie.trim()} onClick={() => void envoyer(saisie)}>
+                  ↑
+                </button>
+              )}
+            </div>
+            <p className="note-ia">Tout reste sur ton PC. L'IA peut se tromper : vérifie les informations importantes.</p>
+          </div>
+        )}
+      </div>
+    </aside>
+  )
+}

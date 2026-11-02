@@ -3,12 +3,14 @@ import { useEffect, useRef, useState } from 'react'
 import { adresseLisible } from '../../../shared/adresse'
 import type { EtatOnglet } from '../../../shared/onglets'
 import { useFavoris, useTelechargements } from '../useDonnees'
+import { ChoixRechercheIA, modeSaisie } from './ChoixRechercheIA'
 import {
   IconeActualiser,
   IconeBarreLaterale,
   IconeCadenas,
   IconeCroix,
   IconeEtoile,
+  IconeIA,
   IconePrecedent,
   IconeRecherche,
   IconeReglages,
@@ -22,14 +24,17 @@ interface Props {
   enSplit: boolean
   /** Bouton de la barre latérale (absent en disposition « onglets en haut »). */
   barre: { ouverte: boolean; basculer: () => void } | null
+  /** Panneau IA : ouvert ou non, et « Demande ou cherche ». */
+  ia: { ouverte: boolean; basculer: () => void; demander: (texte: string) => void }
 }
 
-export function BarreOutils({ actif, enSplit, barre }: Props): React.JSX.Element {
+export function BarreOutils({ actif, enSplit, barre, ia }: Props): React.JSX.Element {
   const o = window.se7en.onglets
   const favoris = useFavoris()
   const telechargements = useTelechargements()
   const champ = useRef<HTMLInputElement>(null)
   const [brouillon, setBrouillon] = useState<string | null>(null)
+  const [force, setForce] = useState<'recherche' | 'ia' | null>(null)
 
   // Ctrl+L (même depuis une page) : focus dans la barre d'adresse
   useEffect(
@@ -44,6 +49,7 @@ export function BarreOutils({ actif, enSplit, barre }: Props): React.JSX.Element
   )
   // changer d'onglet abandonne la saisie en cours
   useEffect(() => setBrouillon(null), [actif?.id])
+  const mode = brouillon === null ? null : modeSaisie(brouillon, force)
 
   const id = actif?.id
   const url = actif?.url ?? ''
@@ -83,10 +89,13 @@ export function BarreOutils({ actif, enSplit, barre }: Props): React.JSX.Element
         onSubmit={(e) => {
           e.preventDefault()
           if (!id || !brouillon?.trim()) return
-          o.naviguer(id, brouillon)
+          // « Demande ou cherche » : une question part dans le panneau IA, avec la page actuelle
+          if (mode === 'ia') ia.demander(brouillon.trim())
+          else o.naviguer(id, brouillon)
           setBrouillon(null)
+          setForce(null)
           champ.current?.blur()
-          o.focusPage()
+          if (mode !== 'ia') o.focusPage()
         }}
       >
         <span className="barre-adresse-icone" title={securise ? 'Connexion sécurisée' : undefined}>
@@ -96,14 +105,21 @@ export function BarreOutils({ actif, enSplit, barre }: Props): React.JSX.Element
           ref={champ}
           value={valeur}
           spellCheck={false}
-          placeholder="Rechercher sur Google ou saisir une adresse"
+          placeholder="Chercher, saisir une adresse ou demander à l'IA"
           onChange={(e) => setBrouillon(e.target.value)}
           onFocus={(e) => {
             setBrouillon(url)
             requestAnimationFrame(() => e.target.select())
           }}
-          onBlur={() => setBrouillon(null)}
+          onBlur={() => {
+            setBrouillon(null)
+            setForce(null)
+          }}
           onKeyDown={(e) => {
+            if (e.key === 'Tab' && (mode === 'recherche' || mode === 'ia')) {
+              e.preventDefault()
+              setForce(mode === 'ia' ? 'recherche' : 'ia')
+            }
             if (e.key === 'Escape') {
               setBrouillon(null)
               e.currentTarget.blur()
@@ -111,6 +127,7 @@ export function BarreOutils({ actif, enSplit, barre }: Props): React.JSX.Element
             }
           }}
         />
+        {(mode === 'recherche' || mode === 'ia') && <ChoixRechercheIA mode={mode} changer={setForce} />}
         {estWeb && brouillon === null && (
           <button
             type="button"
@@ -139,6 +156,9 @@ export function BarreOutils({ actif, enSplit, barre }: Props): React.JSX.Element
           )}
         </button>
       )}
+      <button className={`bouton-icone bouton-ia${ia.ouverte ? ' enfonce' : ''}`} title="IA locale (Ctrl+Espace)" onClick={ia.basculer}>
+        <IconeIA />
+      </button>
       <button className="bouton-icone" title="Menu" onClick={() => window.se7en.app.menu()}>
         <IconeReglages />
       </button>

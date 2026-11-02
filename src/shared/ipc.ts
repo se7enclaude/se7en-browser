@@ -2,6 +2,7 @@
  * Le preload n'expose que ces canaux ; le main ne répond qu'à eux. */
 import type { PageInterne } from './adresse'
 import type { ActionTelechargement, EntreeHistorique, Favori, SitePopulaire, Telechargement } from './donnees'
+import type { Conversation, DemandeChat, FluxChat, ReponseEnvoi, ResumeConversation, Skill } from './chat'
 import type { EtatOllama } from './ia'
 import type { CommandeUi, EtatOnglets, ZoneOnglet } from './onglets'
 import type { Reglages } from './reglages'
@@ -64,7 +65,17 @@ export const CANAUX = {
   iaTelecharger: 'ia:telecharger',
   iaAnnuler: 'ia:annuler',
   iaArreter: 'ia:arreter',
-  iaChange: 'ia:change' // main → interface
+  iaChange: 'ia:change', // main → interface
+  // chat avec l'IA
+  chatEnvoyer: 'chat:envoyer',
+  chatArreter: 'chat:arreter',
+  chatFlux: 'chat:flux', // main → interface
+  conversationsLister: 'conversations:lister',
+  conversationsLire: 'conversations:lire',
+  conversationsSupprimer: 'conversations:supprimer',
+  skillsLire: 'skills:lire',
+  skillsSauver: 'skills:sauver',
+  skillsReinitialiser: 'skills:reinitialiser'
 } as const
 
 export interface EtatFenetre {
@@ -161,5 +172,19 @@ export interface ApiSe7en {
     telecharger(noms: string[]): void
     annuler(): void
     surChangement(rappel: (e: EtatOllama) => void): () => void
+  }
+  chat: {
+    /** Pose une question ; la réponse arrive par surFlux. */
+    envoyer(d: DemandeChat): Promise<ReponseEnvoi | { erreur: string }>
+    arreter(): void
+    surFlux(rappel: (f: FluxChat) => void): () => void
+    conversations(): Promise<ResumeConversation[]>
+    conversation(id: string): Promise<Conversation | null>
+    supprimer(id: string): Promise<void>
+  }
+  skills: {
+    lire(): Promise<Skill[]>
+    sauver(liste: Skill[]): Promise<Skill[]>
+    reinitialiser(): Promise<Skill[]>
   }
 }

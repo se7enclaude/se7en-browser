@@ -152,7 +152,7 @@ export function PageIA({ reglages }: { reglages: Reglages }): React.JSX.Element 
       {toutPret && (
         <section className="bloc verre-fort tout-pret">
           <h2>✓ L'IA locale est prête</h2>
-          <p className="discret">Ollama {etat.version} tourne sur ton PC. Le panneau IA (Ctrl+Espace) arrive dans la prochaine version.</p>
+          <p className="discret">Ollama {etat.version} tourne sur ton PC. Ouvre le panneau IA avec Ctrl+Espace, ou pose une question dans la barre d'adresse.</p>
           {etat.lanceParNavigateur && (
             <button className="bouton-verre" onClick={() => ia.arreter()}>
               Désactiver l'IA

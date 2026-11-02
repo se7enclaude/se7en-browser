@@ -30,6 +30,7 @@ export type ActionRaccourci =
   | { type: 'basculer-barre' }
   | { type: 'page'; page: PageInterne }
   | { type: 'favori' }
+  | { type: 'basculer-ia' }
 
 export function actionDuRaccourci(t: Touche): ActionRaccourci | null {
   if (t.type !== 'keyDown' || t.meta) return null
@@ -41,6 +42,7 @@ export function actionDuRaccourci(t: Touche): ActionRaccourci | null {
   if (ctrl && !t.shift && (k === 'w' || k === 'F4')) return { type: 'fermer-onglet' }
   if (ctrl && k === 'Tab') return { type: t.shift ? 'onglet-precedent' : 'onglet-suivant' }
   if (ctrl && !t.shift && k === 'b') return { type: 'basculer-barre' }
+  if (ctrl && !t.shift && (k === ' ' || t.code === 'Space')) return { type: 'basculer-ia' }
   if (ctrl && !t.shift && k === ',') return { type: 'page', page: 'se7en://parametres' }
   if (ctrl && !t.shift && k === 'h') return { type: 'page', page: 'se7en://historique' }
   if (ctrl && !t.shift && k === 'j') return { type: 'page', page: 'se7en://telechargements' }

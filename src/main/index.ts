@@ -2,6 +2,8 @@
 import { app, BrowserWindow, session } from 'electron'
 import { CANAUX } from '../shared/ipc'
 import { creerFenetrePrincipale, appliquerTheme } from './fenetre/fenetrePrincipale'
+import { ServiceChat } from './ia/chat'
+import { Conversations, Skills } from './ia/conversations'
 import { Ollama } from './ia/ollama'
 import { enregistrerIpc } from './ipc/enregistrer'
 import { creerGestionRaccourcis } from './navigateur/commandes'
@@ -51,8 +53,13 @@ if (!app.requestSingleInstanceLock()) {
       if (e.phase === 'arrete' && reglages.get().iaDemarrage === 'toujours') void ollama.demarrer()
     })
     app.on('will-quit', () => ollama.arreter())
+    const conversations = new Conversations(dossier)
+    const skills = new Skills(dossier)
+    app.on('before-quit', () => conversations.vider())
+    // le chat lit les onglets de la fenêtre principale (une seule fenêtre pour l'instant)
+    const chat = new ServiceChat(ollama, conversations, skills, () => reglages.get(), () => [...onglets.values()][0])
 
-    enregistrerIpc({ reglages, historique, favoris, telechargements, ollama, ongletsDe: (f) => onglets.get(f.id) })
+    enregistrerIpc({ reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, ongletsDe: (f) => onglets.get(f.id) })
 
     const fenetre = creerFenetrePrincipale()
     const idFenetre = fenetre.id

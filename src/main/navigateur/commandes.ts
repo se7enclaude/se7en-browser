@@ -62,6 +62,9 @@ export function creerGestionRaccourcis(
       case 'basculer-barre':
         void reglages.modifier({ barreLaterale: !reglages.get().barreLaterale })
         break
+      case 'basculer-ia':
+        versUi({ type: 'basculer-ia' })
+        break
       case 'page':
         g.ouvrirInterne(action.page)
         break

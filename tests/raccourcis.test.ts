@@ -32,6 +32,7 @@ describe('actionDuRaccourci', () => {
     expect(actionDuRaccourci(t('j', { control: true }))).toEqual({ type: 'page', page: 'se7en://telechargements' })
     expect(actionDuRaccourci(t('O', { control: true, shift: true }))).toEqual({ type: 'page', page: 'se7en://favoris' })
     expect(actionDuRaccourci(t('d', { control: true }))).toEqual({ type: 'favori' })
+    expect(actionDuRaccourci(t(' ', { control: true, code: 'Space' }))).toEqual({ type: 'basculer-ia' })
   })
 
   it('gère la navigation', () => {
