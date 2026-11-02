@@ -42,6 +42,19 @@ export interface DemandeChat {
   avecPageActive: boolean
   /** Autres onglets cités avec @. */
   idsOnglets: number[]
+  /** Zone de l'écran choisie par l'utilisateur : regardée par le modèle vision. */
+  zone?: ZoneCapture
+  /** Chercher aussi dans la mémoire de navigation (pages vues ces 30 derniers jours). */
+  avecNavigation?: boolean
+}
+
+/** Rectangle d'une capture d'onglet, en fractions de sa taille (0 à 1). */
+export interface ZoneCapture {
+  idCapture: string
+  x: number
+  y: number
+  largeur: number
+  hauteur: number
 }
 
 export interface ReponseEnvoi {

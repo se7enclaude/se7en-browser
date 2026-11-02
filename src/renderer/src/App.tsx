@@ -10,6 +10,9 @@ import { OngletsHaut } from './composants/OngletsHaut'
 import { PageFavoris, PageHistorique, PageTelechargements } from './composants/PagesDonnees'
 import { PageIA, useOllama } from './composants/PageIA'
 import { PageAmis } from './composants/PageAmis'
+import { SelecteurZone } from './composants/SelecteurZone'
+import { BandeauEcriture } from './composants/BandeauEcriture'
+import type { ZoneCapture } from '../../shared/chat'
 import { PanneauIA, type DemandeExterne } from './composants/PanneauIA'
 import { QuestionIA } from './composants/QuestionIA'
 import { Parametres } from './composants/Parametres'
@@ -27,13 +30,22 @@ export function App(): React.JSX.Element {
   const ia = useOllama()
   const [iaOuverte, setIaOuverte] = useState(false)
   const [demande, setDemande] = useState<DemandeExterne | null>(null)
-  // Ctrl+Espace, même quand le clavier est dans une page
-  useEffect(() => window.se7en.app.surCommande((c) => c.type === 'basculer-ia' && setIaOuverte((v) => !v)), [])
-  /** « Demande ou cherche » : la question part dans le panneau IA. */
-  const demanderIA = (texte: string, avecPage: boolean): void => {
+  const [zone, setZone] = useState<{ idCapture: string; image: string } | null>(null)
+  /** « Demande ou cherche », clic droit › IA, zone de l'écran : la question part dans le panneau IA. */
+  const demanderIA = (texte: string, avecPage: boolean, z?: ZoneCapture): void => {
     setIaOuverte(true)
-    setDemande((d) => ({ texte, avecPage, n: (d?.n ?? 0) + 1 }))
+    if (texte) setDemande((d) => ({ texte, avecPage, zone: z, n: (d?.n ?? 0) + 1 }))
   }
+  // commandes venues du main : Ctrl+Espace (même quand le clavier est dans une page), menu clic droit, zone capturée
+  useEffect(
+    () =>
+      window.se7en.app.surCommande((c) => {
+        if (c.type === 'basculer-ia') setIaOuverte((v) => !v)
+        else if (c.type === 'demander-ia') demanderIA(c.texte, c.avecPage)
+        else if (c.type === 'zone') setZone({ idCapture: c.idCapture, image: c.image })
+      }),
+    []
+  )
 
   const disposition = reglages?.disposition ?? 'les-deux'
   const barreDispo = disposition !== 'haut'
@@ -80,12 +92,25 @@ export function App(): React.JSX.Element {
             barre={barreDispo ? { ouverte: barreOuverte, basculer: () => modifier({ barreLaterale: !barreOuverte }) } : null}
           />
           {reglages && <QuestionIA reglages={reglages} modifier={modifier} ia={ia} />}
+          <BandeauEcriture />
           <ZonePage etat={etat} contenu={contenu} />
         </div>
         {reglages && (
           <PanneauIA etat={etat} actif={actif} ia={ia} reglages={reglages} ouvert={iaOuverte} fermer={() => setIaOuverte(false)} demande={demande} />
         )}
       </div>
+      {zone && (
+        <SelecteurZone
+          key={zone.idCapture}
+          idCapture={zone.idCapture}
+          image={zone.image}
+          fermer={() => setZone(null)}
+          valider={(z, question) => {
+            setZone(null)
+            demanderIA(question, false, z)
+          }}
+        />
+      )}
       {reglages && !reglages.accueilTermine && <Accueil reglages={reglages} modifier={modifier} />}
     </div>
   )

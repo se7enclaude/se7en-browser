@@ -7,6 +7,7 @@ import type { EtatOllama } from '../shared/ia'
 import type { CommandeUi, EtatOnglets } from '../shared/onglets'
 import type { Reglages } from '../shared/reglages'
 import type { EtatSocial, EvenementSocial } from '../shared/social'
+import type { EtatEcriture } from '../shared/ecriture'
 
 function ecouter<T>(canal: string, rappel: (v: T) => void): () => void {
   const f = (_e: IpcRendererEvent, v: T): void => rappel(v)
@@ -89,6 +90,8 @@ const api: ApiSe7en = {
     demarrer: envoyer(CANAUX.iaDemarrer),
     arreter: envoyer(CANAUX.iaArreter),
     telecharger: envoyer(CANAUX.iaTelecharger),
+    zone: envoyer(CANAUX.iaZone),
+    inserer: demander(CANAUX.iaInserer),
     annuler: envoyer(CANAUX.iaAnnuler),
     surChangement: (rappel) => ecouter<EtatOllama>(CANAUX.iaChange, rappel)
   },
@@ -128,6 +131,11 @@ const api: ApiSe7en = {
     ajouter: demander(CANAUX.memoireAjouter),
     supprimer: demander(CANAUX.memoireSupprimer),
     effacer: demander(CANAUX.memoireEffacer)
+  },
+  ecriture: {
+    surEtat: (rappel) => ecouter<EtatEcriture | null>(CANAUX.ecritureEtat, rappel),
+    appliquer: envoyer(CANAUX.ecritureAppliquer),
+    annuler: envoyer(CANAUX.ecritureAnnuler)
   },
   social: {
     etat: demander(CANAUX.socialEtat),

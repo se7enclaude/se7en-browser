@@ -9,6 +9,7 @@ import type { EtatOllama } from './ia'
 import type { CommandeUi, EtatOnglets, ZoneOnglet } from './onglets'
 import type { Reglages } from './reglages'
 import type { Ami, EtatSocial, EvenementSocial, MessageSocial } from './social'
+import type { EtatEcriture } from './ecriture'
 
 export const CANAUX = {
   // fenêtre
@@ -111,7 +112,13 @@ export const CANAUX = {
   socialEnvoyer: 'social:envoyer',
   socialEnvoyerOnglet: 'social:envoyer-onglet',
   socialLu: 'social:lu',
-  socialOuvrirLien: 'social:ouvrir-lien'
+  socialOuvrirLien: 'social:ouvrir-lien',
+  // aide à l'écriture, zone de l'écran, insertion d'une réponse dans la page
+  ecritureEtat: 'ecriture:etat', // main → interface
+  ecritureAppliquer: 'ecriture:appliquer',
+  ecritureAnnuler: 'ecriture:annuler',
+  iaZone: 'ia:zone',
+  iaInserer: 'ia:inserer'
 } as const
 
 export interface EtatFenetre {
@@ -204,6 +211,10 @@ export interface ApiSe7en {
     demarrer(): void
     /** Désactive l'IA (si c'est le navigateur qui l'a lancée). */
     arreter(): void
+    /** Capture l'onglet actif pour y choisir une zone (la capture arrive par app.surCommande). */
+    zone(): void
+    /** Insère un texte (réponse proposée par l'IA) dans le champ où se trouve le curseur, dans la page de l'onglet. */
+    inserer(idOnglet: number, texte: string): Promise<boolean>
     /** Télécharge ces modèles (noms Ollama, ex. « qwen3:8b »). */
     telecharger(noms: string[]): void
     annuler(): void
@@ -251,6 +262,13 @@ export interface ApiSe7en {
     ajouter(texte: string): Promise<Souvenir[]>
     supprimer(id: string): Promise<Souvenir[]>
     effacer(): Promise<Souvenir[]>
+  }
+  ecriture: {
+    /** Proposition de réécriture en cours (null : aucune). */
+    surEtat(rappel: (e: EtatEcriture | null) => void): () => void
+    /** « Remplacer » : la proposition (éventuellement retouchée) remplace le texte du champ. */
+    appliquer(id: string, texte: string): void
+    annuler(): void
   }
   social: {
     etat(): Promise<EtatSocial>

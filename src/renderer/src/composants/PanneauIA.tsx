@@ -1,11 +1,11 @@
 /* Panneau IA, à droite (Ctrl+Espace) : chat en flux avec l'IA locale, « discute avec la page », @onglets, /Skills,
  * résumé en un clic, historique des conversations. L'IA ne fait que répondre : aucune action sur les pages. */
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { FluxChat, MessageChat, PageJointe, ResumeConversation, Skill } from '../../../shared/chat'
+import type { FluxChat, MessageChat, PageJointe, ResumeConversation, Skill, ZoneCapture } from '../../../shared/chat'
 import { modelePresent, type EtatOllama } from '../../../shared/ia'
 import type { EtatOnglet, EtatOnglets } from '../../../shared/onglets'
 import type { Reglages } from '../../../shared/reglages'
-import { IconeCroix, IconeHistorique, IconeIA, IconePlus } from './Icones'
+import { IconeCroix, IconeHistorique, IconeIA, IconePlus, IconeZone } from './Icones'
 import { Markdown } from './Markdown'
 import { RemplissagePdf } from './RemplissagePdf'
 import { IconeOnglet } from './OngletItem'
@@ -14,8 +14,17 @@ import { IconeOnglet } from './OngletItem'
 export interface DemandeExterne {
   texte: string
   avecPage: boolean
+  /** Zone de l'écran choisie (modèle vision). */
+  zone?: ZoneCapture
   n: number
 }
+
+/** Gmail ouvert sur un e-mail : l'IA propose une réponse, insérée dans la zone de réponse sur clic. */
+const estGmail = (url: string | undefined): boolean => !!url && /^https:\/\/mail\.google\.com\//.test(url)
+const DEMANDE_GMAIL =
+  "Propose une réponse à l'e-mail ouvert dans cette page (le dernier message du fil). Réponds dans la langue de l'e-mail, sur un ton adapté, " +
+  "sans objet ni explication : écris uniquement le texte de la réponse, prêt à être envoyé, avec une formule de politesse."
+
 
 interface Props {
   etat: EtatOnglets
@@ -37,7 +46,7 @@ const TEXTES_ETAPE: Partial<Record<Etape, string>> = {
 }
 
 function ChipsPages({ pages, image, alertes }: { pages?: PageJointe[]; image?: boolean; alertes?: string[] }): React.JSX.Element | null {
-  if (!pages?.length) return null
+  if (!pages?.length && !image) return null
   return (
     <div className="pages-lues">
       {!!alertes?.length && (
@@ -45,12 +54,12 @@ function ChipsPages({ pages, image, alertes }: { pages?: PageJointe[]; image?: b
           ⚠ {alertes.length > 1 ? 'Ces pages contiennent' : 'Cette page contient'} du texte qui essaie de donner des ordres à l'IA. Elle a été prévenue de ne pas le suivre : reste prudent avec ce que la page te demande.
         </div>
       )}
-      {pages.map((p) => (
+      {pages?.map((p) => (
         <span key={p.url} className="chip petit" title={p.url}>
           {p.titre || p.url}
         </span>
       ))}
-      {image && <span className="chip petit">capture d'écran</span>}
+      {image && <span className="chip petit">{pages?.length ? 'capture d’écran' : 'zone de l’écran'}</span>}
     </div>
   )
 }
@@ -134,7 +143,7 @@ export function PanneauIA({ etat, actif, ia, reglages, ouvert, fermer, demande }
     champ.current?.focus()
   }
 
-  const envoyer = async (texte: string, options: { avecPage?: boolean; nouvelle?: boolean } = {}): Promise<void> => {
+  const envoyer = async (texte: string, options: { avecPage?: boolean; nouvelle?: boolean; zone?: ZoneCapture } = {}): Promise<void> => {
     if (!texte.trim() || enCoursRef.current) return
     // « remplis ce PDF » sur un formulaire : on ouvre l'aperçu de remplissage plutôt que le chat
     if (pageActive?.pdf && champsPdf > 0 && /\b(rempli[rst]?|compl[eè]te[rz]?)\b/i.test(texte)) {
@@ -145,7 +154,7 @@ export function PanneauIA({ etat, actif, ia, reglages, ouvert, fermer, demande }
     const avecPageActive = options.avecPage ?? (avecPage && !!pageActive)
     const id = options.nouvelle ? null : idConversation
     setAvertissement(null)
-    const r = await window.se7en.chat.envoyer({ idConversation: id, texte, avecPageActive, idsOnglets: mentions })
+    const r = await window.se7en.chat.envoyer({ idConversation: id, texte, avecPageActive, idsOnglets: mentions, zone: options.zone })
     if ('erreur' in r) {
       setAvertissement(r.erreur)
       return
@@ -154,7 +163,7 @@ export function PanneauIA({ etat, actif, ia, reglages, ouvert, fermer, demande }
     setIdConversation(r.idConversation)
     setMessages((liste) => [
       ...(options.nouvelle ? [] : liste),
-      { id: r.idQuestion, role: 'user', texte, date },
+      { id: r.idQuestion, role: 'user', texte, date, image: !!options.zone },
       { id: r.idReponse, role: 'assistant', texte: r.reponseImmediate ?? '', date }
     ])
     if (r.reponseImmediate === undefined) setEnCours({ idReponse: r.idReponse, etape: 'lecture' })
@@ -165,7 +174,7 @@ export function PanneauIA({ etat, actif, ia, reglages, ouvert, fermer, demande }
 
   // question posée depuis la barre « Demande ou cherche »
   useEffect(() => {
-    if (demande && ouvert) void envoyer(demande.texte, { avecPage: demande.avecPage, nouvelle: true })
+    if (demande && ouvert) void envoyer(demande.texte, { avecPage: demande.avecPage, nouvelle: true, zone: demande.zone })
     // seulement quand une nouvelle demande arrive (pas à chaque changement de envoyer)
   }, [demande?.n])
 
@@ -322,9 +331,23 @@ export function PanneauIA({ etat, actif, ia, reglages, ouvert, fermer, demande }
                   {m.texte ? <Markdown texte={m.texte} /> : enCours?.idReponse === m.id && <p className="discret attente">{TEXTES_ETAPE[enCours.etape] ?? '…'}</p>}
                   {enCours?.idReponse === m.id && m.texte && <span className="curseur" />}
                   {!enCours && m.texte && !m.erreur && (
-                    <button className="copier" onClick={() => void navigator.clipboard.writeText(m.texte)}>
-                      Copier
-                    </button>
+                    <div className="actions-message">
+                      <button className="copier" onClick={() => void navigator.clipboard.writeText(m.texte)}>
+                        Copier
+                      </button>
+                      {pageActive && estGmail(pageActive.url) && (
+                        <button
+                          className="copier inserer"
+                          title="Clique d'abord sur « Répondre » dans Gmail"
+                          onClick={async () => {
+                            const ok = await window.se7en.ia.inserer(pageActive.id, m.texte)
+                            setAvertissement(ok ? null : 'Clique d’abord sur « Répondre » dans Gmail, puis sur « Insérer dans l’e-mail ».')
+                          }}
+                        >
+                          Insérer dans l’e-mail
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               )
@@ -365,6 +388,18 @@ export function PanneauIA({ etat, actif, ia, reglages, ouvert, fermer, demande }
                 <button className={`chip${avecPage ? ' actif' : ''}`} title={avecPage ? 'La page est jointe à ta question' : 'Joindre la page'} onClick={() => setAvecPage((v) => !v)}>
                   <IconeOnglet onglet={pageActive} />
                   <span>{avecPage ? pageActive.titre : 'Joindre la page'}</span>
+                </button>
+              )}
+              {pageActive && estGmail(pageActive.url) && (
+                <button className="chip chip-ia" disabled={!!enCours} onClick={() => void envoyer(DEMANDE_GMAIL, { avecPage: true, nouvelle: true })}>
+                  <IconeIA />
+                  <span>Proposer une réponse</span>
+                </button>
+              )}
+              {pageActive && (
+                <button className="chip" title="Encadre une partie de la page pour poser une question dessus" onClick={() => window.se7en.ia.zone()}>
+                  <IconeZone />
+                  <span>Zone de l’écran</span>
                 </button>
               )}
               {mentions.map((id) => {

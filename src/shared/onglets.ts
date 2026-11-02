@@ -72,4 +72,10 @@ export interface ZoneOnglet {
 }
 
 /** Commandes que le main envoie à l'interface (ex. raccourci Ctrl+L capté dans une page). */
-export type CommandeUi = { type: 'focus-adresse' } | { type: 'basculer-ia' }
+export type CommandeUi =
+  | { type: 'focus-adresse' }
+  | { type: 'basculer-ia' }
+  /** Clic droit › IA sur une sélection : la question part dans le panneau, avec la page (et sa sélection) jointe. */
+  | { type: 'demander-ia'; texte: string; avecPage: boolean }
+  /** « Demander sur une zone de l'écran » : capture de l'onglet actif, à recadrer par l'utilisateur. */
+  | { type: 'zone'; idCapture: string; image: string }

@@ -24,6 +24,8 @@ import { Historique } from './stockage/historique'
 import { MagasinPrioritaires } from './stockage/prioritaires'
 import { MagasinReglages } from './stockage/reglages'
 import { ClientSocial } from './social/client'
+import { AssistantEcriture } from './ia/ecriture'
+import { ouvrirMenuPage } from './navigateur/menuPage'
 import { SERVEUR_SOCIAL_OFFICIEL } from '../shared/social'
 
 app.setAppUserModelId('se7en.browser')
@@ -159,7 +161,18 @@ if (!app.requestSingleInstanceLock()) {
       n.show()
     })
 
-    enregistrerIpc({ social, reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, coffre, formulaires, bloqueur, memoire, ranger, ouvrirFichier: (f) => void ouvrirFichier(f), ongletsDe: (f) => onglets.get(f.id) })
+    // aide à l'écriture (clic droit dans un champ) et « Demander sur une zone de l'écran »
+    const ecriture = new AssistantEcriture(ollama, () => reglages.get())
+    const zone = async (f: BrowserWindow): Promise<void> => {
+      const c = await chat.capturerZone()
+      if (c && !f.isDestroyed()) f.webContents.send(CANAUX.uiCommande, { type: 'zone', ...c })
+    }
+    const iaPrete = (): boolean => {
+      const e = ollama.etat()
+      return e.phase === 'pret' && modelePresent(reglages.get().modeleTexte, e.modeles)
+    }
+
+    enregistrerIpc({ ecriture, zone: (f) => void zone(f), social, reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, coffre, formulaires, bloqueur, memoire, ranger, ouvrirFichier: (f) => void ouvrirFichier(f), ongletsDe: (f) => onglets.get(f.id) })
 
     const fenetre = creerFenetrePrincipale()
     const idFenetre = fenetre.id
@@ -170,7 +183,24 @@ if (!app.requestSingleInstanceLock()) {
       surTouche,
       sauverPrioritaires: (liste) => prioritaires.sauver(liste),
       journal: { visite: (url, titre) => historique.ajouter(url, titre), titre: (url, titre) => historique.majTitre(url, titre) },
-      documentPdf: (id) => documents.lire(id)
+      documentPdf: (id) => documents.lire(id),
+      menuPage: (idOnglet, wc, params) => {
+        const commande = (c: unknown): void => fenetre.webContents.send(CANAUX.uiCommande, c)
+        ouvrirMenuPage(fenetre, wc, params, {
+          demander: (texte) => {
+            gestionnaire.activer(idOnglet)
+            commande({ type: 'demander-ia', texte, avecPage: true })
+          },
+          ouvrirPanneau: () => commande({ type: 'demander-ia', texte: '', avecPage: true }),
+          ecrire: (w, action) => void ecriture.demarrer(w, idOnglet, action),
+          zone: () => {
+            gestionnaire.activer(idOnglet)
+            void zone(fenetre)
+          },
+          nouvelOnglet: (url) => gestionnaire.nouveau(url, { aCote: true, activer: false }),
+          iaPrete
+        })
+      }
     })
     gestionnaire.restaurerPrioritaires(prioritaires.lire())
     onglets.set(idFenetre, gestionnaire)

@@ -2,7 +2,7 @@
  * Un « Nouvel onglet » ou une page interne (se7en://…) n'a pas de vue : c'est l'interface (React) qui dessine derrière.
  * Les onglets prioritaires (barre latérale) sont des onglets comme les autres, marqués et sauvegardés ;
  * au démarrage ils sont « endormis » et ne se chargent qu'à l'ouverture. */
-import { WebContentsView, type BrowserWindow, type Input, type WebContents } from 'electron'
+import { WebContentsView, type BrowserWindow, type ContextMenuParams, type Input, type WebContents } from 'electron'
 import { estAdresseAutorisee, estPageInterne, PAGES_INTERNES, resoudreSaisie } from '../../shared/adresse'
 import { idDocDeVisionneuse, urlVisionneuse } from '../../shared/pdf'
 import { COULEURS_GROUPES, type EtatOnglet, type EtatOnglets, type GroupeOnglets, type OngletPrioritaireSauve, type Split, type Zone, type ZoneOnglet } from '../../shared/onglets'
@@ -29,6 +29,8 @@ export interface OptionsGestionnaire {
   journal?: { visite: (url: string, titre: string) => void; titre: (url: string, titre: string) => void }
   /** PDF ouverts dans la visionneuse : adresse d'origine et nom du fichier. */
   documentPdf?: (id: string) => { url: string; nom: string } | undefined
+  /** Clic droit dans une page. */
+  menuPage?: (idOnglet: number, wc: WebContents, params: ContextMenuParams) => void
 }
 
 const RAYON_PAGE = 27 // rayon du cadre de page (28) moins le liseré
@@ -573,6 +575,8 @@ export class GestionnaireOnglets {
       o.etat.favicon = icone
       this.signaler()
     })
+    // clic droit dans la page : menu du navigateur (copier, liens…) et actions de l'IA
+    wc.on('context-menu', (_e, params) => this.options.menuPage?.(o.etat.id, wc, params))
     wc.on('render-process-gone', (_e, details) => {
       if (details.reason === 'clean-exit') return
       o.etat.plantee = true

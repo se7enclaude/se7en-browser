@@ -70,3 +70,6 @@ export const IconeRanger = () => (
 export const IconeAmis = () => (
   <svg {...base}><circle cx="6" cy="5.75" r="2.25" /><path d="M2 13c.4-2.3 2-3.6 4-3.6s3.6 1.3 4 3.6" /><path d="M10.5 3.6a2.2 2.2 0 0 1 0 4.3M12 9.6c1.1.5 1.8 1.6 2 3.4" /></svg>
 )
+export const IconeZone = () => (
+  <svg {...base}><path d="M2.5 5.5v-2a1 1 0 0 1 1-1h2M10.5 2.5h2a1 1 0 0 1 1 1v2M13.5 10.5v2a1 1 0 0 1-1 1h-2M5.5 13.5h-2a1 1 0 0 1-1-1v-2" /><circle cx="8" cy="8" r="1.6" /></svg>
+)

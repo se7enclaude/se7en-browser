@@ -4,6 +4,7 @@ import { app, BrowserWindow, dialog, ipcMain, nativeImage, type IpcMainEvent, ty
 import { estAdresseAutorisee, estPageInterne } from '../../shared/adresse'
 import type { ActionTelechargement } from '../../shared/donnees'
 import { CANAUX, type InfosApp } from '../../shared/ipc'
+import type { ZoneCapture } from '../../shared/chat'
 import type { ZoneOnglet } from '../../shared/onglets'
 import { estAdresseInterface } from '../securite/politiques'
 import type { Favoris } from '../stockage/favoris'
@@ -22,6 +23,7 @@ import type { Bloqueur } from '../bloqueur/bloqueur'
 import type { Memoire } from '../ia/memoire'
 import { RE_NOM_MODELE } from '../../shared/ia'
 import type { ClientSocial } from '../social/client'
+import type { AssistantEcriture } from '../ia/ecriture'
 import { MAX_MESSAGE } from '../../shared/social'
 
 export interface Services {
@@ -38,6 +40,9 @@ export interface Services {
   bloqueur: Bloqueur
   memoire: Memoire
   social: ClientSocial
+  ecriture: AssistantEcriture
+  /** Capture l'onglet actif et l'envoie à l'interface pour choisir une zone. */
+  zone: (f: BrowserWindow) => void
   /** Range les onglets de la fenêtre en groupes (IA). */
   ranger: (g: GestionnaireOnglets) => Promise<{ groupes: number } | { erreur: string }>
   /** Fenêtre « Ouvrir » pour choisir un PDF du PC. */
@@ -53,6 +58,16 @@ function fenetreDe(e: IpcMainEvent | IpcMainInvokeEvent): BrowserWindow | null {
 
 const estId = (v: unknown): v is number => Number.isInteger(v)
 const estTexte = (v: unknown): v is string => typeof v === 'string' && v.length <= 8192
+/** Zone de l'écran envoyée par l'interface : un identifiant de capture et un rectangle en fractions (0 à 1). */
+function zoneValide(v: unknown): ZoneCapture | undefined {
+  if (!v || typeof v !== 'object') return undefined
+  const z = v as Record<string, unknown>
+  const f = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= 1
+  if (typeof z.idCapture !== 'string' || !f(z.x) || !f(z.y) || !f(z.largeur) || !f(z.hauteur)) return undefined
+  if (z.x + z.largeur > 1.001 || z.y + z.hauteur > 1.001 || z.largeur < 0.002 || z.hauteur < 0.002) return undefined
+  return { idCapture: z.idCapture, x: z.x, y: z.y, largeur: z.largeur, hauteur: z.hauteur }
+}
+
 const ACTIONS_TELECHARGEMENT: readonly ActionTelechargement[] = ['annuler', 'pause', 'reprendre', 'ouvrir', 'montrer', 'retirer']
 
 /** Envoie un message à toutes les fenêtres de l'interface. */
@@ -61,7 +76,7 @@ function diffuser(canal: string, valeur: unknown): void {
 }
 
 export function enregistrerIpc(s: Services): void {
-  const { reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, coffre, formulaires, bloqueur, memoire, social, ongletsDe } = s
+  const { reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, coffre, formulaires, bloqueur, memoire, social, ecriture, ongletsDe } = s
 
   // ---------- fenêtre et application ----------
   ipcMain.on(CANAUX.fenetreReduire, (e) => fenetreDe(e)?.minimize())
@@ -171,7 +186,9 @@ export function enregistrerIpc(s: Services): void {
       idConversation: typeof o.idConversation === 'string' ? o.idConversation : null,
       texte: o.texte.slice(0, 8000),
       avecPageActive: o.avecPageActive === true,
-      idsOnglets: Array.isArray(o.idsOnglets) ? o.idsOnglets.filter(estId) : []
+      idsOnglets: Array.isArray(o.idsOnglets) ? o.idsOnglets.filter(estId) : [],
+      zone: zoneValide(o.zone),
+      avecNavigation: o.avecNavigation === true
     })
   })
   ipcMain.on(CANAUX.chatArreter, (e) => fenetreDe(e) && chat.arreter())
@@ -299,4 +316,33 @@ export function enregistrerIpc(s: Services): void {
   })
   ipcMain.on(CANAUX.socialLu, (e, ami: unknown) => fenetreDe(e) && estIdSocial(ami) && void social.marquerLu(ami).catch(() => undefined))
   ipcMain.on(CANAUX.socialOuvrirLien, (e, url: unknown) => typeof url === 'string' && estAdresseAutorisee(url) && g(e)?.nouveau(url, { aCote: true }))
+
+  // ---------- aide à l'écriture, zone de l'écran, insertion ----------
+  ecriture.on('etat', (e) => diffuser(CANAUX.ecritureEtat, e))
+  ipcMain.on(CANAUX.ecritureAppliquer, (e, id: unknown, texte: unknown) => {
+    if (fenetreDe(e) && typeof id === 'string') ecriture.appliquer(id, typeof texte === 'string' ? texte : undefined)
+  })
+  ipcMain.on(CANAUX.ecritureAnnuler, (e) => fenetreDe(e) && ecriture.annuler())
+  ipcMain.on(CANAUX.iaZone, (e) => {
+    const f = fenetreDe(e)
+    if (f) s.zone(f)
+  })
+  // la réponse proposée par l'IA va dans le champ où se trouve le curseur (après un clic de l'utilisateur)
+  ipcMain.handle(CANAUX.iaInserer, async (e, idOnglet: unknown, texte: unknown) => {
+    const p = estId(idOnglet) && typeof texte === 'string' ? g(e)?.pageDe(idOnglet) : null
+    if (!p || p.wc.isDestroyed()) return false
+    p.wc.focus()
+    // Gmail : si le curseur n'est pas déjà dans un champ, on vise la zone de réponse ouverte
+    const champ = await p.wc
+      .executeJavaScriptInIsolatedWorld(7007, [
+        {
+          code: `(() => { const a = document.activeElement; if (a && (a.isContentEditable || /^(TEXTAREA|INPUT)$/.test(a.tagName))) return true;
+            const z = document.querySelector('div[contenteditable="true"][role="textbox"], div[contenteditable="true"][g_editable="true"]'); if (z) { z.focus(); return true } return false })()`
+        }
+      ])
+      .catch(() => false)
+    if (champ !== true) return false
+    p.wc.insertText((texte as string).slice(0, 20000))
+    return true
+  })
 }

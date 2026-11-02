@@ -1,6 +1,6 @@
 /* Service de chat : lit les pages demandées, construit les messages, interroge Ollama et renvoie la réponse en flux.
  * Une seule réponse à la fois. L'IA ne fait que répondre : elle n'a aucun outil, aucune action possible. */
-import { net } from 'electron'
+import { net, type NativeImage } from 'electron'
 import { randomUUID } from 'node:crypto'
 import { EventEmitter } from 'node:events'
 import { appliquerSkill, type DemandeChat, type FluxChat, type MessageChat, type PageJointe, type ReponseEnvoi } from '../../shared/chat'
@@ -21,8 +21,12 @@ const TAILLE_CONTEXTE = 16384
 /** En dessous, la page n'a presque pas de texte lisible (image, vidéo, canvas) : on regarde une capture. */
 const TEXTE_MINIMUM = 300
 
+/** Captures gardées pour « Demander sur une zone de l'écran » (les plus récentes seulement). */
+const MAX_CAPTURES = 3
+
 export class ServiceChat extends EventEmitter<{ flux: [FluxChat] }> {
   private enCours: AbortController | null = null
+  private readonly captures = new Map<string, NativeImage>()
 
   constructor(
     private readonly ollama: Ollama,
@@ -44,6 +48,42 @@ export class ServiceChat extends EventEmitter<{ flux: [FluxChat] }> {
     this.enCours?.abort()
   }
 
+  /** Capture l'onglet actif pour que l'utilisateur y choisisse une zone. Renvoie l'image (data: URL) et son identifiant. */
+  async capturerZone(): Promise<{ idCapture: string; image: string } | null> {
+    const g = this.onglets()
+    const id = g?.etat().actifId
+    const p = id != null ? g?.pageDe(id) : null
+    if (!p) return null
+    try {
+      const image = await p.wc.capturePage()
+      if (image.isEmpty()) return null
+      const idCapture = randomUUID()
+      this.captures.set(idCapture, image)
+      while (this.captures.size > MAX_CAPTURES) this.captures.delete(this.captures.keys().next().value!)
+      return { idCapture, image: image.toDataURL() }
+    } catch {
+      return null
+    }
+  }
+
+  /** La zone choisie, recadrée (JPEG en base64, 1280 px de large au plus). */
+  private zoneDe(z: NonNullable<DemandeChat['zone']>): string | null {
+    const capture = this.captures.get(z.idCapture)
+    if (!capture) return null
+    const { width, height } = capture.getSize()
+    const rect = {
+      x: Math.round(z.x * width),
+      y: Math.round(z.y * height),
+      width: Math.max(8, Math.round(z.largeur * width)),
+      height: Math.max(8, Math.round(z.hauteur * height))
+    }
+    rect.width = Math.min(rect.width, width - rect.x)
+    rect.height = Math.min(rect.height, height - rect.y)
+    let zone = capture.crop(rect)
+    if (zone.getSize().width > 1280) zone = zone.resize({ width: 1280, quality: 'good' })
+    return zone.toJPEG(85).toString('base64')
+  }
+
   /** Enregistre la question, répond tout de suite avec les identifiants, puis la réponse arrive par l'évènement « flux ». */
   envoyer(d: DemandeChat): ReponseEnvoi | { erreur: string } {
     if (this.enCours) return { erreur: "L'IA est déjà en train de répondre." }
@@ -51,6 +91,8 @@ export class ServiceChat extends EventEmitter<{ flux: [FluxChat] }> {
     if (etat.phase !== 'pret') return { erreur: "L'IA locale n'est pas activée." }
     const r = this.reglages()
     if (!modelePresent(r.modeleTexte, etat.modeles)) return { erreur: `Le modèle ${r.modeleTexte} n'est pas téléchargé (page IA locale).` }
+    if (d.zone && !modelePresent(r.modeleVision, etat.modeles)) return { erreur: `Le modèle vision ${r.modeleVision} n'est pas téléchargé (page IA locale).` }
+    if (d.zone && !this.captures.has(d.zone.idCapture)) return { erreur: 'Cette capture a expiré : choisis à nouveau la zone.' }
 
     const conv = (d.idConversation && this.conversations.lire(d.idConversation)) || this.conversations.creer(titreConversation(d.texte))
     const historique = conv.messages.filter((m) => !m.erreur).map((m) => ({ role: m.role, texte: m.texte }))
@@ -129,6 +171,8 @@ export class ServiceChat extends EventEmitter<{ flux: [FluxChat] }> {
       const r = this.reglages()
       const etat = this.ollama.etat()
       const visionDispo = modelePresent(r.modeleVision, etat.modeles)
+      // une zone choisie par l'utilisateur passe avant la capture automatique
+      if (d.zone) image = this.zoneDe(d.zone) ?? undefined
       if (image && !visionDispo) image = undefined
       const jointes: PageJointe[] = pages.map((p) => ({ titre: p.titre, url: p.url }))
       const alertes = alertesManipulation(pages).map((a) => a.titre)
