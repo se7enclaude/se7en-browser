@@ -7,7 +7,7 @@ export type Teinte = 'argent' | 'soleil' | 'ocean' | 'rose' | 'menthe' | 'lavand
 
 export interface Reglages {
   /** Version du format, pour migrer plus tard sans perdre les réglages. */
-  version: 1
+  version: 2
   theme: Theme
   teinte: Teinte
   disposition: Disposition
@@ -21,7 +21,7 @@ export interface Reglages {
 }
 
 export const REGLAGES_DEFAUT: Reglages = {
-  version: 1,
+  version: 2,
   theme: 'auto',
   teinte: 'argent',
   disposition: 'les-deux',
@@ -49,6 +49,19 @@ export const TEINTES: readonly Teinte[] = ['argent', 'soleil', 'ocean', 'rose', 
  * Fusionne une valeur inconnue (fichier sur disque, message de l'interface) avec les réglages actuels.
  * Chaque champ est vérifié : un champ invalide est ignoré, jamais propagé.
  */
+/**
+ * Met à jour un fichier de réglages d'une ancienne version (lu sur le disque, avant fusion).
+ * v1 → v2 : le modèle vision par défaut passe de Qwen2.5-VL à Qwen3-VL (sauf s'il avait été changé).
+ */
+export function migrerReglages(brut: unknown): unknown {
+  if (!brut || typeof brut !== 'object') return brut
+  const o = { ...(brut as Record<string, unknown>) }
+  const version = typeof o.version === 'number' ? o.version : 1
+  if (version < 2 && o.modeleVision === 'qwen2.5vl:7b') delete o.modeleVision
+  o.version = 2
+  return o
+}
+
 export function fusionnerReglages(base: Reglages, brut: unknown): Reglages {
   const r: Reglages = { ...base }
   if (!brut || typeof brut !== 'object') return r

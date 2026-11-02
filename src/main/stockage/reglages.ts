@@ -1,7 +1,7 @@
 /* Réglages persistants : chargés au démarrage, enregistrés à chaque modification. */
 import { join } from 'node:path'
 import { EventEmitter } from 'node:events'
-import { fusionnerReglages, REGLAGES_DEFAUT, type Reglages } from '../../shared/reglages'
+import { fusionnerReglages, migrerReglages, REGLAGES_DEFAUT, type Reglages } from '../../shared/reglages'
 import { ecrireJson, lireJson } from './fichierJson'
 
 export class MagasinReglages extends EventEmitter<{ change: [Reglages] }> {
@@ -11,7 +11,7 @@ export class MagasinReglages extends EventEmitter<{ change: [Reglages] }> {
   constructor(dossier: string) {
     super()
     this.chemin = join(dossier, 'reglages.json')
-    this.valeur = fusionnerReglages(REGLAGES_DEFAUT, lireJson(this.chemin))
+    this.valeur = fusionnerReglages(REGLAGES_DEFAUT, migrerReglages(lireJson(this.chemin)))
   }
 
   get(): Reglages {

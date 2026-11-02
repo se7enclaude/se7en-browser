@@ -29,6 +29,21 @@ export function trouverOllama(): string | null {
   return cheminsPossibles().find((p) => existsSync(p)) ?? null
 }
 
+function lancerDetache(exe: string, args: string[]): void {
+  spawn(exe, args, { detached: true, stdio: 'ignore', windowsHide: true }).unref()
+}
+
+/** Un programme de ce nom tourne-t-il déjà ? (tasklist, sans PowerShell : plus rapide) */
+function processusEnCours(nom: string): Promise<boolean> {
+  return new Promise((resoudre) => {
+    const p = spawn('tasklist', ['/FI', `IMAGENAME eq ${nom}`, '/NH', '/FO', 'CSV'], { windowsHide: true })
+    let sortie = ''
+    p.stdout.on('data', (d) => (sortie += d))
+    p.on('error', () => resoudre(false))
+    p.on('close', () => resoudre(sortie.toLowerCase().includes(`"${nom.toLowerCase()}"`)))
+  })
+}
+
 /** Vérifie que l'installeur téléchargé est bien signé par Ollama (signature Authenticode valide). */
 export function verifierSignature(fichier: string): Promise<boolean> {
   return new Promise((resoudre) => {
@@ -112,10 +127,15 @@ export class Ollama extends EventEmitter<{ change: [EtatOllama] }> {
     this.maj({ erreur: null })
     this.majTache({ type: 'demarrage', nom: 'Ollama', recus: 0, total: 0 })
     try {
+      // 1. l'appli Ollama (icône près de l'horloge), qui lance le service… sauf si elle tourne déjà :
+      //    deux copies en même temps se bloquent et aucune ne démarre le service.
       const appli = join(dirname(exe), 'ollama app.exe')
-      const [cmd, args] = existsSync(appli) ? [appli, []] : [exe, ['serve']]
-      spawn(cmd, args, { detached: true, stdio: 'ignore', windowsHide: true }).unref()
-      if (!(await this.attendreService(30_000))) throw new Error("Ollama ne répond pas. Essaie de le lancer depuis le menu Démarrer.")
+      if (existsSync(appli) && !(await processusEnCours('ollama app.exe'))) lancerDetache(appli, [])
+      // 2. si le service ne répond toujours pas, on le lance nous-mêmes, sans fenêtre
+      if (!(await this.attendreService(15_000))) {
+        lancerDetache(exe, ['serve'])
+        if (!(await this.attendreService(20_000))) throw new Error("Ollama ne répond pas. Essaie de le lancer depuis le menu Démarrer.")
+      }
     } catch (err) {
       this.maj({ erreur: (err as Error).message })
     } finally {
@@ -176,8 +196,11 @@ export class Ollama extends EventEmitter<{ change: [EtatOllama] }> {
       if (code !== 0) throw new Error(`L'installation d'Ollama a échoué (code ${code}).`)
       this.majTache(null)
 
-      // 4. démarrage (l'installeur le lance parfois lui-même)
-      if (!(await this.version())) await this.demarrer()
+      // 4. démarrage : l'installeur lance lui-même l'appli Ollama, on lui laisse le temps avant d'intervenir
+      this.majTache({ type: 'demarrage', nom: 'Ollama', recus: 0, total: 0 })
+      const pret = await this.attendreService(20_000)
+      this.majTache(null)
+      if (!pret) await this.demarrer()
     } catch (err) {
       const annule = this.annulation?.signal.aborted
       this.maj({ erreur: annule ? null : (err as Error).message })
