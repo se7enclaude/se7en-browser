@@ -27,7 +27,8 @@ interface Props {
 }
 
 type Etape = FluxChat['etape']
-const estWeb = (o: EtatOnglet | undefined): o is EtatOnglet => !!o && /^https?:\/\//.test(o.url)
+/** Un onglet que l'IA peut lire : une page web, ou un PDF (même ouvert depuis le PC). */
+const estWeb = (o: EtatOnglet | undefined): o is EtatOnglet => !!o && (/^https?:\/\//.test(o.url) || !!o.pdf)
 
 const TEXTES_ETAPE: Partial<Record<Etape, string>> = {
   lecture: 'Lecture de la page…',

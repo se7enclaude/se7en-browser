@@ -9,6 +9,8 @@ import type { Reglages } from '../../shared/reglages'
 import type { GestionnaireOnglets } from '../navigateur/onglets'
 import type { Conversations, Skills } from './conversations'
 import { capturerPage, lirePage } from './lecturePage'
+import type { DocumentsPdf } from '../pdf/documents'
+import { lireTextePdf } from '../pdf/texte'
 import { lireNdjson } from './ndjson'
 import { API_OLLAMA, type Ollama } from './ollama'
 import { alertesManipulation, construireMessages, titreConversation, type PageLue } from './prompts'
@@ -25,6 +27,7 @@ export class ServiceChat extends EventEmitter<{ flux: [FluxChat] }> {
     private readonly ollama: Ollama,
     private readonly conversations: Conversations,
     private readonly skills: Skills,
+    private readonly documents: DocumentsPdf,
     private readonly reglages: () => Reglages,
     private readonly onglets: () => GestionnaireOnglets | undefined
   ) {
@@ -86,6 +89,12 @@ export class ServiceChat extends EventEmitter<{ flux: [FluxChat] }> {
         const p = g?.pageDe(id)
         if (!p) continue
         const lue = await lirePage(p.wc, p.etat.url)
+        // un PDF : son texte complet est lu dans le fichier (la visionneuse n'affiche que les pages visibles)
+        const doc = p.etat.pdf ? this.documents.lire(p.etat.pdf) : undefined
+        if (doc) {
+          lue.titre = doc.nom
+          lue.texte = await lireTextePdf(doc.chemin).catch(() => '')
+        }
         pages.push(lue)
         // peu de texte sur la page active : le modèle vision regarde une capture
         if (id === idActif && lue.texte.length < TEXTE_MINIMUM && !image) image = (await capturerPage(p.wc)) ?? undefined

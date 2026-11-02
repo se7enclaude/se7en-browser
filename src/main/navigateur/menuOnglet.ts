@@ -25,10 +25,11 @@ export function ouvrirMenuOnglet(fenetre: BrowserWindow, g: GestionnaireOnglets,
 }
 
 /** Menu principal (bouton en haut à droite). */
-export function ouvrirMenuPrincipal(fenetre: BrowserWindow, g: GestionnaireOnglets): void {
+export function ouvrirMenuPrincipal(fenetre: BrowserWindow, g: GestionnaireOnglets, ouvrirFichier: () => void): void {
   const etat = g.etat()
   Menu.buildFromTemplate([
     { label: 'Nouvel onglet', accelerator: 'Ctrl+T', click: () => g.nouveau() },
+    { label: 'Ouvrir un fichier PDF…', accelerator: 'Ctrl+O', click: ouvrirFichier },
     etat.split
       ? { label: 'Quitter la vue partagée', click: () => g.quitterSplit() }
       : { label: 'Vue partagée', click: () => g.diviser() },

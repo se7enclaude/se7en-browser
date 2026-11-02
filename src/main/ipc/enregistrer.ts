@@ -27,6 +27,8 @@ export interface Services {
   chat: ServiceChat
   conversations: Conversations
   skills: Skills
+  /** Fenêtre « Ouvrir » pour choisir un PDF du PC. */
+  ouvrirFichier: (f: BrowserWindow) => void
   ongletsDe: (f: BrowserWindow) => GestionnaireOnglets | undefined
 }
 
@@ -88,7 +90,7 @@ export function enregistrerIpc(s: Services): void {
   ipcMain.on(CANAUX.appMenu, (e) => {
     const f = fenetreDe(e)
     const go = f && ongletsDe(f)
-    if (f && go) ouvrirMenuPrincipal(f, go)
+    if (f && go) ouvrirMenuPrincipal(f, go, () => s.ouvrirFichier(f))
   })
   ipcMain.on(CANAUX.ongletsMenu, (e, id: unknown) => {
     const f = fenetreDe(e)

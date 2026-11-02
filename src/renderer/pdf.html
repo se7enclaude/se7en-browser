@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Visionneuse PDF : onglet isolé, aucune ressource externe, pas de script en ligne. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+    <title>PDF</title>
+  </head>
+  <body>
+    <header class="barre-pdf">
+      <span class="nom-pdf" id="nom">PDF</span>
+      <span class="groupe-pdf">
+        <input id="page" class="champ-page" inputmode="numeric" aria-label="Page" value="1" />
+        <span id="total" class="discret">/ –</span>
+      </span>
+      <span class="groupe-pdf">
+        <button id="moins" title="Réduire (Ctrl+-)" aria-label="Réduire">−</button>
+        <button id="zoom" class="valeur-zoom" title="Ajuster à la largeur">100 %</button>
+        <button id="plus" title="Agrandir (Ctrl++)" aria-label="Agrandir">+</button>
+      </span>
+      <a id="enregistrer" class="bouton-pdf" title="Enregistrer le PDF dans Téléchargements">Enregistrer</a>
+    </header>
+    <main id="pages" class="pages-pdf"></main>
+    <div id="message" class="message-pdf" hidden></div>
+    <script type="module" src="/src/pdf/visionneuse.ts"></script>
+  </body>
+</html>

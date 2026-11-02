@@ -1,13 +1,16 @@
 {
   "name": "se7en-browser",
   "productName": "se7en Browser",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "se7en Browser : un navigateur Liquid Glass avec IA locale (Ollama).",
   "main": "out/main/index.js",
   "private": true,
   "author": "se7en",
   "scripts": {
+    "postinstall": "node tools/copier-pdfjs.mjs",
+    "predev": "node tools/copier-pdfjs.mjs",
     "dev": "electron-vite dev",
+    "prebuild": "node tools/copier-pdfjs.mjs",
     "build": "electron-vite build",
     "start": "electron-vite preview",
     "typecheck": "tsc -p tsconfig.node.json --noEmit && tsc -p tsconfig.web.json --noEmit",
@@ -25,5 +28,9 @@
     "typescript": "^5.9.3",
     "vite": "^8.3.5",
     "vitest": "^5.1.0"
+  },
+  "dependencies": {
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^6.5.438"
   }
 }

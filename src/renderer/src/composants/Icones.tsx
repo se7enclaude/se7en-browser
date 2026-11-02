@@ -58,3 +58,6 @@ export const IconeLecture = () => (
 export const IconeIA = () => (
   <svg {...base}><path d="M8 2.5 9.3 6.7 13.5 8 9.3 9.3 8 13.5 6.7 9.3 2.5 8 6.7 6.7Z" /></svg>
 )
+export const IconePdf = () => (
+  <svg {...base}><path d="M4 2.5h5.5L12.5 5.5v8H4Z" /><path d="M9.5 2.5v3h3M6 9h4M6 11h3" /></svg>
+)

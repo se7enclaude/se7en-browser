@@ -31,6 +31,7 @@ export type ActionRaccourci =
   | { type: 'page'; page: PageInterne }
   | { type: 'favori' }
   | { type: 'basculer-ia' }
+  | { type: 'ouvrir-fichier' }
 
 export function actionDuRaccourci(t: Touche): ActionRaccourci | null {
   if (t.type !== 'keyDown' || t.meta) return null
@@ -48,6 +49,7 @@ export function actionDuRaccourci(t: Touche): ActionRaccourci | null {
   if (ctrl && !t.shift && k === 'j') return { type: 'page', page: 'se7en://telechargements' }
   if (ctrl && t.shift && k === 'o') return { type: 'page', page: 'se7en://favoris' }
   if (ctrl && !t.shift && k === 'd') return { type: 'favori' }
+  if (ctrl && !t.shift && k === 'o') return { type: 'ouvrir-fichier' }
   if (ctrl && !t.shift && k === 'PageDown') return { type: 'onglet-suivant' }
   if (ctrl && !t.shift && k === 'PageUp') return { type: 'onglet-precedent' }
   // Ctrl+1…8 : onglet n ; Ctrl+9 : dernier onglet (-1)

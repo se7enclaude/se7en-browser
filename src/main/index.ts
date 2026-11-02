@@ -1,6 +1,9 @@
 /* Point d'entrée du processus principal de se7en Browser. */
-import { app, BrowserWindow, session } from 'electron'
+import { app, BrowserWindow, dialog, session } from 'electron'
 import { CANAUX } from '../shared/ipc'
+import { idDocDeVisionneuse } from '../shared/pdf'
+import { DocumentsPdf } from './pdf/documents'
+import { brancherProtocolePdf, declarerProtocolePdf, redirigerPdfVersVisionneuse } from './pdf/protocole'
 import { creerFenetrePrincipale, appliquerTheme } from './fenetre/fenetrePrincipale'
 import { ServiceChat } from './ia/chat'
 import { Conversations, Skills } from './ia/conversations'
@@ -25,6 +28,7 @@ if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
   durcirApplication()
+  declarerProtocolePdf()
   const onglets = new Map<number, GestionnaireOnglets>()
 
   app.on('second-instance', () => {
@@ -41,8 +45,40 @@ if (!app.requestSingleInstanceLock()) {
     const prioritaires = new MagasinPrioritaires(dossier)
     const historique = new Historique(dossier)
     const favoris = new Favoris(dossier)
+    const sessionWeb = session.fromPartition(PARTITION_WEB)
     const telechargements = new Telechargements(dossier)
-    telechargements.brancher(session.fromPartition(PARTITION_WEB))
+    telechargements.brancher(sessionWeb)
+
+    // PDF : affichés dans la visionneuse isolée (protocole se7en-pdf://) au lieu d'être téléchargés
+    const documents = new DocumentsPdf()
+    brancherProtocolePdf(sessionWeb, documents)
+    redirigerPdfVersVisionneuse(sessionWeb)
+    app.on('will-quit', () => documents.vider())
+    telechargements.intercepteur = (item, wc) => {
+      const estPdf = item.getMimeType() === 'application/pdf' || /\.pdf$/i.test(item.getFilename())
+      // « Enregistrer » depuis la visionneuse : un vrai téléchargement, dans le dossier Téléchargements
+      if (!estPdf || !wc || idDocDeVisionneuse(wc.getURL())) return false
+      const g = [...onglets.values()][0]
+      const id = g?.idDeWebContents(wc) ?? null
+      if (!g || id === null) return false
+      const chemin = documents.cheminTemporaire()
+      item.setSavePath(chemin)
+      g.marquerChargement(id, true)
+      item.once('done', (_e, etat) => {
+        g.marquerChargement(id, false)
+        if (etat === 'completed') g.afficherPdf(id, documents.ajouter(chemin, item.getURL(), item.getFilename(), true).id)
+      })
+      return true
+    }
+    /** Ctrl+O : choisir un ou plusieurs PDF du PC. */
+    const ouvrirFichier = async (f: BrowserWindow): Promise<void> => {
+      const r = await dialog.showOpenDialog(f, {
+        title: 'Ouvrir un PDF',
+        filters: [{ name: 'Documents PDF', extensions: ['pdf'] }],
+        properties: ['openFile', 'multiSelections']
+      })
+      for (const chemin of r.filePaths) onglets.get(f.id)?.ouvrirPdf(documents.ajouterLocal(chemin).id)
+    }
     // l'historique est écrit par paquets : on vide ce qui attend avant de quitter
     app.on('before-quit', () => historique.vider())
 
@@ -57,19 +93,20 @@ if (!app.requestSingleInstanceLock()) {
     const skills = new Skills(dossier)
     app.on('before-quit', () => conversations.vider())
     // le chat lit les onglets de la fenêtre principale (une seule fenêtre pour l'instant)
-    const chat = new ServiceChat(ollama, conversations, skills, () => reglages.get(), () => [...onglets.values()][0])
+    const chat = new ServiceChat(ollama, conversations, skills, documents, () => reglages.get(), () => [...onglets.values()][0])
 
-    enregistrerIpc({ reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, ongletsDe: (f) => onglets.get(f.id) })
+    enregistrerIpc({ reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, ouvrirFichier: (f) => void ouvrirFichier(f), ongletsDe: (f) => onglets.get(f.id) })
 
     const fenetre = creerFenetrePrincipale()
     const idFenetre = fenetre.id
-    const surTouche = creerGestionRaccourcis(fenetre, () => gestionnaire, reglages, favoris)
+    const surTouche = creerGestionRaccourcis(fenetre, () => gestionnaire, reglages, favoris, () => void ouvrirFichier(fenetre))
     const gestionnaire = new GestionnaireOnglets(fenetre, {
       moteur: () => reglages.get().moteurRecherche,
       notifier: (etat) => fenetre.webContents.send(CANAUX.ongletsEtat, etat),
       surTouche,
       sauverPrioritaires: (liste) => prioritaires.sauver(liste),
-      journal: { visite: (url, titre) => historique.ajouter(url, titre), titre: (url, titre) => historique.majTitre(url, titre) }
+      journal: { visite: (url, titre) => historique.ajouter(url, titre), titre: (url, titre) => historique.majTitre(url, titre) },
+      documentPdf: (id) => documents.lire(id)
     })
     gestionnaire.restaurerPrioritaires(prioritaires.lire())
     onglets.set(idFenetre, gestionnaire)

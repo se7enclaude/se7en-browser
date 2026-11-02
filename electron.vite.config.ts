@@ -11,7 +11,9 @@ function cspDeveloppement(): Plugin {
     name: 'se7en-csp-dev',
     apply: 'serve',
     transformIndexHtml: (html) =>
-      html.replace("script-src 'self'", "script-src 'self' 'unsafe-inline'").replace("connect-src 'self'", "connect-src 'self' ws: http://localhost:*")
+      html
+        .replace("script-src 'self'", "script-src 'self' 'unsafe-inline' http://localhost:*")
+        .replace("connect-src 'self'", "connect-src 'self' ws: http://localhost:*")
   }
 }
 
@@ -25,7 +27,8 @@ export default defineConfig({
   },
   renderer: {
     root: resolve('src/renderer'),
-    build: { rollupOptions: { input: { index: resolve('src/renderer/index.html') } } },
+    // deux pages : l'interface du navigateur, et la visionneuse PDF (servie à part, dans un onglet isolé)
+    build: { rollupOptions: { input: { index: resolve('src/renderer/index.html'), pdf: resolve('src/renderer/pdf.html') } } },
     plugins: [react(), cspDeveloppement()]
   }
 })

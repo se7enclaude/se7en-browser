@@ -16,6 +16,8 @@ export interface EtatOnglet {
   prioritaire: boolean
   /** Onglet prioritaire pas encore chargé (ou mis en veille) : il se charge quand on l'ouvre. */
   endormi: boolean
+  /** Identifiant du PDF affiché par la visionneuse (url est alors l'adresse du PDF lui-même), ou null. */
+  pdf: string | null
 }
 
 /** Vue partagée : deux onglets côte à côte. */

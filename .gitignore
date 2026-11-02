@@ -4,3 +4,4 @@ dist/
 .electron/
 *.log
 *.tsbuildinfo
+src/renderer/public/pdfjs/

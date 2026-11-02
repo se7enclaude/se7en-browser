@@ -4,6 +4,7 @@
  * au démarrage ils sont « endormis » et ne se chargent qu'à l'ouverture. */
 import { WebContentsView, type BrowserWindow, type Input, type WebContents } from 'electron'
 import { estAdresseAutorisee, estPageInterne, PAGES_INTERNES, resoudreSaisie } from '../../shared/adresse'
+import { idDocDeVisionneuse, urlVisionneuse } from '../../shared/pdf'
 import type { EtatOnglet, EtatOnglets, OngletPrioritaireSauve, Split, Zone, ZoneOnglet } from '../../shared/onglets'
 import { preferencesPage, preparerSessionWeb } from '../securite/politiques'
 import { chargerFavicon } from './favicons'
@@ -26,6 +27,8 @@ export interface OptionsGestionnaire {
   sauverPrioritaires: (liste: OngletPrioritaireSauve[]) => void
   /** Historique : chaque page visitée, puis son titre quand il arrive. */
   journal?: { visite: (url: string, titre: string) => void; titre: (url: string, titre: string) => void }
+  /** PDF ouverts dans la visionneuse : adresse d'origine et nom du fichier. */
+  documentPdf?: (id: string) => { url: string; nom: string } | undefined
 }
 
 const RAYON_PAGE = 13 // rayon de la zone (14) moins le liseré
@@ -63,7 +66,7 @@ export class GestionnaireOnglets {
   /** La page web chargée dans un onglet (null pour un Nouvel onglet, une page interne ou un onglet en veille). */
   pageDe(id: number): { etat: EtatOnglet; wc: WebContents } | null {
     const o = this.trouver(id)
-    if (!o?.vue || o.vue.webContents.isDestroyed() || !estAdresseAutorisee(o.etat.url)) return null
+    if (!o?.vue || o.vue.webContents.isDestroyed() || !(estAdresseAutorisee(o.etat.url) || o.etat.pdf)) return null
     return { etat: { ...o.etat }, wc: o.vue.webContents }
   }
 
@@ -81,7 +84,8 @@ export class GestionnaireOnglets {
         peutAvancer: false,
         plantee: false,
         prioritaire,
-        endormi: !!sauve
+        endormi: !!sauve,
+        pdf: null
       },
       vue: null,
       urlEpinglee: sauve?.url ?? null
@@ -271,6 +275,37 @@ export class GestionnaireOnglets {
     this.signaler()
   }
 
+  // ---------- PDF ----------
+
+  /** L'onglet dont la page est ce webContents (pour savoir d'où vient un téléchargement). */
+  idDeWebContents(wc: WebContents): number | null {
+    return this.onglets.find((o) => o.vue?.webContents === wc)?.etat.id ?? null
+  }
+
+  /** Affiche un PDF dans la visionneuse, dans cet onglet (le bouton Précédent ramène à la page d'avant). */
+  afficherPdf(id: number, idDoc: string): void {
+    const o = this.trouver(id)
+    if (!o) return
+    const vue = o.vue ?? this.creerVue(o)
+    o.etat.endormi = false
+    vue.webContents.loadURL(urlVisionneuse(idDoc, this.options.documentPdf?.(idDoc)?.nom)).catch(() => undefined)
+    this.afficher()
+    this.signaler()
+  }
+
+  /** Ouvre un PDF dans un nouvel onglet (fichier du PC, Ctrl+O). */
+  ouvrirPdf(idDoc: string): void {
+    this.afficherPdf(this.nouveau(), idDoc)
+  }
+
+  /** Pendant qu'un PDF se télécharge avant d'être affiché, l'onglet montre qu'il charge. */
+  marquerChargement(id: number, chargement: boolean): void {
+    const o = this.trouver(id)
+    if (!o) return
+    o.etat.chargement = chargement
+    this.signaler()
+  }
+
   private charger(o: Onglet, url: string): void {
     const vue = o.vue ?? this.creerVue(o)
     o.etat.url = url
@@ -364,7 +399,7 @@ export class GestionnaireOnglets {
     for (const o of this.onglets) {
       if (!o.vue) continue
       const zone = this.zones.get(o.etat.id)
-      const visible = !!zone && zone.width > 0 && estAdresseAutorisee(o.etat.url) && !o.etat.plantee && !this.masque
+      const visible = !!zone && zone.width > 0 && (estAdresseAutorisee(o.etat.url) || !!o.etat.pdf) && !o.etat.plantee && !this.masque
       if (visible) o.vue.setBounds(zone)
       o.vue.setVisible(visible)
     }
@@ -400,8 +435,12 @@ export class GestionnaireOnglets {
   private brancher(o: Onglet, wc: WebContents): void {
     const maj = (): void => {
       if (o.vue?.webContents !== wc) return // vue remplacée entre-temps
-      o.etat.url = wc.getURL() || o.etat.url
-      o.etat.titre = wc.getTitle() || o.etat.url
+      // la visionneuse PDF affiche l'adresse et le nom du PDF, pas sa propre adresse interne
+      const idDoc = idDocDeVisionneuse(wc.getURL())
+      const doc = idDoc ? this.options.documentPdf?.(idDoc) : undefined
+      o.etat.pdf = doc && idDoc ? idDoc : null
+      o.etat.url = doc ? doc.url : wc.getURL() || o.etat.url
+      o.etat.titre = doc ? doc.nom : wc.getTitle() || o.etat.url
       o.etat.peutReculer = wc.navigationHistory.canGoBack()
       o.etat.peutAvancer = wc.navigationHistory.canGoForward()
       this.signaler()
@@ -421,7 +460,9 @@ export class GestionnaireOnglets {
       o.etat.favicon = null
       o.etat.url = url
       maj()
-      if (estAdresseAutorisee(url)) this.options.journal?.visite(url, wc.getTitle())
+      // l'adresse a pu passer d'un Nouvel onglet (sans page) à une page ou un PDF : la vue doit apparaître
+      this.afficher()
+      if (estAdresseAutorisee(o.etat.url)) this.options.journal?.visite(o.etat.url, o.etat.titre)
     })
     wc.on('did-navigate-in-page', (_e, url, principal) => {
       maj()

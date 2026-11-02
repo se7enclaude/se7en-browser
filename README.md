@@ -3,7 +3,7 @@
 Un navigateur web pour Windows au design « Liquid Glass », avec une IA qui tourne sur ton PC (Ollama + Qwen).
 Il fait partie de la suite se7en et s'installe depuis **Seventh OS**.
 
-> En construction : étapes 1 à 6 terminées. Voir « Avancement » plus bas.
+> En construction : étapes 1 à 7 terminées. Voir « Avancement » plus bas.
 
 ## Raccourcis
 
@@ -24,6 +24,7 @@ Il fait partie de la suite se7en et s'installe depuis **Seventh OS**.
 | Ctrl+D | ajouter / retirer des favoris |
 | Ctrl+Maj+O | favoris |
 | Ctrl+Espace | panneau IA |
+| Ctrl+O | ouvrir un PDF du PC |
 
 Clic molette sur un onglet : le fermer. Glisser un onglet : le déplacer. Clic droit : épingler en prioritaire, dupliquer, fermer les autres.
 
@@ -67,6 +68,16 @@ moteur choisi, et une question (« ? » final, « comment… », « pourquoi… 
 
 Testé avec des pages piégées (ordre caché en texte blanc de 1 px, ordre écrit en clair) : l'IA résume la page sans obéir.
 
+**PDF** : un PDF ouvert dans un onglet (lien, adresse, ou Ctrl+O pour un fichier du PC) s'affiche dans la visionneuse
+de se7en Browser (pdf.js) : défilement, zoom (Ctrl+molette, Ctrl+/-), texte sélectionnable, liens, mot de passe,
+bouton « Enregistrer » (vers Téléchargements). Précédent ramène à la page d'avant. Le panneau IA lit tout le texte du PDF
+(page par page, pour citer les numéros de page) ; un PDF scanné, sans texte, est envoyé en capture au modèle vision.
+
+La visionneuse tourne **dans un onglet isolé**, comme une page web (protocole interne `se7en-pdf://`, sans preload,
+politique de sécurité stricte) : un PDF piégé qui exploiterait une faille de pdf.js n'aurait accès ni à l'interface
+ni au coffre. Les PDF venus d'Internet sont gardés dans un dossier temporaire vidé à la fermeture ; chaque document a un
+identifiant impossible à deviner, et un site web ne peut pas les lire (requêtes d'une autre origine refusées).
+
 ## Tester sans toucher à son profil
 
 `SE7EN_PROFIL_TEST=<dossier>` lance le navigateur avec un profil à part (réglages, onglets, cookies),
@@ -98,6 +109,8 @@ Autres commandes :
 
 La compilation en `.exe` (installeur Inno Setup) arrive à l'étape 9.
 
+Le premier `npm install` copie aussi les fichiers de pdf.js (polices, tables de caractères) dans`n`src/renderer/public/pdfjs` (`tools/copier-pdfjs.mjs`, relancé avant `dev` et `build`).
+
 ## Organisation du code
 
 ```
@@ -127,7 +140,7 @@ tests/         tests Vitest
 4. ✅ Historique, favoris, téléchargements, Nouvel onglet, vue partagée (Splits)
 5. ✅ Ollama : détection, installation, modèles
 6. ✅ Panneau IA (Ctrl+Espace), « Demande ou cherche », @onglets, Skills, résumé, protection anti-injection
-7. PDF : visionneuse, discuter avec un PDF
+7. ✅ PDF : visionneuse isolée, discuter avec un PDF
 8. Coffre chiffré et remplissage de PDF ; bloqueur, onglets rangés par l'IA, mémoire ; profils et amis
 9. Installeur Windows
 10. Publication et ajout dans Seventh OS

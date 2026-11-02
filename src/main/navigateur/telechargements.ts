@@ -1,6 +1,6 @@
 /* Téléchargements : enregistrés directement dans le dossier Téléchargements de Windows, sans fenêtre à chaque fois.
  * Chaque fichier reçoit la « marque du web » (Zone.Identifier) : Windows SmartScreen le contrôle avant de l'ouvrir. */
-import { app, shell, type DownloadItem, type Session } from 'electron'
+import { app, shell, type DownloadItem, type Session, type WebContents } from 'electron'
 import { randomUUID } from 'node:crypto'
 import { EventEmitter } from 'node:events'
 import { existsSync, promises as fs } from 'node:fs'
@@ -53,8 +53,14 @@ export class Telechargements extends EventEmitter<{ change: [Telechargement[]] }
     return this.liste
   }
 
+  /** Appelé avant tout téléchargement : s'il renvoie vrai, il s'en occupe (ex. un PDF à afficher) et rien n'apparaît ici. */
+  intercepteur: ((item: DownloadItem, wc: WebContents | undefined) => boolean) | null = null
+
   brancher(session: Session): void {
-    session.on('will-download', (_e, item) => this.nouveau(item))
+    session.on('will-download', (_e, item, wc) => {
+      if (this.intercepteur?.(item, wc)) return
+      this.nouveau(item)
+    })
   }
 
   private nouveau(item: DownloadItem): void {

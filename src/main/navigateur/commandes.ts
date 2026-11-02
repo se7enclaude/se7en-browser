@@ -11,7 +11,8 @@ export function creerGestionRaccourcis(
   fenetre: BrowserWindow,
   onglets: () => GestionnaireOnglets,
   reglages: MagasinReglages,
-  favoris: Favoris
+  favoris: Favoris,
+  ouvrirFichier: () => void
 ) {
   const versUi = (c: CommandeUi): void => {
     fenetre.webContents.focus()
@@ -61,6 +62,9 @@ export function creerGestionRaccourcis(
         break
       case 'basculer-barre':
         void reglages.modifier({ barreLaterale: !reglages.get().barreLaterale })
+        break
+      case 'ouvrir-fichier':
+        ouvrirFichier()
         break
       case 'basculer-ia':
         versUi({ type: 'basculer-ia' })
