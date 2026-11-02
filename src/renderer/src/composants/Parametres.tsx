@@ -9,6 +9,7 @@ import { EditeurCoffre } from './EditeurCoffre'
 import { ReglagesBloqueur, ReglagesMemoire, ReglagesNavigation } from './ReglagesViePrivee'
 import { EditeurSkills } from './EditeurSkills'
 import { useOllama } from './PageIA'
+import { ReglagesMiseAJour } from './MiseAJour'
 
 interface Props {
   reglages: Reglages
@@ -133,8 +134,9 @@ export function Parametres({ reglages, modifier, infos }: Props): React.JSX.Elem
 
       <section className="bloc verre-fort">
         <h2>À propos</h2>
+        <ReglagesMiseAJour reglages={reglages} modifier={modifier} version={infos?.version} />
         <div className="ligne-reglage">
-          <span>se7en Browser {infos?.version}</span>
+          <span className="discret">Écran du premier lancement</span>
           <button className="bouton-verre" onClick={() => modifier({ accueilTermine: false })}>
             Revoir l'écran d'accueil
           </button>

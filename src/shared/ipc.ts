@@ -10,6 +10,7 @@ import type { CommandeUi, EtatOnglets, ZoneOnglet } from './onglets'
 import type { Reglages } from './reglages'
 import type { Ami, EtatSocial, EvenementSocial, MessageSocial } from './social'
 import type { EtatEcriture } from './ecriture'
+import type { EtatMiseAJour } from './miseAJour'
 
 export const CANAUX = {
   // fenêtre
@@ -120,7 +121,11 @@ export const CANAUX = {
   iaZone: 'ia:zone',
   iaInserer: 'ia:inserer',
   navigationNombre: 'navigation:nombre',
-  navigationEffacer: 'navigation:effacer'
+  navigationEffacer: 'navigation:effacer',
+  majEtat: 'maj:etat',
+  majChange: 'maj:change', // main → interface
+  majVerifier: 'maj:verifier',
+  majInstaller: 'maj:installer'
 } as const
 
 export interface EtatFenetre {
@@ -264,6 +269,13 @@ export interface ApiSe7en {
     ajouter(texte: string): Promise<Souvenir[]>
     supprimer(id: string): Promise<Souvenir[]>
     effacer(): Promise<Souvenir[]>
+  }
+  miseAJour: {
+    etat(): Promise<EtatMiseAJour>
+    verifier(): Promise<EtatMiseAJour>
+    /** Installe la mise à jour téléchargée et rouvre le navigateur. */
+    installer(): void
+    surChangement(rappel: (e: EtatMiseAJour) => void): () => void
   }
   navigation: {
     /** Nombre de pages gardées dans la mémoire de navigation. */

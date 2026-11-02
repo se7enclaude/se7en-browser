@@ -108,6 +108,29 @@ nombre de blocages de la page et permet de désactiver le bloqueur sur un site ;
 sujet, à partir de leurs titres et de leurs sites seulement. Chaque groupe a une étiquette de couleur : clic pour le
 replier, clic droit pour le dégrouper ou fermer ses onglets. Un lien ouvert depuis un onglet rangé rejoint son groupe.
 
+**Clic droit IA** (`src/main/navigateur/menuPage.ts`) : sur une sélection, « Expliquer », « Résumer », « Traduire »,
+« Demander à l'IA… » ; sur une page, « Résumer la page ». Le menu garde aussi copier/coller, liens et images.
+
+**Aide à l'écriture** (`src/main/ia/ecriture.ts`) : clic droit dans n'importe quel champ d'un site › « Aide à l'écriture »
+(corriger, améliorer, raccourcir, développer, ton formel ou amical, traduire). La proposition s'affiche au-dessus de la
+page, se retouche, et ne remplace le texte du champ qu'au clic sur « Remplacer ».
+
+**Zone de l'écran** : clic droit › « Demander sur une zone de l'écran », ou la puce « Zone de l'écran » du panneau IA.
+La page est capturée, tu encadres la zone à la souris, et le modèle vision (Qwen3-VL) répond.
+
+**Réponses Gmail** : sur un e-mail ouvert dans Gmail, la puce « Proposer une réponse » du panneau IA rédige la réponse ;
+« Insérer dans l'e-mail » la place dans la zone de réponse (après un clic sur « Répondre » dans Gmail). Rien n'est envoyé.
+
+**Mémoire de navigation** (`src/main/ia/memoireNavigation.ts`) : le texte des pages visitées est gardé sur le PC
+(`navigation/AAAA-MM-JJ.jsonl`) et effacé après 30 jours ; jamais les pages avec un champ mot de passe. « Retrouve
+l'article sur… que j'ai lu » ou la puce « Ma navigation » du panneau IA. Désactivable et effaçable dans les paramètres.
+
+**Mises à jour automatiques** (`src/main/miseAJour.ts`) : la version installée vérifie la dernière release GitHub
+(30 s après le lancement, puis toutes les 6 heures), télécharge l'installeur en arrière-plan, vérifie sa taille et son
+empreinte SHA-256, puis l'installe en silence à la fermeture (ou tout de suite avec « Redémarrer pour la version… »).
+Les modèles Qwen sont remis à jour une fois par semaine (Ollama ne télécharge que ce qui a changé).
+Les deux se désactivent dans Paramètres › À propos.
+
 **Mémoire de l'IA** : « retiens que… » / « oublie… » dans le panneau IA. Seul ce que l'utilisateur tape lui-même est
 retenu (jamais le contenu d'une page, jamais l'IA d'elle-même) ; les souvenirs sont ajoutés à la consigne système.
 Liste, ajout, suppression et désactivation dans Paramètres › Mémoire de l'IA.

@@ -26,6 +26,9 @@ import { MagasinReglages } from './stockage/reglages'
 import { ClientSocial } from './social/client'
 import { AssistantEcriture } from './ia/ecriture'
 import { MemoireNavigation } from './ia/memoireNavigation'
+import { MiseAJour } from './miseAJour'
+import { ecrireJson, lireJson } from './stockage/fichierJson'
+import { join } from 'node:path'
 import { lirePage } from './ia/lecturePage'
 import { estAdresseAutorisee } from '../shared/adresse'
 import { ouvrirMenuPage } from './navigateur/menuPage'
@@ -179,7 +182,29 @@ if (!app.requestSingleInstanceLock()) {
       return e.phase === 'pret' && modelePresent(reglages.get().modeleTexte, e.modeles)
     }
 
-    enregistrerIpc({ navigation, ecriture, zone: (f) => void zone(f), social, reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, coffre, formulaires, bloqueur, memoire, ranger, ouvrirFichier: (f) => void ouvrirFichier(f), ongletsDe: (f) => onglets.get(f.id) })
+    // mise à jour du navigateur : vérifiée 30 s après le lancement puis toutes les 6 heures, installée à la fermeture
+    const miseAJour = new MiseAJour(() => reglages.get().miseAJourAuto)
+    setTimeout(() => void miseAJour.verifier(), 30_000).unref()
+    setInterval(() => void miseAJour.verifier(), 6 * 3600 * 1000).unref()
+    app.on('will-quit', () => miseAJour.installerALaFermeture())
+
+    // modèles Qwen : quand l'IA est prête, au plus une fois par semaine, Ollama récupère leur dernière version
+    // (seuls les morceaux qui ont changé sont téléchargés)
+    const fichierModeles = join(dossier, 'maj-modeles.json')
+    let modelesVerifies = false
+    ollama.on('change', (e) => {
+      if (modelesVerifies || e.phase !== 'pret' || e.tache || !reglages.get().modelesAuto) return
+      modelesVerifies = true
+      const derniere = (lireJson(fichierModeles) as { date?: number } | null)?.date ?? 0
+      if (Date.now() - derniere < 7 * 24 * 3600 * 1000) return
+      const r = reglages.get()
+      const noms = [r.modeleTexte, r.modeleVision].filter((n) => modelePresent(n, e.modeles))
+      if (!noms.length) return
+      void ecrireJson(fichierModeles, { date: Date.now() }).catch(() => undefined)
+      void ollama.telecharger(noms)
+    })
+
+    enregistrerIpc({ miseAJour, navigation, ecriture, zone: (f) => void zone(f), social, reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, coffre, formulaires, bloqueur, memoire, ranger, ouvrirFichier: (f) => void ouvrirFichier(f), ongletsDe: (f) => onglets.get(f.id) })
 
     const fenetre = creerFenetrePrincipale()
     const idFenetre = fenetre.id

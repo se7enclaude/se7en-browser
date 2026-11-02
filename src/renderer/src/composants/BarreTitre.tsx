@@ -1,6 +1,7 @@
 /* Barre de titre maison : zone de déplacement de la fenêtre et boutons réduire / agrandir / fermer. */
 import { useEffect, useState, type ReactNode } from 'react'
 import type { EtatFenetre } from '../../../shared/ipc'
+import { PastilleMiseAJour } from './MiseAJour'
 
 export function BarreTitre({ children }: { children?: ReactNode }): React.JSX.Element {
   const [etat, setEtat] = useState<EtatFenetre>({ agrandie: false, focus: true })
@@ -13,6 +14,7 @@ export function BarreTitre({ children }: { children?: ReactNode }): React.JSX.El
         <span className="logo-7">7</span>
       </div>
       <div className="barre-titre-centre">{children}</div>
+      <PastilleMiseAJour />
       <div className="boutons-fenetre">
         <button className="bouton-fenetre" title="Réduire" onClick={f.reduire}>
           <svg viewBox="0 0 10 10" aria-hidden><path d="M1 5h8" /></svg>

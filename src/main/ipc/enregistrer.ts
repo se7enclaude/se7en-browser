@@ -25,6 +25,7 @@ import { RE_NOM_MODELE } from '../../shared/ia'
 import type { ClientSocial } from '../social/client'
 import type { AssistantEcriture } from '../ia/ecriture'
 import type { MemoireNavigation } from '../ia/memoireNavigation'
+import type { MiseAJour } from '../miseAJour'
 import { MAX_MESSAGE } from '../../shared/social'
 
 export interface Services {
@@ -43,6 +44,7 @@ export interface Services {
   social: ClientSocial
   ecriture: AssistantEcriture
   navigation: MemoireNavigation
+  miseAJour: MiseAJour
   /** Capture l'onglet actif et l'envoie à l'interface pour choisir une zone. */
   zone: (f: BrowserWindow) => void
   /** Range les onglets de la fenêtre en groupes (IA). */
@@ -318,6 +320,12 @@ export function enregistrerIpc(s: Services): void {
   })
   ipcMain.on(CANAUX.socialLu, (e, ami: unknown) => fenetreDe(e) && estIdSocial(ami) && void social.marquerLu(ami).catch(() => undefined))
   ipcMain.on(CANAUX.socialOuvrirLien, (e, url: unknown) => typeof url === 'string' && estAdresseAutorisee(url) && g(e)?.nouveau(url, { aCote: true }))
+
+  // ---------- mise à jour du navigateur ----------
+  s.miseAJour.on('etat', (e) => diffuser(CANAUX.majChange, e))
+  ipcMain.handle(CANAUX.majEtat, (e) => (fenetreDe(e) ? s.miseAJour.etat() : null))
+  ipcMain.handle(CANAUX.majVerifier, (e) => (fenetreDe(e) ? s.miseAJour.verifier() : null))
+  ipcMain.on(CANAUX.majInstaller, (e) => fenetreDe(e) && s.miseAJour.installerMaintenant())
 
   // ---------- mémoire de navigation ----------
   ipcMain.handle(CANAUX.navigationNombre, (e) => (fenetreDe(e) ? s.navigation.nombre() : 0))

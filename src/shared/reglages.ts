@@ -30,6 +30,10 @@ export interface Reglages {
   memoire: boolean
   /** Mémoire de navigation : le texte des pages visitées, gardé 30 jours sur ce PC pour que l'IA les retrouve. */
   memoireNavigation: boolean
+  /** Le navigateur se met à jour tout seul (téléchargé en arrière-plan, installé à la fermeture). */
+  miseAJourAuto: boolean
+  /** Les modèles Qwen de l'IA locale sont remis à jour une fois par semaine. */
+  modelesAuto: boolean
   /** Adresse du serveur se7en social (profils et amis) ; vide = le serveur officiel. */
   serveurSocial: string
 }
@@ -49,6 +53,8 @@ export const REGLAGES_DEFAUT: Reglages = {
   bloqueurExceptions: [],
   memoire: true,
   memoireNavigation: true,
+  miseAJourAuto: true,
+  modelesAuto: true,
   serveurSocial: ''
 }
 
@@ -96,6 +102,8 @@ export function fusionnerReglages(base: Reglages, brut: unknown): Reglages {
   if (typeof o.bloqueur === 'boolean') r.bloqueur = o.bloqueur
   if (typeof o.memoire === 'boolean') r.memoire = o.memoire
   if (typeof o.memoireNavigation === 'boolean') r.memoireNavigation = o.memoireNavigation
+  if (typeof o.miseAJourAuto === 'boolean') r.miseAJourAuto = o.miseAJourAuto
+  if (typeof o.modelesAuto === 'boolean') r.modelesAuto = o.modelesAuto
   if (typeof o.serveurSocial === 'string') {
     const s = o.serveurSocial.trim()
     const propre = s ? adresseServeur(s) : ''

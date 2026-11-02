@@ -8,6 +8,7 @@ import type { CommandeUi, EtatOnglets } from '../shared/onglets'
 import type { Reglages } from '../shared/reglages'
 import type { EtatSocial, EvenementSocial } from '../shared/social'
 import type { EtatEcriture } from '../shared/ecriture'
+import type { EtatMiseAJour } from '../shared/miseAJour'
 
 function ecouter<T>(canal: string, rappel: (v: T) => void): () => void {
   const f = (_e: IpcRendererEvent, v: T): void => rappel(v)
@@ -131,6 +132,12 @@ const api: ApiSe7en = {
     ajouter: demander(CANAUX.memoireAjouter),
     supprimer: demander(CANAUX.memoireSupprimer),
     effacer: demander(CANAUX.memoireEffacer)
+  },
+  miseAJour: {
+    etat: demander(CANAUX.majEtat),
+    verifier: demander(CANAUX.majVerifier),
+    installer: envoyer(CANAUX.majInstaller),
+    surChangement: (rappel) => ecouter<EtatMiseAJour>(CANAUX.majChange, rappel)
   },
   navigation: {
     nombre: demander(CANAUX.navigationNombre),

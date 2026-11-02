@@ -2983,3 +2983,18 @@ textarea.champ {
   color: var(--ia);
   box-shadow: var(--ia-lueur);
 }
+
+/* ---------- Mise à jour ---------- */
+
+.pastille-maj {
+  -webkit-app-region: no-drag;
+  height: 32px;
+  padding: 0 16px;
+  border-radius: var(--pilule);
+  background: var(--accent);
+  color: var(--sur-accent);
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.5), 0 6px 18px rgb(0 0 0 / 0.22);
+  animation: apparition 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
