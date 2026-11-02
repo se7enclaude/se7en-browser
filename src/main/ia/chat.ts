@@ -12,6 +12,7 @@ import { capturerPage, lirePage } from './lecturePage'
 import type { DocumentsPdf } from '../pdf/documents'
 import { lireTextePdf } from '../pdf/texte'
 import { demandeDeRetenir, demandeDOublier, type Memoire } from './memoire'
+import type { MemoireNavigation } from './memoireNavigation'
 import { lireNdjson } from './ndjson'
 import { API_OLLAMA, type Ollama } from './ollama'
 import { alertesManipulation, construireMessages, titreConversation, type PageLue } from './prompts'
@@ -20,6 +21,9 @@ import { alertesManipulation, construireMessages, titreConversation, type PageLu
 const TAILLE_CONTEXTE = 16384
 /** En dessous, la page n'a presque pas de texte lisible (image, vidéo, canvas) : on regarde une capture. */
 const TEXTE_MINIMUM = 300
+
+/** La question parle de pages déjà vues : on cherche aussi dans la mémoire de navigation. */
+const RE_SOUVENIR_NAVIGATION = /\b(retrouve[rz]?|j['’]ai (lu|vu|regard[ée]|consult[ée])|d[ée]j[aà] (lu|vu)|mon historique|ma navigation)\b/i
 
 /** Captures gardées pour « Demander sur une zone de l'écran » (les plus récentes seulement). */
 const MAX_CAPTURES = 3
@@ -35,7 +39,8 @@ export class ServiceChat extends EventEmitter<{ flux: [FluxChat] }> {
     private readonly documents: DocumentsPdf,
     private readonly memoire: Memoire,
     private readonly reglages: () => Reglages,
-    private readonly onglets: () => GestionnaireOnglets | undefined
+    private readonly onglets: () => GestionnaireOnglets | undefined,
+    private readonly navigation?: MemoireNavigation
   ) {
     super()
   }
@@ -169,6 +174,13 @@ export class ServiceChat extends EventEmitter<{ flux: [FluxChat] }> {
         if (id === idActif && lue.texte.length < TEXTE_MINIMUM && !image) image = (await capturerPage(p.wc)) ?? undefined
       }
       const r = this.reglages()
+      // « retrouve l'article que j'ai lu… » : les pages vues ces 30 derniers jours qui correspondent le mieux
+      if (this.navigation && r.memoireNavigation && (d.avecNavigation || RE_SOUVENIR_NAVIGATION.test(d.texte))) {
+        for (const t of this.navigation.chercher(d.texte, 5)) {
+          const quand = new Date(t.page.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+          pages.push({ titre: `${t.page.titre || t.page.url} (vue le ${quand})`, url: t.page.url, texte: t.extrait })
+        }
+      }
       const etat = this.ollama.etat()
       const visionDispo = modelePresent(r.modeleVision, etat.modeles)
       // une zone choisie par l'utilisateur passe avant la capture automatique

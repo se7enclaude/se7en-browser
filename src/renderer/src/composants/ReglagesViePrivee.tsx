@@ -96,3 +96,39 @@ export function ReglagesMemoire({ reglages, modifier }: Props): React.JSX.Elemen
     </section>
   )
 }
+
+/** Mémoire de navigation : pages vues ces 30 derniers jours, pour que l'IA les retrouve. */
+export function ReglagesNavigation({ reglages, modifier }: Props): React.JSX.Element {
+  const [nombre, setNombre] = useState(0)
+  useEffect(() => {
+    window.se7en.navigation.nombre().then(setNombre)
+  }, [reglages.memoireNavigation])
+
+  return (
+    <section className="bloc verre-fort">
+      <h2>Mémoire de navigation</h2>
+      <div className="ligne-reglage">
+        <span>L'IA peut retrouver les pages que j'ai vues</span>
+        <Interrupteur label="Mémoire de navigation" actif={reglages.memoireNavigation} changer={(v) => modifier({ memoireNavigation: v })} />
+      </div>
+      <p className="discret petit">
+        Le texte des pages visitées est gardé sur ce PC pendant 30 jours, puis effacé tout seul. Les pages avec un mot de passe (connexion, paiement) ne sont
+        jamais gardées. Demande par exemple dans le panneau IA : « retrouve l'article sur les SSD que j'ai lu cette semaine ».
+      </p>
+      <div className="ligne-reglage">
+        <span className="discret">
+          {nombre} page{nombre > 1 ? 's' : ''} en mémoire
+        </span>
+        <button
+          className="bouton-verre"
+          disabled={nombre === 0}
+          onClick={async () => {
+            if (confirm('Effacer toute la mémoire de navigation ? L’historique et les favoris ne sont pas touchés.')) setNombre(await window.se7en.navigation.effacer())
+          }}
+        >
+          Effacer
+        </button>
+      </div>
+    </section>
+  )
+}

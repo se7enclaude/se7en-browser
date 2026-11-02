@@ -118,7 +118,9 @@ export const CANAUX = {
   ecritureAppliquer: 'ecriture:appliquer',
   ecritureAnnuler: 'ecriture:annuler',
   iaZone: 'ia:zone',
-  iaInserer: 'ia:inserer'
+  iaInserer: 'ia:inserer',
+  navigationNombre: 'navigation:nombre',
+  navigationEffacer: 'navigation:effacer'
 } as const
 
 export interface EtatFenetre {
@@ -262,6 +264,11 @@ export interface ApiSe7en {
     ajouter(texte: string): Promise<Souvenir[]>
     supprimer(id: string): Promise<Souvenir[]>
     effacer(): Promise<Souvenir[]>
+  }
+  navigation: {
+    /** Nombre de pages gardées dans la mémoire de navigation. */
+    nombre(): Promise<number>
+    effacer(): Promise<number>
   }
   ecriture: {
     /** Proposition de réécriture en cours (null : aucune). */

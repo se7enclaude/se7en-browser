@@ -6,7 +6,7 @@ import { modelePresent } from '../../../shared/ia'
 import { adresseServeur, SERVEUR_SOCIAL_OFFICIEL } from '../../../shared/social'
 import { ChoixDisposition, ChoixTeinte, ChoixTheme } from './ChoixApparence'
 import { EditeurCoffre } from './EditeurCoffre'
-import { ReglagesBloqueur, ReglagesMemoire } from './ReglagesViePrivee'
+import { ReglagesBloqueur, ReglagesMemoire, ReglagesNavigation } from './ReglagesViePrivee'
 import { EditeurSkills } from './EditeurSkills'
 import { useOllama } from './PageIA'
 
@@ -122,6 +122,8 @@ export function Parametres({ reglages, modifier, infos }: Props): React.JSX.Elem
       <ReglagesBloqueur reglages={reglages} modifier={modifier} />
 
       <ReglagesMemoire reglages={reglages} modifier={modifier} />
+
+      <ReglagesNavigation reglages={reglages} modifier={modifier} />
 
       <ReglagesSocial reglages={reglages} modifier={modifier} />
 

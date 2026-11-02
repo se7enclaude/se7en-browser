@@ -64,21 +64,22 @@ const SCRIPT = `(() => {
       else el.style.removeProperty('display')
     }
   }
-  return { titre: document.title || '', selection: String(window.getSelection() || '').slice(0, 5000), texte, caches: caches.length }
+  return { titre: document.title || '', selection: String(window.getSelection() || '').slice(0, 5000), texte, caches: caches.length, motDePasse: !!document.querySelector('input[type="password"]') }
 })()`
 
 export async function lirePage(wc: WebContents, url: string): Promise<PageLue> {
   try {
     // le résultat est celui de la dernière expression du script : ici, un objet
     const v = (await wc.executeJavaScriptInIsolatedWorld(MONDE_ISOLE, [{ code: SCRIPT }])) as
-      | { titre?: unknown; selection?: unknown; texte?: unknown; caches?: unknown }
+      | { titre?: unknown; selection?: unknown; texte?: unknown; caches?: unknown; motDePasse?: unknown }
       | undefined
     return {
       titre: typeof v?.titre === 'string' ? v.titre : wc.getTitle(),
       url,
       selection: typeof v?.selection === 'string' ? v.selection : '',
       texte: typeof v?.texte === 'string' ? v.texte.slice(0, MAX_TEXTE) : '',
-      textesCaches: typeof v?.caches === 'number' ? v.caches : 0
+      textesCaches: typeof v?.caches === 'number' ? v.caches : 0,
+      motDePasse: v?.motDePasse === true
     }
   } catch {
     return { titre: wc.getTitle(), url, texte: '' }

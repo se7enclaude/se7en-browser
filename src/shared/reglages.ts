@@ -28,6 +28,8 @@ export interface Reglages {
   bloqueurExceptions: string[]
   /** L'IA se souvient de ce qu'on lui demande de retenir. */
   memoire: boolean
+  /** Mémoire de navigation : le texte des pages visitées, gardé 30 jours sur ce PC pour que l'IA les retrouve. */
+  memoireNavigation: boolean
   /** Adresse du serveur se7en social (profils et amis) ; vide = le serveur officiel. */
   serveurSocial: string
 }
@@ -46,6 +48,7 @@ export const REGLAGES_DEFAUT: Reglages = {
   bloqueur: true,
   bloqueurExceptions: [],
   memoire: true,
+  memoireNavigation: true,
   serveurSocial: ''
 }
 
@@ -92,6 +95,7 @@ export function fusionnerReglages(base: Reglages, brut: unknown): Reglages {
   if (typeof o.modeleTexte === 'string' && /^[\w.:\-/]{1,100}$/.test(o.modeleTexte)) r.modeleTexte = o.modeleTexte
   if (typeof o.bloqueur === 'boolean') r.bloqueur = o.bloqueur
   if (typeof o.memoire === 'boolean') r.memoire = o.memoire
+  if (typeof o.memoireNavigation === 'boolean') r.memoireNavigation = o.memoireNavigation
   if (typeof o.serveurSocial === 'string') {
     const s = o.serveurSocial.trim()
     const propre = s ? adresseServeur(s) : ''

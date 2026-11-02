@@ -70,6 +70,7 @@ export function PanneauIA({ etat, actif, ia, reglages, ouvert, fermer, demande }
   const [enCours, setEnCours] = useState<{ idReponse: string; etape: Etape } | null>(null)
   const [saisie, setSaisie] = useState('')
   const [avecPage, setAvecPage] = useState(true)
+  const [avecNavigation, setAvecNavigation] = useState(false)
   const [mentions, setMentions] = useState<number[]>([])
   const [vue, setVue] = useState<'chat' | 'historique'>('chat')
   const [historique, setHistorique] = useState<ResumeConversation[]>([])
@@ -154,7 +155,7 @@ export function PanneauIA({ etat, actif, ia, reglages, ouvert, fermer, demande }
     const avecPageActive = options.avecPage ?? (avecPage && !!pageActive)
     const id = options.nouvelle ? null : idConversation
     setAvertissement(null)
-    const r = await window.se7en.chat.envoyer({ idConversation: id, texte, avecPageActive, idsOnglets: mentions, zone: options.zone })
+    const r = await window.se7en.chat.envoyer({ idConversation: id, texte, avecPageActive, idsOnglets: mentions, zone: options.zone, avecNavigation: avecNavigation && reglages.memoireNavigation })
     if ('erreur' in r) {
       setAvertissement(r.erreur)
       return
@@ -388,6 +389,16 @@ export function PanneauIA({ etat, actif, ia, reglages, ouvert, fermer, demande }
                 <button className={`chip${avecPage ? ' actif' : ''}`} title={avecPage ? 'La page est jointe à ta question' : 'Joindre la page'} onClick={() => setAvecPage((v) => !v)}>
                   <IconeOnglet onglet={pageActive} />
                   <span>{avecPage ? pageActive.titre : 'Joindre la page'}</span>
+                </button>
+              )}
+              {reglages.memoireNavigation && (
+                <button
+                  className={`chip${avecNavigation ? ' actif' : ''}`}
+                  title="Chercher aussi dans les pages vues ces 30 derniers jours"
+                  onClick={() => setAvecNavigation((v) => !v)}
+                >
+                  <IconeHistorique />
+                  <span>Ma navigation</span>
                 </button>
               )}
               {pageActive && estGmail(pageActive.url) && (

@@ -132,6 +132,10 @@ const api: ApiSe7en = {
     supprimer: demander(CANAUX.memoireSupprimer),
     effacer: demander(CANAUX.memoireEffacer)
   },
+  navigation: {
+    nombre: demander(CANAUX.navigationNombre),
+    effacer: demander(CANAUX.navigationEffacer)
+  },
   ecriture: {
     surEtat: (rappel) => ecouter<EtatEcriture | null>(CANAUX.ecritureEtat, rappel),
     appliquer: envoyer(CANAUX.ecritureAppliquer),

@@ -24,6 +24,7 @@ import type { Memoire } from '../ia/memoire'
 import { RE_NOM_MODELE } from '../../shared/ia'
 import type { ClientSocial } from '../social/client'
 import type { AssistantEcriture } from '../ia/ecriture'
+import type { MemoireNavigation } from '../ia/memoireNavigation'
 import { MAX_MESSAGE } from '../../shared/social'
 
 export interface Services {
@@ -41,6 +42,7 @@ export interface Services {
   memoire: Memoire
   social: ClientSocial
   ecriture: AssistantEcriture
+  navigation: MemoireNavigation
   /** Capture l'onglet actif et l'envoie à l'interface pour choisir une zone. */
   zone: (f: BrowserWindow) => void
   /** Range les onglets de la fenêtre en groupes (IA). */
@@ -316,6 +318,13 @@ export function enregistrerIpc(s: Services): void {
   })
   ipcMain.on(CANAUX.socialLu, (e, ami: unknown) => fenetreDe(e) && estIdSocial(ami) && void social.marquerLu(ami).catch(() => undefined))
   ipcMain.on(CANAUX.socialOuvrirLien, (e, url: unknown) => typeof url === 'string' && estAdresseAutorisee(url) && g(e)?.nouveau(url, { aCote: true }))
+
+  // ---------- mémoire de navigation ----------
+  ipcMain.handle(CANAUX.navigationNombre, (e) => (fenetreDe(e) ? s.navigation.nombre() : 0))
+  ipcMain.handle(CANAUX.navigationEffacer, (e) => {
+    if (fenetreDe(e)) s.navigation.effacer()
+    return s.navigation.nombre()
+  })
 
   // ---------- aide à l'écriture, zone de l'écran, insertion ----------
   ecriture.on('etat', (e) => diffuser(CANAUX.ecritureEtat, e))

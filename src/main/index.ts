@@ -25,6 +25,9 @@ import { MagasinPrioritaires } from './stockage/prioritaires'
 import { MagasinReglages } from './stockage/reglages'
 import { ClientSocial } from './social/client'
 import { AssistantEcriture } from './ia/ecriture'
+import { MemoireNavigation } from './ia/memoireNavigation'
+import { lirePage } from './ia/lecturePage'
+import { estAdresseAutorisee } from '../shared/adresse'
 import { ouvrirMenuPage } from './navigateur/menuPage'
 import { SERVEUR_SOCIAL_OFFICIEL } from '../shared/social'
 
@@ -110,7 +113,11 @@ if (!app.requestSingleInstanceLock()) {
     const skills = new Skills(dossier)
     app.on('before-quit', () => conversations.vider())
     // le chat lit les onglets de la fenêtre principale (une seule fenêtre pour l'instant)
-    const chat = new ServiceChat(ollama, conversations, skills, documents, memoire, () => reglages.get(), () => [...onglets.values()][0])
+    // mémoire de navigation : pages vues ces 30 derniers jours (le ménage se fait au lancement, puis toutes les 6 heures)
+    const navigation = new MemoireNavigation(dossier)
+    navigation.purger()
+    setInterval(() => navigation.purger(), 6 * 3600 * 1000).unref()
+    const chat = new ServiceChat(ollama, conversations, skills, documents, memoire, () => reglages.get(), () => [...onglets.values()][0], navigation)
 
     /** L'IA range les onglets par sujet (titres et sites seulement). */
     const ranger = async (g: GestionnaireOnglets): Promise<{ groupes: number } | { erreur: string }> => {
@@ -172,7 +179,7 @@ if (!app.requestSingleInstanceLock()) {
       return e.phase === 'pret' && modelePresent(reglages.get().modeleTexte, e.modeles)
     }
 
-    enregistrerIpc({ ecriture, zone: (f) => void zone(f), social, reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, coffre, formulaires, bloqueur, memoire, ranger, ouvrirFichier: (f) => void ouvrirFichier(f), ongletsDe: (f) => onglets.get(f.id) })
+    enregistrerIpc({ navigation, ecriture, zone: (f) => void zone(f), social, reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, coffre, formulaires, bloqueur, memoire, ranger, ouvrirFichier: (f) => void ouvrirFichier(f), ongletsDe: (f) => onglets.get(f.id) })
 
     const fenetre = creerFenetrePrincipale()
     const idFenetre = fenetre.id
@@ -184,6 +191,17 @@ if (!app.requestSingleInstanceLock()) {
       sauverPrioritaires: (liste) => prioritaires.sauver(liste),
       journal: { visite: (url, titre) => historique.ajouter(url, titre), titre: (url, titre) => historique.majTitre(url, titre) },
       documentPdf: (id) => documents.lire(id),
+      // une page chargée est lue un peu plus tard (le temps qu'elle s'affiche), puis gardée dans la mémoire de navigation
+      pageChargee: (wc, etat) => {
+        if (!reglages.get().memoireNavigation) return
+        const url = etat.url
+        setTimeout(async () => {
+          if (wc.isDestroyed() || wc.getURL() !== url || !estAdresseAutorisee(url)) return
+          const p = await lirePage(wc, url)
+          if (p.motDePasse) return // page de connexion ou de paiement : jamais gardée
+          await navigation.enregistrer({ url, titre: p.titre, date: Date.now(), texte: p.texte }).catch(() => false)
+        }, 2500)
+      },
       menuPage: (idOnglet, wc, params) => {
         const commande = (c: unknown): void => fenetre.webContents.send(CANAUX.uiCommande, c)
         ouvrirMenuPage(fenetre, wc, params, {

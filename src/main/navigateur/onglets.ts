@@ -31,6 +31,8 @@ export interface OptionsGestionnaire {
   documentPdf?: (id: string) => { url: string; nom: string } | undefined
   /** Clic droit dans une page. */
   menuPage?: (idOnglet: number, wc: WebContents, params: ContextMenuParams) => void
+  /** Une page a fini de charger (mémoire de navigation). */
+  pageChargee?: (wc: WebContents, etat: EtatOnglet) => void
 }
 
 const RAYON_PAGE = 27 // rayon du cadre de page (28) moins le liseré
@@ -543,6 +545,7 @@ export class GestionnaireOnglets {
       maj()
       // le titre et l'icône d'un onglet prioritaire sont gardés pour la prochaine session
       if (o.etat.prioritaire) this.sauverPrioritaires()
+      if (!o.etat.pdf && estAdresseAutorisee(o.etat.url)) this.options.pageChargee?.(wc, o.etat)
     })
     wc.on('did-navigate', (_e, url) => {
       o.etat.favicon = null

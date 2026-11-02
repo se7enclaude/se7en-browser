@@ -21,6 +21,8 @@ export interface PageLue {
   selection?: string
   /** Nombre de passages invisibles retirés à la lecture (texte caché). */
   textesCaches?: number
+  /** La page contient un champ de mot de passe (elle n'est pas gardée dans la mémoire de navigation). */
+  motDePasse?: boolean
 }
 
 /** Formules typiques d'une injection de prompt (français et anglais). */
