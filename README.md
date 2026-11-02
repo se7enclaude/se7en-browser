@@ -224,4 +224,4 @@ tests/         tests Vitest
 8b. ✅ Bloqueur de pubs et traqueurs, onglets rangés par l'IA, mémoire
 8c. ✅ Profils et amis (serveur Cloudflare, testé en local ; pas encore mis en ligne)
 9. ✅ Installeur Windows (Inno Setup)
-10. Publication et ajout dans Seventh OS
+10. ✅ Publication (v1.0.0) et ajout dans Seventh OS
