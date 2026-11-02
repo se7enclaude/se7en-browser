@@ -139,5 +139,6 @@ export function enregistrerIpc(s: Services): void {
     if (valides.length) void ollama.telecharger(valides)
   })
   ipcMain.on(CANAUX.iaAnnuler, (e) => fenetreDe(e) && ollama.annuler())
+  ipcMain.on(CANAUX.iaArreter, (e) => fenetreDe(e) && ollama.arreter())
   ollama.on('change', (etat) => diffuser(CANAUX.iaChange, etat))
 }

@@ -26,6 +26,8 @@ export interface EtatOllama {
   modeles: string[]
   tache: TacheOllama | null
   erreur: string | null
+  /** Vrai si c'est le navigateur qui a lancé Ollama (il l'arrêtera en se fermant). */
+  lanceParNavigateur: boolean
 }
 
 /** Taille approximative des modèles proposés, pour prévenir avant le téléchargement. */

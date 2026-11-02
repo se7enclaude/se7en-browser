@@ -7,7 +7,8 @@ import { BarreTitre } from './composants/BarreTitre'
 import { NouvelOnglet } from './composants/NouvelOnglet'
 import { OngletsHaut } from './composants/OngletsHaut'
 import { PageFavoris, PageHistorique, PageTelechargements } from './composants/PagesDonnees'
-import { PageIA } from './composants/PageIA'
+import { PageIA, useOllama } from './composants/PageIA'
+import { QuestionIA } from './composants/QuestionIA'
 import { Parametres } from './composants/Parametres'
 import { ZonePage } from './composants/ZonePage'
 import { useGlisser } from './useGlisser'
@@ -20,6 +21,7 @@ export function App(): React.JSX.Element {
   useAttributsTheme(reglages, infos)
   const { etat, actif } = useOnglets()
   const glisser = useGlisser()
+  const ia = useOllama()
 
   const disposition = reglages?.disposition ?? 'les-deux'
   const barreDispo = disposition !== 'haut'
@@ -61,6 +63,7 @@ export function App(): React.JSX.Element {
             enSplit={enSplit}
             barre={barreDispo ? { ouverte: barreOuverte, basculer: () => modifier({ barreLaterale: !barreOuverte }) } : null}
           />
+          {reglages && <QuestionIA reglages={reglages} modifier={modifier} ia={ia} />}
           <ZonePage etat={etat} contenu={contenu} />
         </div>
       </div>

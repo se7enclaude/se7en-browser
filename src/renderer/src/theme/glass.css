@@ -1292,3 +1292,43 @@ kbd {
 .accueil .bouton-principal {
   align-self: auto;
 }
+/* ---------- Barre « Activer l'IA locale ? » ---------- */
+
+.barre-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 6px;
+  padding: 8px 10px 8px 14px;
+  border-radius: 12px;
+  background: rgb(var(--teinte) / 0.22);
+  border: 1px solid var(--verre-bord);
+  animation: barre-info-entre 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.barre-info > .icone {
+  color: var(--accent);
+}
+.barre-info-texte {
+  flex: 1;
+  min-width: 0;
+}
+.barre-info .bouton-principal,
+.barre-info .bouton-verre {
+  padding: 6px 14px;
+}
+.case {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--texte-discret);
+  white-space: nowrap;
+}
+.case input {
+  accent-color: var(--accent);
+}
+@keyframes barre-info-entre {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}

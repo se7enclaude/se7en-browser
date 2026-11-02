@@ -95,14 +95,14 @@ export function PageIA({ reglages }: { reglages: Reglages }): React.JSX.Element 
         )}
       </Etape>
 
-      <Etape numero={2} titre="Démarrer Ollama" fait={pret} actif={etat.phase === 'arrete' || t?.type === 'demarrage'}>
+      <Etape numero={2} titre="Activer l'IA" fait={pret} actif={etat.phase === 'arrete' || t?.type === 'demarrage'}>
         {t?.type === 'demarrage' ? (
-          <Progression recus={0} total={0} texte="Démarrage d'Ollama…" />
+          <Progression recus={0} total={0} texte="Activation de l'IA…" />
         ) : (
           <>
-            <p className="discret">Ollama est installé mais ne tourne pas.</p>
+            <p className="discret">Ollama est installé mais pas activé. Il ne démarre jamais avec Windows : seulement quand tu l'actives ici, et il s'arrête quand tu fermes le navigateur.</p>
             <button className="bouton-principal" onClick={() => ia.demarrer()}>
-              Démarrer Ollama
+              Activer l'IA
             </button>
           </>
         )}
@@ -153,6 +153,11 @@ export function PageIA({ reglages }: { reglages: Reglages }): React.JSX.Element 
         <section className="bloc verre-fort tout-pret">
           <h2>✓ L'IA locale est prête</h2>
           <p className="discret">Ollama {etat.version} tourne sur ton PC. Le panneau IA (Ctrl+Espace) arrive dans la prochaine version.</p>
+          {etat.lanceParNavigateur && (
+            <button className="bouton-verre" onClick={() => ia.arreter()}>
+              Désactiver l'IA
+            </button>
+          )}
         </section>
       )}
     </div>

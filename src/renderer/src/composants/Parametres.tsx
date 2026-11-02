@@ -37,10 +37,10 @@ export function Parametres({ reglages, modifier, infos }: Props): React.JSX.Elem
     : ia.phase === 'absent'
       ? "Ollama n'est pas installé."
       : ia.phase === 'arrete'
-        ? "Ollama est installé mais arrêté."
+        ? "Installée, pas activée."
         : ia.phase === 'pret'
           ? modelePresent(reglages.modeleTexte, ia.modeles)
-            ? `Prêt · Ollama ${ia.version}`
+            ? `Activée · Ollama ${ia.version}`
             : 'Ollama tourne, le modèle texte manque.'
           : 'Vérification…'
   return (
@@ -90,7 +90,7 @@ export function Parametres({ reglages, modifier, infos }: Props): React.JSX.Elem
 
       <section className="bloc verre-fort">
         <h2>IA locale (Ollama)</h2>
-        <p className="discret">Tout tourne sur ton PC : rien n'est envoyé sur Internet.</p>
+        <p className="discret">Tout tourne sur ton PC : rien n'est envoyé sur Internet. Ollama ne démarre jamais avec Windows, seulement avec le navigateur.</p>
         <div className="ligne-reglage">
           <span>Modèle texte</span>
           <ChampModele valeur={reglages.modeleTexte} changer={(v) => modifier({ modeleTexte: v })} />
@@ -98,6 +98,14 @@ export function Parametres({ reglages, modifier, infos }: Props): React.JSX.Elem
         <div className="ligne-reglage">
           <span>Modèle vision</span>
           <ChampModele valeur={reglages.modeleVision} changer={(v) => modifier({ modeleVision: v })} />
+        </div>
+        <div className="ligne-reglage">
+          <span>À l'ouverture du navigateur</span>
+          <select className="champ" value={reglages.iaDemarrage} onChange={(e) => modifier({ iaDemarrage: e.target.value as Reglages['iaDemarrage'] })}>
+            <option value="demander">Me demander</option>
+            <option value="toujours">Activer l'IA</option>
+            <option value="jamais">Ne pas activer</option>
+          </select>
         </div>
         <div className="ligne-reglage">
           <span className="discret">{texteEtatIA}</span>

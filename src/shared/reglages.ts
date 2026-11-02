@@ -3,6 +3,8 @@
 export type Theme = 'clair' | 'sombre' | 'auto'
 export type Disposition = 'haut' | 'gauche' | 'les-deux'
 /** Teinte du verre (thèmes de couleur). */
+/** Activer l'IA locale à l'ouverture du navigateur : demander à chaque fois, toujours, ou jamais. */
+export type DemarrageIA = 'demander' | 'toujours' | 'jamais'
 export type Teinte = 'argent' | 'soleil' | 'ocean' | 'rose' | 'menthe' | 'lavande'
 
 export interface Reglages {
@@ -18,6 +20,7 @@ export interface Reglages {
   moteurRecherche: string
   modeleTexte: string
   modeleVision: string
+  iaDemarrage: DemarrageIA
 }
 
 export const REGLAGES_DEFAUT: Reglages = {
@@ -29,7 +32,8 @@ export const REGLAGES_DEFAUT: Reglages = {
   accueilTermine: false,
   moteurRecherche: 'https://www.google.com/search?q=%s',
   modeleTexte: 'qwen3:8b',
-  modeleVision: 'qwen3-vl:8b'
+  modeleVision: 'qwen3-vl:8b',
+  iaDemarrage: 'demander'
 }
 
 const THEMES: readonly Theme[] = ['clair', 'sombre', 'auto']
@@ -73,6 +77,7 @@ export function fusionnerReglages(base: Reglages, brut: unknown): Reglages {
   if (typeof o.accueilTermine === 'boolean') r.accueilTermine = o.accueilTermine
   if (typeof o.moteurRecherche === 'string' && /^https:\/\/[^\s]+%s/.test(o.moteurRecherche)) r.moteurRecherche = o.moteurRecherche
   if (typeof o.modeleTexte === 'string' && /^[\w.:\-/]{1,100}$/.test(o.modeleTexte)) r.modeleTexte = o.modeleTexte
+  if (['demander', 'toujours', 'jamais'].includes(o.iaDemarrage as string)) r.iaDemarrage = o.iaDemarrage as DemarrageIA
   if (typeof o.modeleVision === 'string' && /^[\w.:\-/]{1,100}$/.test(o.modeleVision)) r.modeleVision = o.modeleVision
   return r
 }

@@ -85,6 +85,7 @@ const api: ApiSe7en = {
     verifier: demander(CANAUX.iaVerifier),
     installer: envoyer(CANAUX.iaInstaller),
     demarrer: envoyer(CANAUX.iaDemarrer),
+    arreter: envoyer(CANAUX.iaArreter),
     telecharger: envoyer(CANAUX.iaTelecharger),
     annuler: envoyer(CANAUX.iaAnnuler),
     surChangement: (rappel) => ecouter<EtatOllama>(CANAUX.iaChange, rappel)

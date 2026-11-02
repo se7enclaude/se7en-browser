@@ -42,6 +42,11 @@ Historique, favoris et téléchargements restent sur le PC (`historique.json`, `
 administrateur), le démarre, puis télécharge les modèles avec leur progression. Par défaut : `qwen3:8b` (texte, ≈ 5,2 Go)
 et `qwen3-vl:8b` (vision, ≈ 6,1 Go, facultatif). Ollama ne répond que sur `127.0.0.1:11434`.
 
+Ollama **ne démarre jamais avec Windows** : à l'ouverture du navigateur, une barre demande « Activer l'IA locale ? »
+(réglable dans les Paramètres : me demander / toujours / jamais). Le navigateur lance alors `ollama serve` sans fenêtre
+et l'arrête en se fermant. Après l'installation, l'appli Ollama lancée par l'installeur est fermée et tout démarrage
+automatique (dossier Démarrage, clé Run) est retiré.
+
 ## Tester sans toucher à son profil
 
 `SE7EN_PROFIL_TEST=<dossier>` lance le navigateur avec un profil à part (réglages, onglets, cookies),

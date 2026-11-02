@@ -63,6 +63,7 @@ export const CANAUX = {
   iaDemarrer: 'ia:demarrer',
   iaTelecharger: 'ia:telecharger',
   iaAnnuler: 'ia:annuler',
+  iaArreter: 'ia:arreter',
   iaChange: 'ia:change' // main → interface
 } as const
 
@@ -152,7 +153,10 @@ export interface ApiSe7en {
     verifier(): Promise<EtatOllama>
     /** Télécharge l'installeur officiel d'Ollama, vérifie sa signature et l'installe. */
     installer(): void
+    /** Active l'IA : lance Ollama pour la durée de la session du navigateur. */
     demarrer(): void
+    /** Désactive l'IA (si c'est le navigateur qui l'a lancée). */
+    arreter(): void
     /** Télécharge ces modèles (noms Ollama, ex. « qwen3:8b »). */
     telecharger(noms: string[]): void
     annuler(): void

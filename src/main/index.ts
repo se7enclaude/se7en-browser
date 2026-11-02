@@ -44,8 +44,13 @@ if (!app.requestSingleInstanceLock()) {
     // l'historique est écrit par paquets : on vide ce qui attend avant de quitter
     app.on('before-quit', () => historique.vider())
 
+    // L'IA locale ne démarre qu'avec l'accord de l'utilisateur (réglage « toujours », ou sa réponse à la question),
+    // et s'arrête avec le navigateur.
     const ollama = new Ollama()
-    void ollama.verifier()
+    void ollama.verifier().then((e) => {
+      if (e.phase === 'arrete' && reglages.get().iaDemarrage === 'toujours') void ollama.demarrer()
+    })
+    app.on('will-quit', () => ollama.arreter())
 
     enregistrerIpc({ reglages, historique, favoris, telechargements, ollama, ongletsDe: (f) => onglets.get(f.id) })
 
