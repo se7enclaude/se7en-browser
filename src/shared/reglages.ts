@@ -11,6 +11,8 @@ export interface Reglages {
   theme: Theme
   teinte: Teinte
   disposition: Disposition
+  /** Barre latérale affichée (Ctrl+B). */
+  barreLaterale: boolean
   /** Faux tant que l'écran d'accueil du premier lancement n'a pas été validé. */
   accueilTermine: boolean
   moteurRecherche: string
@@ -23,6 +25,7 @@ export const REGLAGES_DEFAUT: Reglages = {
   theme: 'auto',
   teinte: 'argent',
   disposition: 'les-deux',
+  barreLaterale: true,
   accueilTermine: false,
   moteurRecherche: 'https://www.google.com/search?q=%s',
   modeleTexte: 'qwen3:8b',
@@ -31,6 +34,15 @@ export const REGLAGES_DEFAUT: Reglages = {
 
 const THEMES: readonly Theme[] = ['clair', 'sombre', 'auto']
 const DISPOSITIONS: readonly Disposition[] = ['haut', 'gauche', 'les-deux']
+/** Moteurs proposés dans les paramètres. */
+export const MOTEURS = [
+  { nom: 'Google', url: 'https://www.google.com/search?q=%s' },
+  { nom: 'DuckDuckGo', url: 'https://duckduckgo.com/?q=%s' },
+  { nom: 'Bing', url: 'https://www.bing.com/search?q=%s' },
+  { nom: 'Qwant', url: 'https://www.qwant.com/?q=%s' },
+  { nom: 'Ecosia', url: 'https://www.ecosia.org/search?q=%s' }
+] as const
+
 export const TEINTES: readonly Teinte[] = ['argent', 'soleil', 'ocean', 'rose', 'menthe', 'lavande']
 
 /**
@@ -44,6 +56,7 @@ export function fusionnerReglages(base: Reglages, brut: unknown): Reglages {
   if (THEMES.includes(o.theme as Theme)) r.theme = o.theme as Theme
   if (TEINTES.includes(o.teinte as Teinte)) r.teinte = o.teinte as Teinte
   if (DISPOSITIONS.includes(o.disposition as Disposition)) r.disposition = o.disposition as Disposition
+  if (typeof o.barreLaterale === 'boolean') r.barreLaterale = o.barreLaterale
   if (typeof o.accueilTermine === 'boolean') r.accueilTermine = o.accueilTermine
   if (typeof o.moteurRecherche === 'string' && /^https:\/\/[^\s]+%s/.test(o.moteurRecherche)) r.moteurRecherche = o.moteurRecherche
   if (typeof o.modeleTexte === 'string' && /^[\w.:\-/]{1,100}$/.test(o.modeleTexte)) r.modeleTexte = o.modeleTexte

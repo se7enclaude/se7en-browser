@@ -6,6 +6,7 @@ import { estAdresseInterface } from '../securite/politiques'
 import type { MagasinReglages } from '../stockage/reglages'
 import { appliquerTheme, effetNatifDisponible } from '../fenetre/fenetrePrincipale'
 import type { GestionnaireOnglets } from '../navigateur/onglets'
+import { ouvrirMenuOnglet } from '../navigateur/menuOnglet'
 
 function fenetreDe(e: IpcMainEvent | IpcMainInvokeEvent): BrowserWindow | null {
   // Une page web (onglet) n'a pas accès à ces canaux : seul le code de l'interface peut les appeler.
@@ -45,7 +46,15 @@ export function enregistrerIpc(reglages: MagasinReglages, ongletsDe: (f: Browser
   ipcMain.on(CANAUX.ongletsNouveau, (e, saisie: unknown) => g(e)?.nouveau(estTexte(saisie) ? saisie : ''))
   ipcMain.on(CANAUX.ongletsFermer, (e, id: unknown) => estId(id) && g(e)?.fermer(id))
   ipcMain.on(CANAUX.ongletsActiver, (e, id: unknown) => estId(id) && g(e)?.activer(id))
-  ipcMain.on(CANAUX.ongletsDeplacer, (e, id: unknown, index: unknown) => estId(id) && estId(index) && g(e)?.deplacer(id, index))
+  ipcMain.on(CANAUX.ongletsDeplacer, (e, id: unknown, versId: unknown) => estId(id) && estId(versId) && g(e)?.deplacer(id, versId))
+  ipcMain.on(CANAUX.ongletsMenu, (e, id: unknown) => {
+    const f = fenetreDe(e)
+    const go = f && ongletsDe(f)
+    if (f && go && estId(id)) ouvrirMenuOnglet(f, go, id)
+  })
+  ipcMain.on(CANAUX.ongletsPrioritaire, (e, id: unknown, oui: unknown) => estId(id) && g(e)?.definirPrioritaire(id, oui === true))
+  ipcMain.on(CANAUX.ongletsMasquer, (e, oui: unknown) => g(e)?.definirMasque(oui === true))
+  ipcMain.on(CANAUX.ongletsParametres, (e) => g(e)?.ouvrirInterne('se7en://parametres'))
   ipcMain.on(CANAUX.ongletsNaviguer, (e, id: unknown, saisie: unknown) => estId(id) && estTexte(saisie) && g(e)?.naviguer(id, saisie))
   ipcMain.on(CANAUX.ongletsPrecedent, (e, id: unknown) => estId(id) && g(e)?.precedent(id))
   ipcMain.on(CANAUX.ongletsSuivant, (e, id: unknown) => estId(id) && g(e)?.suivant(id))

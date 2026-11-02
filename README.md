@@ -3,7 +3,7 @@
 Un navigateur web pour Windows au design « Liquid Glass », avec une IA qui tourne sur ton PC (Ollama + Qwen).
 Il fait partie de la suite se7en et s'installe depuis **Seventh OS**.
 
-> En construction : étapes 1 et 2 terminées. Voir « Avancement » plus bas.
+> En construction : étapes 1 à 3 terminées. Voir « Avancement » plus bas.
 
 ## Raccourcis
 
@@ -17,8 +17,18 @@ Il fait partie de la suite se7en et s'installe depuis **Seventh OS**.
 | Ctrl+L, Alt+D, F6 | aller dans la barre d'adresse |
 | F5, Ctrl+R (Ctrl+F5 : sans cache) | actualiser |
 | Alt+← / Alt+→ | page précédente / suivante |
+| Ctrl+B | afficher / cacher la barre latérale |
+| Ctrl+, | paramètres |
 
-Clic molette sur un onglet : le fermer. Glisser un onglet : le déplacer.
+Clic molette sur un onglet : le fermer. Glisser un onglet : le déplacer. Clic droit : épingler en prioritaire, dupliquer, fermer les autres.
+
+**Onglets prioritaires** : épinglés dans la barre latérale (glisser un onglet dedans, ou clic droit). Ils sont gardés
+d'une session à l'autre et ne se chargent qu'à l'ouverture. Les fermer les met en veille et les ramène à leur adresse d'origine.
+
+## Tester sans toucher à son profil
+
+`SE7EN_PROFIL_TEST=<dossier>` lance le navigateur avec un profil à part (réglages, onglets, cookies),
+et la fenêtre s'ouvre sans prendre le focus.
 
 ## Installer et lancer (développement)
 
@@ -71,7 +81,7 @@ tests/         tests Vitest
 
 1. ✅ Coque : fenêtre sans cadre, verre natif Windows 11 (repli Windows 10), thèmes clair/sombre/auto, teintes
 2. ✅ Navigation : onglets, barre d'adresse, raccourcis
-3. Barre latérale des onglets prioritaires (Ctrl+B), écran d'accueil, paramètres
+3. ✅ Barre latérale des onglets prioritaires (Ctrl+B), écran d'accueil, paramètres
 4. Historique, favoris, téléchargements, Nouvel onglet, Splits
 5. Ollama : détection, installation, modèles
 6. Panneau IA (Ctrl+Espace), « Demande ou cherche », @onglets, Skills, résumé

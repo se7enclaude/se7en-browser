@@ -25,6 +25,8 @@ export type ActionRaccourci =
   | { type: 'precedent' }
   | { type: 'suivant' }
   | { type: 'arreter' }
+  | { type: 'basculer-barre' }
+  | { type: 'parametres' }
 
 export function actionDuRaccourci(t: Touche): ActionRaccourci | null {
   if (t.type !== 'keyDown' || t.meta) return null
@@ -35,6 +37,8 @@ export function actionDuRaccourci(t: Touche): ActionRaccourci | null {
   if (ctrl && t.shift && k === 't') return { type: 'rouvrir-onglet' }
   if (ctrl && !t.shift && (k === 'w' || k === 'F4')) return { type: 'fermer-onglet' }
   if (ctrl && k === 'Tab') return { type: t.shift ? 'onglet-precedent' : 'onglet-suivant' }
+  if (ctrl && !t.shift && k === 'b') return { type: 'basculer-barre' }
+  if (ctrl && !t.shift && k === ',') return { type: 'parametres' }
   if (ctrl && !t.shift && k === 'PageDown') return { type: 'onglet-suivant' }
   if (ctrl && !t.shift && k === 'PageUp') return { type: 'onglet-precedent' }
   // Ctrl+1…8 : onglet n ; Ctrl+9 : dernier onglet (-1)

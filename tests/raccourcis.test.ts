@@ -25,6 +25,11 @@ describe('actionDuRaccourci', () => {
     expect(actionDuRaccourci(t('&', { control: true, code: 'Digit1' }))).toEqual({ type: 'onglet-numero', index: 0 })
   })
 
+  it('gère la barre latérale et les paramètres', () => {
+    expect(actionDuRaccourci(t('b', { control: true }))).toEqual({ type: 'basculer-barre' })
+    expect(actionDuRaccourci(t(',', { control: true }))).toEqual({ type: 'parametres' })
+  })
+
   it('gère la navigation', () => {
     expect(actionDuRaccourci(t('l', { control: true }))).toEqual({ type: 'focus-adresse' })
     expect(actionDuRaccourci(t('F5'))).toEqual({ type: 'actualiser', forcer: false })

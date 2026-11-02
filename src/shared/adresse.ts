@@ -11,6 +11,16 @@ export function estAdresseAutorisee(url: string): boolean {
   }
 }
 
+/** Pages dessinées par l'interface elle-même, ouvertes dans un onglet comme une page normale. */
+export const PAGES_INTERNES = {
+  'se7en://parametres': 'Paramètres'
+} as const
+export type PageInterne = keyof typeof PAGES_INTERNES
+
+export function estPageInterne(url: string): url is PageInterne {
+  return Object.hasOwn(PAGES_INTERNES, url)
+}
+
 const RE_HOTE_LOCAL = /^(localhost|127\.0\.0\.1|\[::1\])(:\d{1,5})?(\/.*)?$/i
 const RE_IPV4 = /^\d{1,3}(\.\d{1,3}){3}(:\d{1,5})?(\/.*)?$/
 // un nom de domaine : au moins un point, une extension de 2 lettres ou plus, pas d'espace
@@ -23,6 +33,7 @@ const RE_DOMAINE = /^([a-z0-9¡-￿-]+\.)+[a-z¡-￿]{2,}(:\d{1,5})?([/?#].*)?$/
 export function resoudreSaisie(saisie: string, moteur: string): string {
   const texte = saisie.trim()
   if (!texte) return ''
+  if (estPageInterne(texte.toLowerCase())) return texte.toLowerCase()
   if (/^https?:\/\//i.test(texte)) {
     try {
       return new URL(texte).href

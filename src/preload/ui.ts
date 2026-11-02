@@ -44,7 +44,11 @@ const api: ApiSe7en = {
     actualiser: envoyer(CANAUX.ongletsActualiser),
     arreter: envoyer(CANAUX.ongletsArreter),
     zone: envoyer(CANAUX.ongletsZone),
-    focusPage: envoyer(CANAUX.ongletsFocusPage)
+    focusPage: envoyer(CANAUX.ongletsFocusPage),
+    menu: envoyer(CANAUX.ongletsMenu),
+    prioritaire: envoyer(CANAUX.ongletsPrioritaire),
+    masquer: envoyer(CANAUX.ongletsMasquer),
+    parametres: envoyer(CANAUX.ongletsParametres)
   }
 }
 

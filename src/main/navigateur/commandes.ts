@@ -2,10 +2,11 @@
 import type { BrowserWindow, Input } from 'electron'
 import { CANAUX } from '../../shared/ipc'
 import type { CommandeUi } from '../../shared/onglets'
+import type { MagasinReglages } from '../stockage/reglages'
 import type { GestionnaireOnglets } from './onglets'
 import { actionDuRaccourci } from './raccourcis'
 
-export function creerGestionRaccourcis(fenetre: BrowserWindow, onglets: () => GestionnaireOnglets) {
+export function creerGestionRaccourcis(fenetre: BrowserWindow, onglets: () => GestionnaireOnglets, reglages: MagasinReglages) {
   const versUi = (c: CommandeUi): void => {
     fenetre.webContents.focus()
     fenetre.webContents.send(CANAUX.uiCommande, c)
@@ -51,6 +52,12 @@ export function creerGestionRaccourcis(fenetre: BrowserWindow, onglets: () => Ge
         break
       case 'arreter':
         if (id !== null) g.arreter(id)
+        break
+      case 'basculer-barre':
+        void reglages.modifier({ barreLaterale: !reglages.get().barreLaterale })
+        break
+      case 'parametres':
+        g.ouvrirInterne('se7en://parametres')
         break
     }
     return true

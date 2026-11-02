@@ -2,7 +2,7 @@
 
 export interface EtatOnglet {
   id: number
-  /** Vide pour un onglet « Nouvel onglet » qui n'a encore rien chargé. */
+  /** Vide pour un « Nouvel onglet » ; « se7en://… » pour une page interne (paramètres…). */
   url: string
   titre: string
   /** Icône du site en data: URL (l'interface ne charge rien depuis Internet). */
@@ -12,11 +12,22 @@ export interface EtatOnglet {
   peutAvancer: boolean
   /** La page a planté : l'interface propose de la recharger. */
   plantee: boolean
+  /** Onglet prioritaire : épinglé dans la barre latérale et gardé d'une session à l'autre. */
+  prioritaire: boolean
+  /** Onglet prioritaire pas encore chargé (ou mis en veille) : il se charge quand on l'ouvre. */
+  endormi: boolean
 }
 
 export interface EtatOnglets {
   onglets: EtatOnglet[]
   actifId: number | null
+}
+
+/** Ce qu'on garde d'un onglet prioritaire entre deux sessions. */
+export interface OngletPrioritaireSauve {
+  url: string
+  titre: string
+  favicon: string | null
 }
 
 /** Zone (en pixels CSS de l'interface) où la page de l'onglet actif doit s'afficher. */

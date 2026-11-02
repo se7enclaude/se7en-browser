@@ -29,7 +29,11 @@ export const CANAUX = {
   ongletsActualiser: 'onglets:actualiser',
   ongletsArreter: 'onglets:arreter',
   ongletsZone: 'onglets:zone',
-  ongletsFocusPage: 'onglets:focus-page'
+  ongletsFocusPage: 'onglets:focus-page',
+  ongletsMenu: 'onglets:menu',
+  ongletsPrioritaire: 'onglets:prioritaire',
+  ongletsMasquer: 'onglets:masquer',
+  ongletsParametres: 'onglets:parametres'
 } as const
 
 export interface EtatFenetre {
@@ -67,7 +71,15 @@ export interface ApiSe7en {
     nouveau(saisie?: string): void
     fermer(id: number): void
     activer(id: number): void
-    deplacer(id: number, index: number): void
+    /** Met l'onglet `id` à la place de l'onglet `versId` (glisser-déposer, y compris d'une liste à l'autre). */
+    deplacer(id: number, versId: number): void
+    /** Menu clic droit de l'onglet. */
+    menu(id: number): void
+    /** Épingle l'onglet dans la barre latérale (ou l'en retire). */
+    prioritaire(id: number, oui: boolean): void
+    /** Cache les pages pendant qu'un écran de l'interface passe devant (accueil). */
+    masquer(oui: boolean): void
+    parametres(): void
     naviguer(id: number, saisie: string): void
     precedent(id: number): void
     suivant(id: number): void

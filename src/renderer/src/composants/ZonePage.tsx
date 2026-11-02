@@ -1,5 +1,5 @@
 /* Emplacement de la page web. Le main y pose la vue de l'onglet actif ; l'interface indique sa position exacte.
- * Quand l'onglet n'a rien chargé (Nouvel onglet) ou a planté, c'est l'interface qui dessine ici. */
+ * Quand l'onglet n'a pas de page web (Nouvel onglet, page interne) ou a planté, c'est l'interface qui dessine ici. */
 import { useEffect, useRef, type ReactNode } from 'react'
 import type { EtatOnglet } from '../../../shared/onglets'
 
@@ -35,7 +35,7 @@ export function ZonePage({ actif, children }: { actif: EtatOnglet | undefined; c
           </button>
         </div>
       ) : (
-        !actif?.url && children
+        children
       )}
     </main>
   )

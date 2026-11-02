@@ -48,7 +48,8 @@ export function creerFenetrePrincipale(): BrowserWindow {
   fenetre.on('focus', envoyerEtat)
   fenetre.on('blur', envoyerEtat)
   fenetre.webContents.on('did-finish-load', envoyerEtat)
-  fenetre.once('ready-to-show', () => fenetre.show())
+  // en mode test, la fenêtre s'affiche sans prendre le focus (on ne dérange pas l'utilisateur)
+  fenetre.once('ready-to-show', () => (process.env.SE7EN_PROFIL_TEST ? fenetre.showInactive() : fenetre.show()))
 
   if (process.env.ELECTRON_RENDERER_URL) fenetre.loadURL(process.env.ELECTRON_RENDERER_URL)
   else fenetre.loadFile(join(__dirname, '../renderer/index.html'))

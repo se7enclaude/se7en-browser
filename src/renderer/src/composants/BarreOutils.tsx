@@ -2,9 +2,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { adresseLisible } from '../../../shared/adresse'
 import type { EtatOnglet } from '../../../shared/onglets'
-import { IconeActualiser, IconeCadenas, IconeCroix, IconePrecedent, IconeRecherche, IconeSuivant } from './Icones'
+import { IconeActualiser, IconeBarreLaterale, IconeCadenas, IconeCroix, IconePrecedent, IconeRecherche, IconeReglages, IconeSuivant } from './Icones'
 
-export function BarreOutils({ actif }: { actif: EtatOnglet | undefined }): React.JSX.Element {
+interface Props {
+  actif: EtatOnglet | undefined
+  /** Bouton de la barre latérale (absent en disposition « onglets en haut »). */
+  barre: { ouverte: boolean; basculer: () => void } | null
+}
+
+export function BarreOutils({ actif, barre }: Props): React.JSX.Element {
   const o = window.se7en.onglets
   const champ = useRef<HTMLInputElement>(null)
   const [brouillon, setBrouillon] = useState<string | null>(null)
@@ -30,6 +36,11 @@ export function BarreOutils({ actif }: { actif: EtatOnglet | undefined }): React
 
   return (
     <div className="barre-outils">
+      {barre && (
+        <button className={`bouton-icone${barre.ouverte ? ' enfonce' : ''}`} title="Barre latérale (Ctrl+B)" onClick={barre.basculer}>
+          <IconeBarreLaterale />
+        </button>
+      )}
       <button className="bouton-icone" title="Précédent (Alt+←)" disabled={!actif?.peutReculer} onClick={() => id && o.precedent(id)}>
         <IconePrecedent />
       </button>
@@ -80,6 +91,9 @@ export function BarreOutils({ actif }: { actif: EtatOnglet | undefined }): React
           }}
         />
       </form>
+      <button className="bouton-icone" title="Paramètres (Ctrl+,)" onClick={() => o.parametres()}>
+        <IconeReglages />
+      </button>
     </div>
   )
 }
