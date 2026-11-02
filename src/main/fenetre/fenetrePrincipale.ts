@@ -1,5 +1,5 @@
 /* Fenêtre principale : sans cadre, avec l'effet de verre natif de Windows 11 quand il existe. */
-import { BrowserWindow, nativeTheme } from 'electron'
+import { app, BrowserWindow, nativeTheme } from 'electron'
 import { release } from 'node:os'
 import { join } from 'node:path'
 import { CANAUX, type EtatFenetre } from '../../shared/ipc'
@@ -32,6 +32,7 @@ export function creerFenetrePrincipale(): BrowserWindow {
     backgroundColor: natif ? '#00000000' : nativeTheme.shouldUseDarkColors ? '#1b1d22' : '#eef0f4',
     ...(natif ? { backgroundMaterial: 'acrylic' as const } : {}),
     title: 'se7en Browser',
+    icon: join(app.getAppPath(), 'build', 'icon.png'),
     webPreferences: preferencesInterface(join(__dirname, '../preload/ui.js'))
   })
 

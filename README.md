@@ -160,8 +160,31 @@ Autres commandes :
 | `npm start` | lance la version compilée |
 | `npm run typecheck` | vérifie les types TypeScript |
 | `npm test` | lance les tests (Vitest) |
+| `npm run dist` | construit l'installeur Windows |
 
-La compilation en `.exe` (installeur Inno Setup) arrive à l'étape 9.
+## Construire l'installeur Windows
+
+Il faut [Inno Setup 6](https://jrsoftware.org/isdl.php) (installé pour l'utilisateur, dans
+`%LOCALAPPDATA%\Programs\Inno Setup 6`) et Python 3 (pour poser l'icône sur le `.exe`).
+
+```
+npm run dist
+```
+
+Résultat : `dist/release/se7en-Browser-Setup-<version>.exe` (≈ 130 Mo). `tools/build.js` compile le navigateur,
+copie Electron renommé `se7en Browser.exe` avec son icône, n'ajoute que les modules utiles (pdf.js, pdf-lib, bloqueur),
+puis lance Inno Setup (`installer.iss`).
+
+L'installeur ne demande pas de droits administrateur : il installe dans `%LOCALAPPDATA%\Programs\se7en Browser`,
+avec raccourcis menu Démarrer (et Bureau en option). Le même `.exe` sert de mise à jour (`/VERYSILENT`, et
+`/RELAUNCH=1` pour rouvrir le navigateur). La désinstallation garde les données (`%APPDATA%\se7en Browser`) ;
+Ollama a sa propre désinstallation.
+
+Icônes : `npm run icons` (Pillow) régénère `build/icon.ico`, `icon.png` et les images de l'installeur.
+
+Publication (étape 10, avec `gh` connecté) : `node tools/release.js publish "notes"` crée la release `v<version>` sur
+`se7enclaude/se7en-browser` avec l'installeur et `latest.json` (`{ version, notes, published, setup: { name, sha256, size } }`),
+lu par Seventh OS.
 
 Le premier `npm install` copie aussi les fichiers de pdf.js (polices, tables de caractères) dans
 `src/renderer/public/pdfjs` (`tools/copier-pdfjs.mjs`, relancé avant `dev` et `build`).
@@ -200,5 +223,5 @@ tests/         tests Vitest
 8. ✅ Coffre chiffré et remplissage de PDF
 8b. ✅ Bloqueur de pubs et traqueurs, onglets rangés par l'IA, mémoire
 8c. ✅ Profils et amis (serveur Cloudflare, testé en local ; pas encore mis en ligne)
-9. Installeur Windows
+9. ✅ Installeur Windows (Inno Setup)
 10. Publication et ajout dans Seventh OS
