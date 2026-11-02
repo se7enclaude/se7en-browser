@@ -1,0 +1,15 @@
+{
+  "name": "se7en-social",
+  "private": true,
+  "description": "se7en Browser : serveur des profils, amis et messages (Cloudflare Worker + D1 + R2 + Durable Objects)",
+  "scripts": {
+    "dev": "wrangler d1 migrations apply se7en-social --local && wrangler dev --port 8787",
+    "deploy": "wrangler d1 migrations apply se7en-social --remote && wrangler deploy",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261102.1",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.156.2"
+  }
+}

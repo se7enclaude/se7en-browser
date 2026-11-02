@@ -1,5 +1,5 @@
 /* Point d'entrée du processus principal de se7en Browser. */
-import { app, BrowserWindow, dialog, session } from 'electron'
+import { app, BrowserWindow, dialog, Notification, session } from 'electron'
 import { CANAUX } from '../shared/ipc'
 import { idDocDeVisionneuse } from '../shared/pdf'
 import { DocumentsPdf } from './pdf/documents'
@@ -23,6 +23,8 @@ import { Favoris } from './stockage/favoris'
 import { Historique } from './stockage/historique'
 import { MagasinPrioritaires } from './stockage/prioritaires'
 import { MagasinReglages } from './stockage/reglages'
+import { ClientSocial } from './social/client'
+import { SERVEUR_SOCIAL_OFFICIEL } from '../shared/social'
 
 app.setAppUserModelId('se7en.browser')
 
@@ -129,7 +131,35 @@ if (!app.requestSingleInstanceLock()) {
     const coffre = new CoffreChiffre(dossier)
     const formulaires = new ServiceFormulaire(documents, coffre, ollama, () => reglages.get())
 
-    enregistrerIpc({ reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, coffre, formulaires, bloqueur, memoire, ranger, ouvrirFichier: (f) => void ouvrirFichier(f), ongletsDe: (f) => onglets.get(f.id) })
+    // profils et amis : seul ce qui concerne les amis passe par le serveur se7en social
+    const social = new ClientSocial(dossier, () => reglages.get().serveurSocial || SERVEUR_SOCIAL_OFFICIEL || null)
+    let serveurSocial = reglages.get().serveurSocial
+    reglages.on('change', (r) => {
+      if (r.serveurSocial === serveurSocial) return
+      serveurSocial = r.serveurSocial
+      void social.demarrer()
+    })
+    void social.demarrer()
+    app.on('will-quit', () => social.arreter())
+    // nouveau message : notification Windows si la fenêtre n'est pas au premier plan
+    social.on('evenement', (ev) => {
+      const f = BrowserWindow.getAllWindows()[0]
+      if (ev.type !== 'message' || !Notification.isSupported() || (f && f.isFocused())) return
+      const n = new Notification({
+        title: ev.pseudo,
+        body: ev.message.type === 'lien' ? `t'a envoyé un lien : ${ev.message.titre || ev.message.url}` : ev.message.texte.slice(0, 200),
+        silent: false
+      })
+      n.on('click', () => {
+        if (!f) return
+        if (f.isMinimized()) f.restore()
+        f.focus()
+        onglets.get(f.id)?.ouvrirInterne('se7en://amis')
+      })
+      n.show()
+    })
+
+    enregistrerIpc({ social, reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, coffre, formulaires, bloqueur, memoire, ranger, ouvrirFichier: (f) => void ouvrirFichier(f), ongletsDe: (f) => onglets.get(f.id) })
 
     const fenetre = creerFenetrePrincipale()
     const idFenetre = fenetre.id

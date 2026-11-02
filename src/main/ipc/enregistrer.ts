@@ -1,7 +1,7 @@
 /* Branche les canaux IPC de l'interface. Chaque message est vérifié : il doit venir de notre fenêtre,
  * et chaque argument est contrôlé avant d'être utilisé. */
-import { app, BrowserWindow, ipcMain, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron'
-import { estPageInterne } from '../../shared/adresse'
+import { app, BrowserWindow, dialog, ipcMain, nativeImage, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron'
+import { estAdresseAutorisee, estPageInterne } from '../../shared/adresse'
 import type { ActionTelechargement } from '../../shared/donnees'
 import { CANAUX, type InfosApp } from '../../shared/ipc'
 import type { ZoneOnglet } from '../../shared/onglets'
@@ -21,6 +21,8 @@ import type { ServiceFormulaire } from '../pdf/serviceFormulaire'
 import type { Bloqueur } from '../bloqueur/bloqueur'
 import type { Memoire } from '../ia/memoire'
 import { RE_NOM_MODELE } from '../../shared/ia'
+import type { ClientSocial } from '../social/client'
+import { MAX_MESSAGE } from '../../shared/social'
 
 export interface Services {
   reglages: MagasinReglages
@@ -35,6 +37,7 @@ export interface Services {
   formulaires: ServiceFormulaire
   bloqueur: Bloqueur
   memoire: Memoire
+  social: ClientSocial
   /** Range les onglets de la fenêtre en groupes (IA). */
   ranger: (g: GestionnaireOnglets) => Promise<{ groupes: number } | { erreur: string }>
   /** Fenêtre « Ouvrir » pour choisir un PDF du PC. */
@@ -58,7 +61,7 @@ function diffuser(canal: string, valeur: unknown): void {
 }
 
 export function enregistrerIpc(s: Services): void {
-  const { reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, coffre, formulaires, bloqueur, memoire, ongletsDe } = s
+  const { reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, coffre, formulaires, bloqueur, memoire, social, ongletsDe } = s
 
   // ---------- fenêtre et application ----------
   ipcMain.on(CANAUX.fenetreReduire, (e) => fenetreDe(e)?.minimize())
@@ -249,4 +252,51 @@ export function enregistrerIpc(s: Services): void {
     if (fenetreDe(e)) memoire.effacer()
     return memoire.lire()
   })
+
+  // ---------- profils et amis ----------
+  const estIdSocial = (v: unknown): v is string => typeof v === 'string' && /^[\w-]{1,64}$/.test(v)
+  /** Exécute une action du client social ; une erreur devient { erreur } pour l'interface. */
+  const social$ = async <T>(e: IpcMainInvokeEvent, action: () => Promise<T>): Promise<T | { erreur: string }> =>
+    fenetreDe(e) ? action().catch(erreur) : { erreur: 'Fenêtre introuvable.' }
+  social.on('etat', (etat) => diffuser(CANAUX.socialChange, etat))
+  social.on('evenement', (ev) => diffuser(CANAUX.socialEvenement, ev))
+  ipcMain.handle(CANAUX.socialEtat, (e) => (fenetreDe(e) ? social.etat() : null))
+  ipcMain.handle(CANAUX.socialProfil, (e, pseudo: unknown) => social$(e, () => social.enregistrerProfil(String(pseudo ?? '').slice(0, 100))))
+  ipcMain.handle(CANAUX.socialSupprimer, (e) => social$(e, () => social.supprimerProfil()))
+  ipcMain.handle(CANAUX.socialPhoto, (e, id: unknown) => (fenetreDe(e) && estIdSocial(id) ? social.photo(id) : null))
+  ipcMain.handle(CANAUX.socialChoisirPhoto, async (e) => {
+    const f = fenetreDe(e)
+    if (!f) return null
+    const r = await dialog.showOpenDialog(f, { title: 'Photo de profil', filters: [{ name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'webp'] }], properties: ['openFile'] })
+    if (!r.filePaths[0]) return null
+    // recadrée en carré au centre puis réduite à 256 px : le fichier d'origine ne quitte pas le PC
+    const img = nativeImage.createFromPath(r.filePaths[0])
+    if (img.isEmpty()) return { erreur: 'Image illisible.' }
+    const { width, height } = img.getSize()
+    const c = Math.min(width, height)
+    const carre = img.crop({ x: Math.floor((width - c) / 2), y: Math.floor((height - c) / 2), width: c, height: c }).resize({ width: 256, height: 256, quality: 'best' })
+    return social$(e, () => social.envoyerPhoto(carre.toJPEG(85)).then(() => ({ ok: true as const })))
+  })
+  ipcMain.handle(CANAUX.socialAmis, (e) => social$(e, () => social.amis()))
+  ipcMain.handle(CANAUX.socialAjouter, (e, code: unknown) => social$(e, () => social.ajouter(String(code ?? '').slice(0, 40))))
+  ipcMain.handle(CANAUX.socialAccepter, (e, id: unknown) =>
+    estIdSocial(id) ? social$(e, () => social.accepter(id).then(() => ({ ok: true as const }))) : { erreur: 'Demande introuvable.' }
+  )
+  ipcMain.handle(CANAUX.socialRetirer, (e, id: unknown) =>
+    estIdSocial(id) ? social$(e, () => social.retirer(id).then(() => ({ ok: true as const }))) : { erreur: 'Ami introuvable.' }
+  )
+  ipcMain.handle(CANAUX.socialMessages, (e, ami: unknown, avant: unknown) =>
+    estIdSocial(ami) ? social$(e, () => social.messages(ami, typeof avant === 'number' ? avant : undefined)) : { erreur: 'Ami introuvable.' }
+  )
+  ipcMain.handle(CANAUX.socialEnvoyer, (e, ami: unknown, texte: unknown) =>
+    estIdSocial(ami) && typeof texte === 'string' ? social$(e, () => social.envoyer(ami, { texte: texte.slice(0, MAX_MESSAGE) })) : { erreur: 'Message invalide.' }
+  )
+  ipcMain.handle(CANAUX.socialEnvoyerOnglet, (e, ami: unknown, idOnglet: unknown) => {
+    const o = estId(idOnglet) ? g(e)?.etat().onglets.find((x) => x.id === idOnglet) : undefined
+    // seules les pages web s'envoient (pas un PDF du PC ni une page interne)
+    if (!estIdSocial(ami) || !o || !estAdresseAutorisee(o.url)) return { erreur: 'Cet onglet ne peut pas être envoyé.' }
+    return social$(e, () => social.envoyer(ami, { texte: '', url: o.url, titre: o.titre }))
+  })
+  ipcMain.on(CANAUX.socialLu, (e, ami: unknown) => fenetreDe(e) && estIdSocial(ami) && void social.marquerLu(ami).catch(() => undefined))
+  ipcMain.on(CANAUX.socialOuvrirLien, (e, url: unknown) => typeof url === 'string' && estAdresseAutorisee(url) && g(e)?.nouveau(url, { aCote: true }))
 }

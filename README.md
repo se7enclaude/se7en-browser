@@ -107,6 +107,31 @@ replier, clic droit pour le dégrouper ou fermer ses onglets. Un lien ouvert dep
 retenu (jamais le contenu d'une page, jamais l'IA d'elle-même) ; les souvenirs sont ajoutés à la consigne système.
 Liste, ajout, suppression et désactivation dans Paramètres › Mémoire de l'IA.
 
+**Profils et amis** (`se7en://amis`, menu › Amis) : un profil = un pseudo + un code à 4 chiffres (« Claire#4821 »)
+et une photo. On s'ajoute avec ce code, puis on s'envoie des messages et des onglets (liens) en direct ; une
+notification Windows signale un message quand la fenêtre n'est pas au premier plan. Pas de mot de passe ni d'e-mail :
+une clé Ed25519 est créée sur le PC, chiffrée par le compte Windows (`identite.bin`), et chaque requête est signée
+(heure + nonce à usage unique : une requête interceptée ne peut pas être rejouée). Seuls le pseudo, la photo
+(recadrée à 256 px sur le PC), la liste d'amis et les messages passent par le serveur ; les messages reçus sont
+affichés en texte brut et un lien ne s'ouvre qu'en http(s), sur clic, dans un nouvel onglet.
+« Supprimer mon compte » efface tout du serveur. Les messages de plus de 90 jours sont effacés automatiquement.
+
+## Serveur se7en social (`server/`)
+
+Cloudflare Worker + D1 (profils, amis, messages) + R2 (photos) + Durable Objects (connexion directe par WebSocket).
+
+```
+cd server
+npm install
+npm run dev        # serveur local sur http://127.0.0.1:8787 (base D1 locale)
+```
+
+Pour tester en local : Paramètres › Profils et amis › Serveur = `http://127.0.0.1:8787`.
+
+Mise en ligne (compte Cloudflare) : `npx wrangler login`, `npx wrangler d1 create se7en-social` (copier l'id dans
+`wrangler.toml`), `npx wrangler r2 bucket create se7en-social-photos`, puis `npm run deploy`. L'adresse obtenue va
+dans `SERVEUR_SOCIAL_OFFICIEL` (`src/shared/social.ts`) pour que tout le monde l'utilise par défaut.
+
 ## Tester sans toucher à son profil
 
 `SE7EN_PROFIL_TEST=<dossier>` lance le navigateur avec un profil à part (réglages, onglets, cookies),
@@ -149,6 +174,7 @@ src/
   preload/     pont sécurisé entre l'interface et le main (window.se7en)
   renderer/    interface React (barre de titre, onglets, panneaux)
   shared/      types et contrat IPC communs
+server/        serveur se7en social (Cloudflare Worker)
 tests/         tests Vitest
 ```
 
@@ -173,6 +199,6 @@ tests/         tests Vitest
 7. ✅ PDF : visionneuse isolée, discuter avec un PDF
 8. ✅ Coffre chiffré et remplissage de PDF
 8b. ✅ Bloqueur de pubs et traqueurs, onglets rangés par l'IA, mémoire
-8c. Profils et amis (serveur Cloudflare)
+8c. ✅ Profils et amis (serveur Cloudflare, testé en local ; pas encore mis en ligne)
 9. Installeur Windows
 10. Publication et ajout dans Seventh OS

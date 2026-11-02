@@ -2015,3 +2015,245 @@ button.lien {
 .champ.large {
   flex: 1;
 }
+/* ---------- Amis (se7en://amis) ---------- */
+
+.avatar {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgb(var(--teinte) / 0.9), var(--accent));
+  color: white;
+  font-weight: 600;
+  overflow: visible;
+}
+.avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.presence {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 30%;
+  height: 30%;
+  max-width: 12px;
+  max-height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--verre-fort);
+  background: #9aa1ad;
+}
+.presence.en-ligne {
+  background: #34c759;
+}
+.ligne-formulaire {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.ligne-formulaire .champ {
+  flex: 1;
+}
+.message-ok {
+  margin: 0;
+  color: var(--accent);
+  font-weight: 500;
+}
+.etat-connexion {
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: var(--survol);
+  color: var(--texte-discret);
+}
+.etat-connexion.connecte {
+  color: #1f9d48;
+  background: rgb(52 199 89 / 0.14);
+}
+.carte-profil {
+  flex-direction: row;
+  align-items: center;
+  gap: 18px;
+}
+.bouton-avatar {
+  padding: 0;
+  border-radius: 50%;
+  transition: transform var(--anim), box-shadow var(--anim);
+}
+.bouton-avatar:hover {
+  transform: scale(1.04);
+  box-shadow: 0 0 0 3px rgb(var(--teinte) / 0.45);
+}
+.infos-profil {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pseudo {
+  font-size: 18px;
+  font-weight: 600;
+}
+.code-ami {
+  font-weight: 600;
+  color: var(--texte);
+  user-select: all;
+}
+.actions-profil {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.discret-danger:hover {
+  color: #e5484d;
+}
+.nom-ami {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+.ligne-ami,
+.choix-onglet .ligne-liste {
+  width: calc(100% + 12px);
+  min-height: 52px;
+  font: inherit;
+  color: inherit;
+}
+.pastille-non-lus {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+}
+.bouton-principal.petit {
+  padding: 6px 14px;
+  font-size: 13px;
+}
+
+.page-conversation {
+  padding-bottom: 20px;
+}
+.entete-conversation {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.fil-messages {
+  flex: 1;
+  min-height: 160px;
+  overflow-y: auto;
+  padding: 16px;
+  border-radius: var(--rayon);
+  border: 1px solid var(--verre-bord);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.fil-messages .anciens {
+  align-self: center;
+}
+.bulle-ami {
+  color: var(--texte);
+  max-width: 75%;
+  align-self: flex-start;
+  padding: 8px 12px 6px;
+  border-radius: 16px 16px 16px 5px;
+  background: var(--survol);
+  border: 1px solid var(--verre-bord-ombre);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  animation: apparition 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.bulle-ami.de-moi {
+  align-self: flex-end;
+  border-radius: 16px 16px 5px 16px;
+  border-color: transparent;
+  background: var(--accent);
+  color: white;
+}
+.bulle-ami.de-moi time {
+  color: rgb(255 255 255 / 0.75);
+}
+.bulle-ami p {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.bulle-ami time {
+  align-self: flex-end;
+  font-size: 10.5px;
+  color: var(--texte-discret);
+}
+.carte-lien {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 11px;
+  background: var(--verre-fort);
+  border: 1px solid var(--verre-bord);
+  font: inherit;
+  color: var(--texte);
+  text-align: left;
+  transition: background var(--anim);
+}
+.carte-lien:hover {
+  background: var(--survol);
+}
+.carte-lien > span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.carte-lien strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.carte-lien .discret {
+  font-size: 12px;
+  color: var(--texte-discret);
+}
+.choix-onglet {
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 6px 12px;
+  border-radius: var(--rayon);
+  border: 1px solid var(--verre-bord);
+}
+.saisie-message {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 8px;
+  border-radius: var(--rayon);
+  border: 1px solid var(--verre-bord);
+}
+.saisie-message textarea {
+  flex: 1;
+  min-height: 32px;
+  max-height: 140px;
+  padding: 6px 8px;
+  border: 0;
+  outline: 0;
+  resize: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  field-sizing: content;
+}

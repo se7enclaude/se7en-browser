@@ -1,8 +1,9 @@
 /* Page interne se7en://parametres. */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { InfosApp } from '../../../shared/ipc'
 import { MOTEURS, type Reglages } from '../../../shared/reglages'
 import { modelePresent } from '../../../shared/ia'
+import { adresseServeur, SERVEUR_SOCIAL_OFFICIEL } from '../../../shared/social'
 import { ChoixDisposition, ChoixTeinte, ChoixTheme } from './ChoixApparence'
 import { EditeurCoffre } from './EditeurCoffre'
 import { ReglagesBloqueur, ReglagesMemoire } from './ReglagesViePrivee'
@@ -122,6 +123,8 @@ export function Parametres({ reglages, modifier, infos }: Props): React.JSX.Elem
 
       <ReglagesMemoire reglages={reglages} modifier={modifier} />
 
+      <ReglagesSocial reglages={reglages} modifier={modifier} />
+
       <EditeurCoffre />
 
       <EditeurSkills />
@@ -136,5 +139,41 @@ export function Parametres({ reglages, modifier, infos }: Props): React.JSX.Elem
         </div>
       </section>
     </div>
+  )
+}
+
+/** Profils et amis : adresse du serveur se7en social (vide = serveur officiel). */
+function ReglagesSocial({ reglages, modifier }: { reglages: Reglages; modifier: (p: Partial<Reglages>) => void }): React.JSX.Element {
+  const [adresse, setAdresse] = useState(reglages.serveurSocial)
+  useEffect(() => setAdresse(reglages.serveurSocial), [reglages.serveurSocial])
+  const valide = !adresse.trim() || adresseServeur(adresse) !== null
+  const valider = (): void => {
+    if (valide && adresse.trim() !== reglages.serveurSocial) modifier({ serveurSocial: adresse.trim() })
+  }
+  return (
+    <section className="bloc verre-fort">
+      <h2>Profils et amis</h2>
+      <p className="discret">Seuls ton pseudo, ta photo, tes amis et vos messages passent par le serveur se7en social. Le reste ne quitte pas ce PC.</p>
+      <div className="ligne-reglage">
+        <span>Serveur</span>
+        <input
+          className="champ"
+          value={adresse}
+          placeholder={SERVEUR_SOCIAL_OFFICIEL || 'https://…'}
+          onChange={(e) => setAdresse(e.target.value)}
+          onBlur={valider}
+          onKeyDown={(e) => e.key === 'Enter' && valider()}
+          aria-invalid={!valide}
+          spellCheck={false}
+        />
+      </div>
+      {!valide && <p className="discret petit">Adresse en https:// (ou http:// seulement sur ce PC, pour un serveur de test).</p>}
+      <div className="ligne-reglage">
+        <span className="discret">Ton profil, tes amis et tes messages</span>
+        <button className="bouton-verre" onClick={() => window.se7en.onglets.interne('se7en://amis')}>
+          Ouvrir mes amis
+        </button>
+      </div>
+    </section>
   )
 }

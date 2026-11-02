@@ -8,6 +8,7 @@ import type { AnalyseFormulaire, ResultatRemplissage, ValeurARemplir } from './f
 import type { EtatOllama } from './ia'
 import type { CommandeUi, EtatOnglets, ZoneOnglet } from './onglets'
 import type { Reglages } from './reglages'
+import type { Ami, EtatSocial, EvenementSocial, MessageSocial } from './social'
 
 export const CANAUX = {
   // fenêtre
@@ -93,7 +94,24 @@ export const CANAUX = {
   memoireLire: 'memoire:lire',
   memoireAjouter: 'memoire:ajouter',
   memoireSupprimer: 'memoire:supprimer',
-  memoireEffacer: 'memoire:effacer'
+  memoireEffacer: 'memoire:effacer',
+  // profils et amis
+  socialEtat: 'social:etat',
+  socialChange: 'social:change', // main → interface
+  socialEvenement: 'social:evenement', // main → interface
+  socialProfil: 'social:profil',
+  socialPhoto: 'social:photo',
+  socialChoisirPhoto: 'social:choisir-photo',
+  socialSupprimer: 'social:supprimer',
+  socialAmis: 'social:amis',
+  socialAjouter: 'social:ajouter',
+  socialAccepter: 'social:accepter',
+  socialRetirer: 'social:retirer',
+  socialMessages: 'social:messages',
+  socialEnvoyer: 'social:envoyer',
+  socialEnvoyerOnglet: 'social:envoyer-onglet',
+  socialLu: 'social:lu',
+  socialOuvrirLien: 'social:ouvrir-lien'
 } as const
 
 export interface EtatFenetre {
@@ -233,5 +251,31 @@ export interface ApiSe7en {
     ajouter(texte: string): Promise<Souvenir[]>
     supprimer(id: string): Promise<Souvenir[]>
     effacer(): Promise<Souvenir[]>
+  }
+  social: {
+    etat(): Promise<EtatSocial>
+    surEtat(rappel: (e: EtatSocial) => void): () => void
+    /** Messages, demandes d'amis et présence, en direct. */
+    surEvenement(rappel: (e: EvenementSocial) => void): () => void
+    /** Crée le profil (première fois) ou change le pseudo. */
+    profil(pseudo: string): Promise<EtatSocial | { erreur: string }>
+    /** Photo d'un ami ou la sienne (data: URL), ou null. */
+    photo(id: string): Promise<string | null>
+    /** Choisit une image sur le PC, la réduit et l'envoie comme photo de profil. */
+    choisirPhoto(): Promise<{ ok: true } | { erreur: string } | null>
+    supprimer(): Promise<EtatSocial | { erreur: string }>
+    amis(): Promise<Ami[] | { erreur: string }>
+    /** Demande d'ami par « pseudo#1234 ». */
+    ajouter(code: string): Promise<{ statut: string } | { erreur: string }>
+    accepter(id: string): Promise<{ ok: true } | { erreur: string }>
+    /** Refuse une demande, l'annule, ou retire un ami. */
+    retirer(id: string): Promise<{ ok: true } | { erreur: string }>
+    messages(ami: string, avant?: number): Promise<MessageSocial[] | { erreur: string }>
+    envoyer(ami: string, texte: string): Promise<MessageSocial | { erreur: string }>
+    /** Envoie l'adresse et le titre de l'onglet à un ami. */
+    envoyerOnglet(ami: string, idOnglet: number): Promise<MessageSocial | { erreur: string }>
+    lu(ami: string): void
+    /** Ouvre un lien reçu dans un nouvel onglet (http/https seulement). */
+    ouvrirLien(url: string): void
   }
 }

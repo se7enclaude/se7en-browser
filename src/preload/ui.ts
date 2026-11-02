@@ -6,6 +6,7 @@ import type { FluxChat } from '../shared/chat'
 import type { EtatOllama } from '../shared/ia'
 import type { CommandeUi, EtatOnglets } from '../shared/onglets'
 import type { Reglages } from '../shared/reglages'
+import type { EtatSocial, EvenementSocial } from '../shared/social'
 
 function ecouter<T>(canal: string, rappel: (v: T) => void): () => void {
   const f = (_e: IpcRendererEvent, v: T): void => rappel(v)
@@ -127,6 +128,24 @@ const api: ApiSe7en = {
     ajouter: demander(CANAUX.memoireAjouter),
     supprimer: demander(CANAUX.memoireSupprimer),
     effacer: demander(CANAUX.memoireEffacer)
+  },
+  social: {
+    etat: demander(CANAUX.socialEtat),
+    surEtat: (rappel) => ecouter<EtatSocial>(CANAUX.socialChange, rappel),
+    surEvenement: (rappel) => ecouter<EvenementSocial>(CANAUX.socialEvenement, rappel),
+    profil: demander(CANAUX.socialProfil),
+    photo: demander(CANAUX.socialPhoto),
+    choisirPhoto: demander(CANAUX.socialChoisirPhoto),
+    supprimer: demander(CANAUX.socialSupprimer),
+    amis: demander(CANAUX.socialAmis),
+    ajouter: demander(CANAUX.socialAjouter),
+    accepter: demander(CANAUX.socialAccepter),
+    retirer: demander(CANAUX.socialRetirer),
+    messages: demander(CANAUX.socialMessages),
+    envoyer: demander(CANAUX.socialEnvoyer),
+    envoyerOnglet: demander(CANAUX.socialEnvoyerOnglet),
+    lu: envoyer(CANAUX.socialLu),
+    ouvrirLien: envoyer(CANAUX.socialOuvrirLien)
   }
 }
 

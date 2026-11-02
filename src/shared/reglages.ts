@@ -1,4 +1,5 @@
 /* Réglages de l'utilisateur : types et valeurs par défaut, partagés entre le main et l'interface. */
+import { adresseServeur } from './social'
 
 export type Theme = 'clair' | 'sombre' | 'auto'
 export type Disposition = 'haut' | 'gauche' | 'les-deux'
@@ -27,6 +28,8 @@ export interface Reglages {
   bloqueurExceptions: string[]
   /** L'IA se souvient de ce qu'on lui demande de retenir. */
   memoire: boolean
+  /** Adresse du serveur se7en social (profils et amis) ; vide = le serveur officiel. */
+  serveurSocial: string
 }
 
 export const REGLAGES_DEFAUT: Reglages = {
@@ -42,7 +45,8 @@ export const REGLAGES_DEFAUT: Reglages = {
   iaDemarrage: 'demander',
   bloqueur: true,
   bloqueurExceptions: [],
-  memoire: true
+  memoire: true,
+  serveurSocial: ''
 }
 
 const THEMES: readonly Theme[] = ['clair', 'sombre', 'auto']
@@ -88,6 +92,11 @@ export function fusionnerReglages(base: Reglages, brut: unknown): Reglages {
   if (typeof o.modeleTexte === 'string' && /^[\w.:\-/]{1,100}$/.test(o.modeleTexte)) r.modeleTexte = o.modeleTexte
   if (typeof o.bloqueur === 'boolean') r.bloqueur = o.bloqueur
   if (typeof o.memoire === 'boolean') r.memoire = o.memoire
+  if (typeof o.serveurSocial === 'string') {
+    const s = o.serveurSocial.trim()
+    const propre = s ? adresseServeur(s) : ''
+    if (propre !== null) r.serveurSocial = propre
+  }
   if (Array.isArray(o.bloqueurExceptions))
     r.bloqueurExceptions = [...new Set(o.bloqueurExceptions.filter((h): h is string => typeof h === 'string' && /^[a-z0-9.-]{1,253}$/.test(h)))].slice(0, 500)
   if (['demander', 'toujours', 'jamais'].includes(o.iaDemarrage as string)) r.iaDemarrage = o.iaDemarrage as DemarrageIA

@@ -9,6 +9,7 @@ import { NouvelOnglet } from './composants/NouvelOnglet'
 import { OngletsHaut } from './composants/OngletsHaut'
 import { PageFavoris, PageHistorique, PageTelechargements } from './composants/PagesDonnees'
 import { PageIA, useOllama } from './composants/PageIA'
+import { PageAmis } from './composants/PageAmis'
 import { PanneauIA, type DemandeExterne } from './composants/PanneauIA'
 import { QuestionIA } from './composants/QuestionIA'
 import { Parametres } from './composants/Parametres'
@@ -56,6 +57,8 @@ export function App(): React.JSX.Element {
         return <PageTelechargements />
       case 'se7en://ia':
         return reglages && <PageIA reglages={reglages} />
+      case 'se7en://amis':
+        return <PageAmis onglets={etat} />
       default:
         return null
     }

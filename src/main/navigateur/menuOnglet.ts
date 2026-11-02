@@ -39,6 +39,7 @@ export function ouvrirMenuPrincipal(fenetre: BrowserWindow, g: GestionnaireOngle
     { label: 'Historique', accelerator: 'Ctrl+H', click: () => g.ouvrirInterne('se7en://historique') },
     { label: 'Favoris', accelerator: 'Ctrl+Shift+O', click: () => g.ouvrirInterne('se7en://favoris') },
     { label: 'Téléchargements', accelerator: 'Ctrl+J', click: () => g.ouvrirInterne('se7en://telechargements') },
+    { label: 'Amis', click: () => g.ouvrirInterne('se7en://amis') },
     { type: 'separator' },
     { label: 'Paramètres', accelerator: 'Ctrl+,', click: () => g.ouvrirInterne('se7en://parametres') }
   ]).popup({ window: fenetre })

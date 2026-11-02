@@ -1,0 +1,30 @@
+# se7en Browser : serveur social (profils, amis, messages).
+# Rien n'est déployé sans « npm run deploy » (compte Cloudflare de se7en).
+name = "se7en-social"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+
+# Base de données : profils, amitiés, messages
+[[d1_databases]]
+binding = "DB"
+database_name = "se7en-social"
+database_id = "a-remplir-apres-wrangler-d1-create"
+migrations_dir = "migrations"
+
+# Photos de profil
+[[r2_buckets]]
+binding = "PHOTOS"
+bucket_name = "se7en-social-photos"
+
+# Le « direct » : une boîte par utilisateur, qui garde ses connexions ouvertes (messages instantanés, présence)
+[[durable_objects.bindings]]
+name = "BOITES"
+class_name = "Boite"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Boite"]
+
+# Ménage quotidien : vieux messages (90 jours) et signatures déjà vues
+[triggers]
+crons = ["17 3 * * *"]

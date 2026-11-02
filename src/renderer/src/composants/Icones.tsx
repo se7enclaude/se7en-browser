@@ -67,3 +67,6 @@ export const IconeBouclier = () => (
 export const IconeRanger = () => (
   <svg {...base}><rect x="2.5" y="3" width="4.5" height="4" rx="1" /><rect x="9" y="3" width="4.5" height="4" rx="1" /><rect x="2.5" y="9" width="11" height="4" rx="1" /></svg>
 )
+export const IconeAmis = () => (
+  <svg {...base}><circle cx="6" cy="5.75" r="2.25" /><path d="M2 13c.4-2.3 2-3.6 4-3.6s3.6 1.3 4 3.6" /><path d="M10.5 3.6a2.2 2.2 0 0 1 0 4.3M12 9.6c1.1.5 1.8 1.6 2 3.4" /></svg>
+)
