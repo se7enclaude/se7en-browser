@@ -1,0 +1,303 @@
+/* Thème « Liquid Glass » de se7en Browser.
+ * Tout passe par des variables : le thème (clair/sombre/auto), la teinte et l'effet natif ne font que les redéfinir. */
+
+:root {
+  /* teinte « argent » par défaut */
+  --teinte: 214 222 235;
+  --accent: #6f7d95;
+
+  --texte: #1c1f26;
+  --texte-discret: rgb(28 31 38 / 0.58);
+  --verre: rgb(255 255 255 / 0.42);
+  --verre-fort: rgb(255 255 255 / 0.62);
+  --verre-bord: rgb(255 255 255 / 0.75);
+  --verre-bord-ombre: rgb(0 0 0 / 0.06);
+  --reflet: linear-gradient(180deg, rgb(255 255 255 / 0.65), rgb(255 255 255 / 0) 55%);
+  --ombre: 0 1px 2px rgb(0 0 0 / 0.06), 0 8px 28px rgb(20 30 50 / 0.12);
+  --survol: rgb(0 0 0 / 0.06);
+  --fond-repli: linear-gradient(135deg, rgb(var(--teinte) / 0.9), #f4f5f8 60%, rgb(var(--teinte) / 0.6));
+
+  --rayon: 14px;
+  --rayon-petit: 9px;
+  --flou: saturate(180%) blur(28px);
+  --anim: 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  color-scheme: light;
+  font-family: 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  font-size: 13px;
+  color: var(--texte);
+}
+
+/* Sombre : choisi explicitement, ou « auto » quand Windows est en sombre (même valeurs dans les deux blocs). */
+:root[data-theme='sombre'] {
+  --texte: #eef0f5;
+  --texte-discret: rgb(238 240 245 / 0.55);
+  --verre: rgb(28 30 36 / 0.42);
+  --verre-fort: rgb(36 38 46 / 0.62);
+  --verre-bord: rgb(255 255 255 / 0.12);
+  --verre-bord-ombre: rgb(0 0 0 / 0.35);
+  --reflet: linear-gradient(180deg, rgb(255 255 255 / 0.1), rgb(255 255 255 / 0) 50%);
+  --ombre: 0 1px 2px rgb(0 0 0 / 0.3), 0 10px 32px rgb(0 0 0 / 0.35);
+  --survol: rgb(255 255 255 / 0.08);
+  --fond-repli: linear-gradient(135deg, rgb(var(--teinte) / 0.35), #16181d 55%, rgb(var(--teinte) / 0.25));
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-theme='auto'] {
+    --texte: #eef0f5;
+    --texte-discret: rgb(238 240 245 / 0.55);
+    --verre: rgb(28 30 36 / 0.42);
+    --verre-fort: rgb(36 38 46 / 0.62);
+    --verre-bord: rgb(255 255 255 / 0.12);
+    --verre-bord-ombre: rgb(0 0 0 / 0.35);
+    --reflet: linear-gradient(180deg, rgb(255 255 255 / 0.1), rgb(255 255 255 / 0) 50%);
+    --ombre: 0 1px 2px rgb(0 0 0 / 0.3), 0 10px 32px rgb(0 0 0 / 0.35);
+    --survol: rgb(255 255 255 / 0.08);
+    --fond-repli: linear-gradient(135deg, rgb(var(--teinte) / 0.35), #16181d 55%, rgb(var(--teinte) / 0.25));
+    color-scheme: dark;
+  }
+}
+
+/* Thèmes de couleur : seule la teinte change, le verre la reprend partout. */
+:root[data-teinte='argent'] { --teinte: 214 222 235; --accent: #6f7d95; }
+:root[data-teinte='soleil'] { --teinte: 250 204 72; --accent: #c98a00; }
+:root[data-teinte='ocean'] { --teinte: 92 162 255; --accent: #2f6fe0; }
+:root[data-teinte='rose'] { --teinte: 255 140 180; --accent: #d9467f; }
+:root[data-teinte='menthe'] { --teinte: 110 220 175; --accent: #179a6a; }
+:root[data-teinte='lavande'] { --teinte: 170 150 255; --accent: #7559e6; }
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#racine {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  /* Avec le verre natif, le fond reste transparent pour laisser voir l'acrylique de Windows. */
+  background: transparent;
+  user-select: none;
+}
+
+/* Windows 10 : pas d'acrylique natif, on peint un fond dégradé teinté. */
+:root[data-natif='non'] body {
+  background: var(--fond-repli);
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  border: 0;
+  background: none;
+  cursor: default;
+}
+
+/* ---------- Surfaces de verre ---------- */
+
+.verre,
+.verre-fort {
+  position: relative;
+  background: var(--verre);
+  backdrop-filter: var(--flou);
+  border: 1px solid var(--verre-bord);
+  box-shadow: var(--ombre), inset 0 -1px 0 var(--verre-bord-ombre);
+  border-radius: var(--rayon);
+}
+.verre-fort {
+  background: var(--verre-fort);
+}
+/* reflet en haut de chaque surface */
+.verre::before,
+.verre-fort::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--reflet);
+  pointer-events: none;
+  opacity: 0.7;
+}
+/* voile de teinte, très léger */
+.verre::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(120% 80% at 0% 0%, rgb(var(--teinte) / 0.22), transparent 60%);
+  pointer-events: none;
+}
+
+/* ---------- Coque ---------- */
+
+.coque {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0 8px 8px;
+  background: radial-gradient(140% 90% at 100% 0%, rgb(var(--teinte) / 0.18), transparent 60%);
+  transition: background var(--anim);
+}
+
+.barre-titre {
+  display: flex;
+  align-items: center;
+  height: 44px;
+  flex: none;
+  gap: 8px;
+  -webkit-app-region: drag;
+  transition: opacity var(--anim);
+}
+.barre-titre.inactive {
+  opacity: 0.72;
+}
+.barre-titre-centre {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+.barre-titre button,
+.barre-titre-centre > * {
+  -webkit-app-region: no-drag;
+}
+
+.logo {
+  width: 26px;
+  height: 26px;
+  margin-left: 4px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: linear-gradient(145deg, #ffffff, #c9ced8 55%, #8e96a6);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9), 0 2px 6px rgb(0 0 0 / 0.18);
+}
+.logo-7 {
+  font-weight: 700;
+  font-size: 15px;
+  color: #3a404d;
+  transform: translateY(-0.5px);
+}
+
+.boutons-fenetre {
+  display: flex;
+  gap: 4px;
+}
+.bouton-fenetre {
+  width: 34px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--rayon-petit);
+  transition: background var(--anim), transform var(--anim);
+}
+.bouton-fenetre svg {
+  width: 10px;
+  height: 10px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.2;
+  stroke-linecap: round;
+}
+.bouton-fenetre:hover {
+  background: var(--survol);
+}
+.bouton-fenetre:active {
+  transform: scale(0.94);
+}
+.bouton-fenetre.fermer:hover {
+  background: #e5484d;
+  color: white;
+}
+
+.zone-page {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+/* ---------- Carte de démonstration (étape 1) ---------- */
+
+.carte-demo {
+  width: min(420px, 90%);
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  animation: apparition 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.carte-demo h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.discret {
+  margin: -12px 0 0;
+  color: var(--texte-discret);
+}
+.groupe {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.etiquette {
+  font-weight: 600;
+}
+.segments {
+  display: flex;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--survol);
+}
+.segments button {
+  padding: 5px 14px;
+  border-radius: 8px;
+  transition: background var(--anim), box-shadow var(--anim);
+}
+.segments button.actif {
+  background: var(--verre-fort);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.15);
+}
+.pastilles {
+  display: flex;
+  gap: 8px;
+}
+.pastille {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--verre-bord);
+  transition: transform var(--anim), box-shadow var(--anim);
+}
+.pastille:hover {
+  transform: scale(1.12);
+}
+.pastille.actif {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.pastille[data-teinte='argent'] { background: linear-gradient(145deg, #fff, #b9c0cc); }
+.pastille[data-teinte='soleil'] { background: linear-gradient(145deg, #ffe58a, #f2b705); }
+.pastille[data-teinte='ocean'] { background: linear-gradient(145deg, #9cc6ff, #2f6fe0); }
+.pastille[data-teinte='rose'] { background: linear-gradient(145deg, #ffc2d6, #d9467f); }
+.pastille[data-teinte='menthe'] { background: linear-gradient(145deg, #b3f0d6, #179a6a); }
+.pastille[data-teinte='lavande'] { background: linear-gradient(145deg, #d4c9ff, #7559e6); }
+
+@keyframes apparition {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
