@@ -109,7 +109,8 @@ Autres commandes :
 
 La compilation en `.exe` (installeur Inno Setup) arrive à l'étape 9.
 
-Le premier `npm install` copie aussi les fichiers de pdf.js (polices, tables de caractères) dans`n`src/renderer/public/pdfjs` (`tools/copier-pdfjs.mjs`, relancé avant `dev` et `build`).
+Le premier `npm install` copie aussi les fichiers de pdf.js (polices, tables de caractères) dans
+`src/renderer/public/pdfjs` (`tools/copier-pdfjs.mjs`, relancé avant `dev` et `build`).
 
 ## Organisation du code
 
