@@ -2,11 +2,17 @@
 import type { BrowserWindow, Input } from 'electron'
 import { CANAUX } from '../../shared/ipc'
 import type { CommandeUi } from '../../shared/onglets'
+import type { Favoris } from '../stockage/favoris'
 import type { MagasinReglages } from '../stockage/reglages'
 import type { GestionnaireOnglets } from './onglets'
 import { actionDuRaccourci } from './raccourcis'
 
-export function creerGestionRaccourcis(fenetre: BrowserWindow, onglets: () => GestionnaireOnglets, reglages: MagasinReglages) {
+export function creerGestionRaccourcis(
+  fenetre: BrowserWindow,
+  onglets: () => GestionnaireOnglets,
+  reglages: MagasinReglages,
+  favoris: Favoris
+) {
   const versUi = (c: CommandeUi): void => {
     fenetre.webContents.focus()
     fenetre.webContents.send(CANAUX.uiCommande, c)
@@ -56,9 +62,14 @@ export function creerGestionRaccourcis(fenetre: BrowserWindow, onglets: () => Ge
       case 'basculer-barre':
         void reglages.modifier({ barreLaterale: !reglages.get().barreLaterale })
         break
-      case 'parametres':
-        g.ouvrirInterne('se7en://parametres')
+      case 'page':
+        g.ouvrirInterne(action.page)
         break
+      case 'favori': {
+        const o = g.actif()?.etat
+        if (o && /^https?:\/\//.test(o.url)) favoris.basculer(o.url, o.titre, o.favicon)
+        break
+      }
     }
     return true
   }

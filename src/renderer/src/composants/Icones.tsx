@@ -31,3 +31,27 @@ export const IconeBarreLaterale = () => (
 export const IconeReglages = () => (
   <svg {...base}><circle cx="8" cy="8" r="2" /><path d="M8 1.8v1.7M8 12.5v1.7M14.2 8h-1.7M3.5 8H1.8M12.4 3.6l-1.2 1.2M4.8 11.2l-1.2 1.2M12.4 12.4l-1.2-1.2M4.8 4.8 3.6 3.6" /></svg>
 )
+export const IconeEtoile = ({ pleine = false }: { pleine?: boolean }) => (
+  <svg {...base} className={`icone${pleine ? ' pleine' : ''}`}><path d="m8 2.2 1.8 3.7 4 .6-2.9 2.8.7 4L8 11.4l-3.6 1.9.7-4-2.9-2.8 4-.6Z" /></svg>
+)
+export const IconeTelecharger = () => (
+  <svg {...base}><path d="M8 2.5v7.5M4.8 7 8 10.2 11.2 7M3 13h10" /></svg>
+)
+export const IconeHistorique = () => (
+  <svg {...base}><path d="M2.8 8a5.2 5.2 0 1 0 1.5-3.7" /><path d="M2.5 2.8v2.4h2.4M8 5v3l2 1.3" /></svg>
+)
+export const IconeSplit = () => (
+  <svg {...base}><rect x="2" y="3" width="12" height="10" rx="2" /><path d="M8 3v10" /></svg>
+)
+export const IconeDossier = () => (
+  <svg {...base}><path d="M2.5 4.5a1 1 0 0 1 1-1h3l1.5 1.5h4.5a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1Z" /></svg>
+)
+export const IconeCorbeille = () => (
+  <svg {...base}><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8.5h5.8l.6-8.5" /></svg>
+)
+export const IconePause = () => (
+  <svg {...base}><path d="M6 4v8M10 4v8" /></svg>
+)
+export const IconeLecture = () => (
+  <svg {...base}><path d="M5.5 3.5v9l7-4.5Z" /></svg>
+)

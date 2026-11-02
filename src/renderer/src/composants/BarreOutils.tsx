@@ -2,16 +2,32 @@
 import { useEffect, useRef, useState } from 'react'
 import { adresseLisible } from '../../../shared/adresse'
 import type { EtatOnglet } from '../../../shared/onglets'
-import { IconeActualiser, IconeBarreLaterale, IconeCadenas, IconeCroix, IconePrecedent, IconeRecherche, IconeReglages, IconeSuivant } from './Icones'
+import { useFavoris, useTelechargements } from '../useDonnees'
+import {
+  IconeActualiser,
+  IconeBarreLaterale,
+  IconeCadenas,
+  IconeCroix,
+  IconeEtoile,
+  IconePrecedent,
+  IconeRecherche,
+  IconeReglages,
+  IconeSplit,
+  IconeSuivant,
+  IconeTelecharger
+} from './Icones'
 
 interface Props {
   actif: EtatOnglet | undefined
+  enSplit: boolean
   /** Bouton de la barre latérale (absent en disposition « onglets en haut »). */
   barre: { ouverte: boolean; basculer: () => void } | null
 }
 
-export function BarreOutils({ actif, barre }: Props): React.JSX.Element {
+export function BarreOutils({ actif, enSplit, barre }: Props): React.JSX.Element {
   const o = window.se7en.onglets
+  const favoris = useFavoris()
+  const telechargements = useTelechargements()
   const champ = useRef<HTMLInputElement>(null)
   const [brouillon, setBrouillon] = useState<string | null>(null)
 
@@ -32,6 +48,11 @@ export function BarreOutils({ actif, barre }: Props): React.JSX.Element {
   const id = actif?.id
   const url = actif?.url ?? ''
   const securise = url.startsWith('https://')
+  const estWeb = /^https?:\/\//.test(url)
+  const favori = favoris.some((f) => f.url === url)
+  const enCours = telechargements.filter((t) => t.etat === 'en-cours')
+  const total = enCours.reduce((s, t) => s + t.total, 0)
+  const progres = total > 0 ? Math.round((enCours.reduce((s, t) => s + t.recus, 0) / total) * 100) : 25
   const valeur = brouillon ?? (document.activeElement === champ.current ? url : adresseLisible(url))
 
   return (
@@ -90,8 +111,35 @@ export function BarreOutils({ actif, barre }: Props): React.JSX.Element {
             }
           }}
         />
+        {estWeb && brouillon === null && (
+          <button
+            type="button"
+            className={`bouton-etoile${favori ? ' actif' : ''}`}
+            title={favori ? 'Retirer des favoris (Ctrl+D)' : 'Ajouter aux favoris (Ctrl+D)'}
+            onClick={() => id && window.se7en.favoris.basculer(id)}
+          >
+            <IconeEtoile pleine={favori} />
+          </button>
+        )}
       </form>
-      <button className="bouton-icone" title="Paramètres (Ctrl+,)" onClick={() => o.parametres()}>
+      <button
+        className={`bouton-icone${enSplit ? ' enfonce' : ''}`}
+        title={enSplit ? 'Quitter la vue partagée' : 'Vue partagée'}
+        onClick={() => (enSplit ? o.quitterSplit() : o.diviser())}
+      >
+        <IconeSplit />
+      </button>
+      {telechargements.length > 0 && (
+        <button className="bouton-icone bouton-telechargements" title="Téléchargements (Ctrl+J)" onClick={() => o.interne('se7en://telechargements')}>
+          <IconeTelecharger />
+          {enCours.length > 0 && (
+            <svg className="anneau" viewBox="0 0 30 30" aria-hidden>
+              <circle cx="15" cy="15" r="13" pathLength="100" strokeDasharray={`${progres} 100`} />
+            </svg>
+          )}
+        </button>
+      )}
+      <button className="bouton-icone" title="Menu" onClick={() => window.se7en.app.menu()}>
         <IconeReglages />
       </button>
     </div>

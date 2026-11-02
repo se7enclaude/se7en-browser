@@ -13,7 +13,10 @@ export function estAdresseAutorisee(url: string): boolean {
 
 /** Pages dessinées par l'interface elle-même, ouvertes dans un onglet comme une page normale. */
 export const PAGES_INTERNES = {
-  'se7en://parametres': 'Paramètres'
+  'se7en://parametres': 'Paramètres',
+  'se7en://historique': 'Historique',
+  'se7en://favoris': 'Favoris',
+  'se7en://telechargements': 'Téléchargements'
 } as const
 export type PageInterne = keyof typeof PAGES_INTERNES
 

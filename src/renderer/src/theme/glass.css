@@ -215,10 +215,45 @@ button {
 .zone-page {
   flex: 1;
   min-height: 0;
+  display: flex;
+}
+.volet {
+  flex: 1 1 0;
+  min-width: 0;
   position: relative;
   display: grid;
   place-items: center;
   overflow: hidden;
+  transition: border-color var(--anim), box-shadow var(--anim);
+}
+.zone-page.partagee .volet {
+  flex-grow: 0;
+  flex-shrink: 0;
+}
+.zone-page.partagee .volet.actif {
+  border-color: var(--accent);
+}
+.poignee {
+  width: 8px;
+  flex: none;
+  cursor: col-resize;
+  position: relative;
+}
+.poignee::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  width: 4px;
+  height: 36px;
+  margin-top: -18px;
+  border-radius: 2px;
+  background: var(--texte-discret);
+  opacity: 0.35;
+  transition: opacity var(--anim);
+}
+.poignee:hover::after {
+  opacity: 0.8;
 }
 
 /* ---------- Boutons ---------- */
@@ -912,4 +947,258 @@ kbd {
   from {
     opacity: 0;
   }
+}
+
+/* ---------- Barre d'adresse : étoile, téléchargements ---------- */
+
+.bouton-etoile {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin-right: -6px;
+  border-radius: 6px;
+  opacity: 0.6;
+  transition: opacity var(--anim), background var(--anim), transform var(--anim);
+}
+.bouton-etoile:hover {
+  opacity: 1;
+  background: var(--survol);
+}
+.bouton-etoile.actif {
+  opacity: 1;
+  color: var(--accent);
+}
+.bouton-etoile:active {
+  transform: scale(0.85);
+}
+.icone.pleine {
+  fill: currentColor;
+}
+.bouton-telechargements {
+  position: relative;
+}
+.anneau {
+  position: absolute;
+  inset: 0;
+  width: 30px;
+  height: 30px;
+  transform: rotate(-90deg);
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linecap: round;
+  transition: stroke-dasharray 250ms linear;
+}
+
+/* ---------- Nouvel onglet : tuiles ---------- */
+
+.tuiles {
+  display: grid;
+  grid-template-columns: repeat(4, 96px);
+  gap: 14px 18px;
+  margin-top: 8px;
+}
+.tuile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 4px;
+  border-radius: 14px;
+  transition: background var(--anim), transform var(--anim);
+  animation: apparition 380ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+.tuile:hover {
+  background: var(--survol);
+  transform: translateY(-2px);
+}
+.tuile-icone {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+}
+.tuile-icone img {
+  width: 26px;
+  height: 26px;
+  border-radius: 5px;
+  position: relative;
+}
+.tuile-titre {
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 12px;
+}
+.pastille-lettre {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 5px;
+  background: rgb(var(--teinte) / 0.45);
+  font-size: 10px;
+  font-weight: 700;
+  position: relative;
+}
+.pastille-lettre.grande {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  font-size: 15px;
+}
+
+/* ---------- Pages historique / favoris / téléchargements ---------- */
+
+.entete-page {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.entete-page h1 {
+  margin: 0;
+}
+.recherche-page {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 12px;
+  background: var(--verre-fort);
+  border: 1px solid var(--verre-bord);
+}
+.recherche-page:focus-within {
+  box-shadow: 0 0 0 3px rgb(var(--teinte) / 0.35);
+}
+.recherche-page input {
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+}
+.recherche-page .icone {
+  opacity: 0.6;
+}
+.vide {
+  margin: 24px 0;
+  text-align: center;
+  color: var(--texte-discret);
+}
+.bloc .titre-jour {
+  text-transform: capitalize;
+}
+.ligne-liste {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 40px;
+  padding: 0 6px;
+  margin: 0 -6px;
+  border-radius: 9px;
+  transition: background var(--anim);
+}
+.ligne-liste:hover {
+  background: var(--survol);
+}
+.heure {
+  width: 40px;
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  color: var(--texte-discret);
+  font-size: 12px;
+}
+.lien-liste {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  color: inherit;
+  text-decoration: none;
+  cursor: default;
+}
+.titre-liste {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.adresse-liste {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  color: var(--texte-discret);
+}
+.discret-survol {
+  opacity: 0;
+}
+.ligne-liste:hover .discret-survol,
+.ligne-telechargement:hover .discret-survol {
+  opacity: 0.8;
+}
+.bouton-verre:disabled {
+  opacity: 0.45;
+}
+.ligne-telechargement {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--verre-bord);
+}
+.ligne-telechargement:last-child {
+  border-bottom: 0;
+}
+.infos-telechargement {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.nom-fichier {
+  font-weight: 600;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+.nom-fichier.lien:hover {
+  text-decoration: underline;
+}
+.etat-annule .nom-fichier,
+.etat-interrompu .nom-fichier {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+.actions-telechargement {
+  display: flex;
+  gap: 2px;
+}
+.barre-progres {
+  height: 4px;
+  margin-top: 3px;
+  border-radius: 2px;
+  background: var(--survol);
+  overflow: hidden;
+}
+.barre-progres > div {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+  transition: width 250ms linear;
+}
+.barre-progres > .indetermine {
+  width: 30% !important;
+  animation: progression 1.1s ease-in-out infinite;
+  position: relative;
 }

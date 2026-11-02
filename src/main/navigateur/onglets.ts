@@ -4,7 +4,7 @@
  * au démarrage ils sont « endormis » et ne se chargent qu'à l'ouverture. */
 import { WebContentsView, type BrowserWindow, type Input, type WebContents } from 'electron'
 import { estAdresseAutorisee, estPageInterne, PAGES_INTERNES, resoudreSaisie } from '../../shared/adresse'
-import type { EtatOnglet, EtatOnglets, OngletPrioritaireSauve, Zone } from '../../shared/onglets'
+import type { EtatOnglet, EtatOnglets, OngletPrioritaireSauve, Split, Zone, ZoneOnglet } from '../../shared/onglets'
 import { preferencesPage, preparerSessionWeb } from '../securite/politiques'
 import { chargerFavicon } from './favicons'
 
@@ -24,6 +24,8 @@ export interface OptionsGestionnaire {
   surTouche: (input: Input) => boolean
   /** Appelé quand la liste des onglets prioritaires change, pour la sauvegarder. */
   sauverPrioritaires: (liste: OngletPrioritaireSauve[]) => void
+  /** Historique : chaque page visitée, puis son titre quand il arrive. */
+  journal?: { visite: (url: string, titre: string) => void; titre: (url: string, titre: string) => void }
 }
 
 const RAYON_PAGE = 13 // rayon de la zone (14) moins le liseré
@@ -33,7 +35,9 @@ export class GestionnaireOnglets {
   private readonly onglets: Onglet[] = []
   private actifId: number | null = null
   private prochainId = 1
-  private zone: Zone = { x: 0, y: 0, width: 0, height: 0 }
+  /** Où l'interface place chaque onglet visible (un seul, ou deux en vue partagée). */
+  private zones = new Map<number, Zone>()
+  private split: Split | null = null
   /** Vrai quand un écran de l'interface (accueil…) doit passer par-dessus les pages. */
   private masque = false
   private readonly fermes: string[] = []
@@ -49,7 +53,7 @@ export class GestionnaireOnglets {
   // ---------- lecture ----------
 
   etat(): EtatOnglets {
-    return { onglets: this.onglets.map((o) => ({ ...o.etat })), actifId: this.actifId }
+    return { onglets: this.onglets.map((o) => ({ ...o.etat })), actifId: this.actifId, split: this.split && { ...this.split } }
   }
 
   actif(): Onglet | undefined {
@@ -116,6 +120,7 @@ export class GestionnaireOnglets {
   fermer(id: number): void {
     const o = this.trouver(id)
     if (!o) return
+    if (this.split && (this.split.gauche === id || this.split.droite === id)) this.split = null
     // Un onglet prioritaire ne disparaît pas : il se met en veille et revient à son adresse d'origine.
     if (o.etat.prioritaire) {
       this.endormir(o)
@@ -291,11 +296,45 @@ export class GestionnaireOnglets {
 
   // ---------- affichage ----------
 
-  definirZone(z: Zone): void {
-    const ok = [z?.x, z?.y, z?.width, z?.height].every((v) => typeof v === 'number' && Number.isFinite(v) && v >= 0)
-    if (!ok) return
-    this.zone = { x: Math.round(z.x), y: Math.round(z.y), width: Math.round(z.width), height: Math.round(z.height) }
+  /** L'interface indique où poser chaque onglet visible. Une entrée mal formée est ignorée. */
+  definirZones(liste: ZoneOnglet[]): void {
+    const zones = new Map<number, Zone>()
+    for (const entree of liste.slice(0, 2)) {
+      const z = entree?.zone
+      const ok = Number.isInteger(entree?.id) && [z?.x, z?.y, z?.width, z?.height].every((v) => typeof v === 'number' && Number.isFinite(v) && v >= 0)
+      if (ok) zones.set(entree.id, { x: Math.round(z.x), y: Math.round(z.y), width: Math.round(z.width), height: Math.round(z.height) })
+    }
+    this.zones = zones
     this.afficher()
+  }
+
+  // ---------- vue partagée ----------
+
+  /** Partage l'écran entre l'onglet actif et `avecId` (ou un Nouvel onglet). */
+  diviser(avecId?: number): void {
+    const actif = this.actif()
+    if (!actif) return
+    let autre = avecId !== undefined ? this.trouver(avecId) : undefined
+    if (autre === actif) return
+    if (!autre) autre = this.trouver(this.nouveau('', { activer: false, aCote: true }))
+    if (!autre) return
+    if (autre.etat.endormi) this.reveiller(autre)
+    this.split = { gauche: actif.etat.id, droite: autre.etat.id, ratio: 0.5 }
+    this.actifId = autre.etat.id
+    this.afficher()
+    this.signaler()
+  }
+
+  quitterSplit(): void {
+    if (!this.split) return
+    this.split = null
+    this.signaler()
+  }
+
+  definirRatio(ratio: number): void {
+    if (!this.split || !Number.isFinite(ratio)) return
+    this.split.ratio = Math.min(0.8, Math.max(0.2, ratio))
+    this.signaler()
   }
 
   definirMasque(masque: boolean): void {
@@ -317,9 +356,9 @@ export class GestionnaireOnglets {
   private afficher(): void {
     for (const o of this.onglets) {
       if (!o.vue) continue
-      const visible =
-        o.etat.id === this.actifId && estAdresseAutorisee(o.etat.url) && !o.etat.plantee && !this.masque && this.zone.width > 0
-      if (visible) o.vue.setBounds(this.zone)
+      const zone = this.zones.get(o.etat.id)
+      const visible = !!zone && zone.width > 0 && estAdresseAutorisee(o.etat.url) && !o.etat.plantee && !this.masque
+      if (visible) o.vue.setBounds(zone)
       o.vue.setVisible(visible)
     }
   }
@@ -375,9 +414,23 @@ export class GestionnaireOnglets {
       o.etat.favicon = null
       o.etat.url = url
       maj()
+      if (estAdresseAutorisee(url)) this.options.journal?.visite(url, wc.getTitle())
     })
-    wc.on('did-navigate-in-page', maj)
-    wc.on('page-title-updated', maj)
+    wc.on('did-navigate-in-page', (_e, url, principal) => {
+      maj()
+      if (principal && estAdresseAutorisee(url)) this.options.journal?.visite(url, wc.getTitle())
+    })
+    wc.on('page-title-updated', (_e, titre) => {
+      maj()
+      this.options.journal?.titre(wc.getURL(), titre)
+    })
+    // vue partagée : cliquer dans un volet en fait l'onglet actif (la barre d'adresse le suit)
+    wc.on('focus', () => {
+      if (this.actifId === o.etat.id || !this.split) return
+      if (this.split.gauche !== o.etat.id && this.split.droite !== o.etat.id) return
+      this.actifId = o.etat.id
+      this.signaler()
+    })
     wc.on('page-favicon-updated', async (_e, urls) => {
       const pageAuMoment = wc.getURL()
       const icone = await chargerFavicon(wc.session, urls)

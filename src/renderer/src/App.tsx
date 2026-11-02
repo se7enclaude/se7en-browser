@@ -1,10 +1,12 @@
 /* Interface du navigateur : barre de titre (onglets du haut), barre latérale (prioritaires), barre d'outils, zone de page. */
+import type { EtatOnglet } from '../../shared/onglets'
 import { Accueil } from './composants/Accueil'
 import { BarreLaterale } from './composants/BarreLaterale'
 import { BarreOutils } from './composants/BarreOutils'
 import { BarreTitre } from './composants/BarreTitre'
 import { NouvelOnglet } from './composants/NouvelOnglet'
 import { OngletsHaut } from './composants/OngletsHaut'
+import { PageFavoris, PageHistorique, PageTelechargements } from './composants/PagesDonnees'
 import { Parametres } from './composants/Parametres'
 import { ZonePage } from './composants/ZonePage'
 import { useGlisser } from './useGlisser'
@@ -23,10 +25,25 @@ export function App(): React.JSX.Element {
   const barreOuverte = barreDispo && !!reglages?.barreLaterale
   // Barre latérale cachée en disposition « à gauche » : les onglets remontent en haut pour rester accessibles.
   const normauxEnHaut = disposition !== 'gauche' || !barreOuverte
+  const enSplit = !!etat.split && !!actif && (etat.split.gauche === actif.id || etat.split.droite === actif.id)
 
-  let contenu: React.ReactNode = null
-  if (actif && !actif.url) contenu = <NouvelOnglet key={actif.id} onglet={actif} />
-  else if (actif?.url === 'se7en://parametres' && reglages) contenu = <Parametres reglages={reglages} modifier={modifier} infos={infos} />
+  /** Ce que l'interface dessine à la place d'une page web. */
+  const contenu = (o: EtatOnglet): React.ReactNode => {
+    switch (o.url) {
+      case '':
+        return <NouvelOnglet key={o.id} onglet={o} />
+      case 'se7en://parametres':
+        return reglages && <Parametres reglages={reglages} modifier={modifier} infos={infos} />
+      case 'se7en://historique':
+        return <PageHistorique idOnglet={o.id} />
+      case 'se7en://favoris':
+        return <PageFavoris idOnglet={o.id} />
+      case 'se7en://telechargements':
+        return <PageTelechargements />
+      default:
+        return null
+    }
+  }
 
   return (
     <div className="coque">
@@ -38,9 +55,10 @@ export function App(): React.JSX.Element {
         <div className="colonne">
           <BarreOutils
             actif={actif}
+            enSplit={enSplit}
             barre={barreDispo ? { ouverte: barreOuverte, basculer: () => modifier({ barreLaterale: !barreOuverte }) } : null}
           />
-          <ZonePage actif={actif}>{contenu}</ZonePage>
+          <ZonePage etat={etat} contenu={contenu} />
         </div>
       </div>
       {reglages && !reglages.accueilTermine && <Accueil reglages={reglages} modifier={modifier} />}

@@ -1,6 +1,8 @@
 /* Raccourcis clavier du navigateur. Ils sont captés dans le main (before-input-event) pour marcher
  * que le focus soit dans l'interface ou dans une page web. */
 
+import type { PageInterne } from '../../shared/adresse'
+
 /** Ce qu'il faut savoir d'une touche (sous-ensemble d'Electron.Input, pour pouvoir tester sans Electron). */
 export interface Touche {
   type: string
@@ -26,7 +28,8 @@ export type ActionRaccourci =
   | { type: 'suivant' }
   | { type: 'arreter' }
   | { type: 'basculer-barre' }
-  | { type: 'parametres' }
+  | { type: 'page'; page: PageInterne }
+  | { type: 'favori' }
 
 export function actionDuRaccourci(t: Touche): ActionRaccourci | null {
   if (t.type !== 'keyDown' || t.meta) return null
@@ -38,7 +41,11 @@ export function actionDuRaccourci(t: Touche): ActionRaccourci | null {
   if (ctrl && !t.shift && (k === 'w' || k === 'F4')) return { type: 'fermer-onglet' }
   if (ctrl && k === 'Tab') return { type: t.shift ? 'onglet-precedent' : 'onglet-suivant' }
   if (ctrl && !t.shift && k === 'b') return { type: 'basculer-barre' }
-  if (ctrl && !t.shift && k === ',') return { type: 'parametres' }
+  if (ctrl && !t.shift && k === ',') return { type: 'page', page: 'se7en://parametres' }
+  if (ctrl && !t.shift && k === 'h') return { type: 'page', page: 'se7en://historique' }
+  if (ctrl && !t.shift && k === 'j') return { type: 'page', page: 'se7en://telechargements' }
+  if (ctrl && t.shift && k === 'o') return { type: 'page', page: 'se7en://favoris' }
+  if (ctrl && !t.shift && k === 'd') return { type: 'favori' }
   if (ctrl && !t.shift && k === 'PageDown') return { type: 'onglet-suivant' }
   if (ctrl && !t.shift && k === 'PageUp') return { type: 'onglet-precedent' }
   // Ctrl+1…8 : onglet n ; Ctrl+9 : dernier onglet (-1)

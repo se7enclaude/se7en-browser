@@ -27,7 +27,11 @@ describe('actionDuRaccourci', () => {
 
   it('gère la barre latérale et les paramètres', () => {
     expect(actionDuRaccourci(t('b', { control: true }))).toEqual({ type: 'basculer-barre' })
-    expect(actionDuRaccourci(t(',', { control: true }))).toEqual({ type: 'parametres' })
+    expect(actionDuRaccourci(t(',', { control: true }))).toEqual({ type: 'page', page: 'se7en://parametres' })
+    expect(actionDuRaccourci(t('h', { control: true }))).toEqual({ type: 'page', page: 'se7en://historique' })
+    expect(actionDuRaccourci(t('j', { control: true }))).toEqual({ type: 'page', page: 'se7en://telechargements' })
+    expect(actionDuRaccourci(t('O', { control: true, shift: true }))).toEqual({ type: 'page', page: 'se7en://favoris' })
+    expect(actionDuRaccourci(t('d', { control: true }))).toEqual({ type: 'favori' })
   })
 
   it('gère la navigation', () => {

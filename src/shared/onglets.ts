@@ -18,9 +18,18 @@ export interface EtatOnglet {
   endormi: boolean
 }
 
+/** Vue partagée : deux onglets côte à côte. */
+export interface Split {
+  gauche: number
+  droite: number
+  /** Part de la largeur pour le volet de gauche (0,2 à 0,8). */
+  ratio: number
+}
+
 export interface EtatOnglets {
   onglets: EtatOnglet[]
   actifId: number | null
+  split: Split | null
 }
 
 /** Ce qu'on garde d'un onglet prioritaire entre deux sessions. */
@@ -36,6 +45,12 @@ export interface Zone {
   y: number
   width: number
   height: number
+}
+
+/** Zone d'un onglet visible (un seul, ou deux en vue partagée). */
+export interface ZoneOnglet {
+  id: number
+  zone: Zone
 }
 
 /** Commandes que le main envoie à l'interface (ex. raccourci Ctrl+L capté dans une page). */

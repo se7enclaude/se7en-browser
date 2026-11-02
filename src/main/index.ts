@@ -1,11 +1,14 @@
 /* Point d'entrée du processus principal de se7en Browser. */
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, session } from 'electron'
 import { CANAUX } from '../shared/ipc'
 import { creerFenetrePrincipale, appliquerTheme } from './fenetre/fenetrePrincipale'
 import { enregistrerIpc } from './ipc/enregistrer'
 import { creerGestionRaccourcis } from './navigateur/commandes'
 import { GestionnaireOnglets } from './navigateur/onglets'
-import { durcirApplication } from './securite/politiques'
+import { Telechargements } from './navigateur/telechargements'
+import { durcirApplication, PARTITION_WEB } from './securite/politiques'
+import { Favoris } from './stockage/favoris'
+import { Historique } from './stockage/historique'
 import { MagasinPrioritaires } from './stockage/prioritaires'
 import { MagasinReglages } from './stockage/reglages'
 
@@ -29,19 +32,28 @@ if (!app.requestSingleInstanceLock()) {
   })
 
   app.whenReady().then(() => {
-    const reglages = new MagasinReglages(app.getPath('userData'))
+    const dossier = app.getPath('userData')
+    const reglages = new MagasinReglages(dossier)
     appliquerTheme(reglages.get().theme)
-    const prioritaires = new MagasinPrioritaires(app.getPath('userData'))
-    enregistrerIpc(reglages, (f) => onglets.get(f.id))
+    const prioritaires = new MagasinPrioritaires(dossier)
+    const historique = new Historique(dossier)
+    const favoris = new Favoris(dossier)
+    const telechargements = new Telechargements(dossier)
+    telechargements.brancher(session.fromPartition(PARTITION_WEB))
+    // l'historique est écrit par paquets : on vide ce qui attend avant de quitter
+    app.on('before-quit', () => historique.vider())
+
+    enregistrerIpc({ reglages, historique, favoris, telechargements, ongletsDe: (f) => onglets.get(f.id) })
 
     const fenetre = creerFenetrePrincipale()
     const idFenetre = fenetre.id
-    const surTouche = creerGestionRaccourcis(fenetre, () => gestionnaire, reglages)
+    const surTouche = creerGestionRaccourcis(fenetre, () => gestionnaire, reglages, favoris)
     const gestionnaire = new GestionnaireOnglets(fenetre, {
       moteur: () => reglages.get().moteurRecherche,
       notifier: (etat) => fenetre.webContents.send(CANAUX.ongletsEtat, etat),
       surTouche,
-      sauverPrioritaires: (liste) => prioritaires.sauver(liste)
+      sauverPrioritaires: (liste) => prioritaires.sauver(liste),
+      journal: { visite: (url, titre) => historique.ajouter(url, titre), titre: (url, titre) => historique.majTitre(url, titre) }
     })
     gestionnaire.restaurerPrioritaires(prioritaires.lire())
     onglets.set(idFenetre, gestionnaire)

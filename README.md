@@ -3,7 +3,7 @@
 Un navigateur web pour Windows au design « Liquid Glass », avec une IA qui tourne sur ton PC (Ollama + Qwen).
 Il fait partie de la suite se7en et s'installe depuis **Seventh OS**.
 
-> En construction : étapes 1 à 3 terminées. Voir « Avancement » plus bas.
+> En construction : étapes 1 à 4 terminées. Voir « Avancement » plus bas.
 
 ## Raccourcis
 
@@ -19,11 +19,23 @@ Il fait partie de la suite se7en et s'installe depuis **Seventh OS**.
 | Alt+← / Alt+→ | page précédente / suivante |
 | Ctrl+B | afficher / cacher la barre latérale |
 | Ctrl+, | paramètres |
+| Ctrl+H | historique |
+| Ctrl+J | téléchargements |
+| Ctrl+D | ajouter / retirer des favoris |
+| Ctrl+Maj+O | favoris |
 
 Clic molette sur un onglet : le fermer. Glisser un onglet : le déplacer. Clic droit : épingler en prioritaire, dupliquer, fermer les autres.
 
 **Onglets prioritaires** : épinglés dans la barre latérale (glisser un onglet dedans, ou clic droit). Ils sont gardés
 d'une session à l'autre et ne se chargent qu'à l'ouverture. Les fermer les met en veille et les ramène à leur adresse d'origine.
+
+**Vue partagée** : deux onglets côte à côte (bouton à droite de la barre d'adresse, ou clic droit sur un onglet).
+La poignée du milieu règle la largeur ; cliquer dans un volet le rend actif.
+
+**Téléchargements** : directement dans le dossier Téléchargements de Windows, avec la « marque du web »
+(Zone.Identifier) pour que SmartScreen contrôle les fichiers avant leur ouverture.
+
+Historique, favoris et téléchargements restent sur le PC (`historique.json`, `favoris.json`, `telechargements.json`).
 
 ## Tester sans toucher à son profil
 
@@ -82,7 +94,7 @@ tests/         tests Vitest
 1. ✅ Coque : fenêtre sans cadre, verre natif Windows 11 (repli Windows 10), thèmes clair/sombre/auto, teintes
 2. ✅ Navigation : onglets, barre d'adresse, raccourcis
 3. ✅ Barre latérale des onglets prioritaires (Ctrl+B), écran d'accueil, paramètres
-4. Historique, favoris, téléchargements, Nouvel onglet, Splits
+4. ✅ Historique, favoris, téléchargements, Nouvel onglet, vue partagée (Splits)
 5. Ollama : détection, installation, modèles
 6. Panneau IA (Ctrl+Espace), « Demande ou cherche », @onglets, Skills, résumé
 7. PDF : visionneuse, discuter avec un PDF

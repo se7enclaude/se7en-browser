@@ -1,6 +1,7 @@
 /* Preload de l'interface : expose window.se7en, et rien d'autre. Aucun accès direct à Node ni à ipcRenderer. */
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import { CANAUX, type ApiSe7en, type EtatFenetre } from '../shared/ipc'
+import type { Favori, Telechargement } from '../shared/donnees'
 import type { CommandeUi, EtatOnglets } from '../shared/onglets'
 import type { Reglages } from '../shared/reglages'
 
@@ -15,6 +16,12 @@ const envoyer =
   (...args: unknown[]): void =>
     ipcRenderer.send(canal, ...args)
 
+const demander =
+  (canal: string) =>
+  // any : le type précis de chaque réponse est donné par ApiSe7en
+  (...args: unknown[]): Promise<any> =>
+    ipcRenderer.invoke(canal, ...args)
+
 const api: ApiSe7en = {
   fenetre: {
     reduire: () => ipcRenderer.send(CANAUX.fenetreReduire),
@@ -23,16 +30,17 @@ const api: ApiSe7en = {
     surEtat: (rappel) => ecouter<EtatFenetre>(CANAUX.fenetreEtat, rappel)
   },
   app: {
-    infos: () => ipcRenderer.invoke(CANAUX.appInfos),
-    surCommande: (rappel) => ecouter<CommandeUi>(CANAUX.uiCommande, rappel)
+    infos: demander(CANAUX.appInfos),
+    surCommande: (rappel) => ecouter<CommandeUi>(CANAUX.uiCommande, rappel),
+    menu: envoyer(CANAUX.appMenu)
   },
   reglages: {
-    lire: () => ipcRenderer.invoke(CANAUX.reglagesLire),
-    modifier: (partiel) => ipcRenderer.invoke(CANAUX.reglagesModifier, partiel),
+    lire: demander(CANAUX.reglagesLire),
+    modifier: demander(CANAUX.reglagesModifier),
     surChangement: (rappel) => ecouter<Reglages>(CANAUX.reglagesChange, rappel)
   },
   onglets: {
-    lire: () => ipcRenderer.invoke(CANAUX.ongletsLire),
+    lire: demander(CANAUX.ongletsLire),
     surEtat: (rappel) => ecouter<EtatOnglets>(CANAUX.ongletsEtat, rappel),
     nouveau: envoyer(CANAUX.ongletsNouveau),
     fermer: envoyer(CANAUX.ongletsFermer),
@@ -43,12 +51,33 @@ const api: ApiSe7en = {
     suivant: envoyer(CANAUX.ongletsSuivant),
     actualiser: envoyer(CANAUX.ongletsActualiser),
     arreter: envoyer(CANAUX.ongletsArreter),
-    zone: envoyer(CANAUX.ongletsZone),
+    zones: envoyer(CANAUX.ongletsZones),
     focusPage: envoyer(CANAUX.ongletsFocusPage),
     menu: envoyer(CANAUX.ongletsMenu),
     prioritaire: envoyer(CANAUX.ongletsPrioritaire),
     masquer: envoyer(CANAUX.ongletsMasquer),
-    parametres: envoyer(CANAUX.ongletsParametres)
+    interne: envoyer(CANAUX.ongletsInterne),
+    diviser: envoyer(CANAUX.ongletsDiviser),
+    quitterSplit: envoyer(CANAUX.ongletsQuitterSplit),
+    ratio: envoyer(CANAUX.ongletsRatio)
+  },
+  historique: {
+    chercher: demander(CANAUX.historiqueChercher),
+    plusVisites: demander(CANAUX.historiquePlusVisites),
+    supprimer: demander(CANAUX.historiqueSupprimer),
+    effacer: demander(CANAUX.historiqueEffacer)
+  },
+  favoris: {
+    lire: demander(CANAUX.favorisLire),
+    basculer: envoyer(CANAUX.favorisBasculer),
+    supprimer: envoyer(CANAUX.favorisSupprimer),
+    surChangement: (rappel) => ecouter<Favori[]>(CANAUX.favorisChange, rappel)
+  },
+  telechargements: {
+    lire: demander(CANAUX.telechargementsLire),
+    action: envoyer(CANAUX.telechargementsAction),
+    effacer: envoyer(CANAUX.telechargementsEffacer),
+    surChangement: (rappel) => ecouter<Telechargement[]>(CANAUX.telechargementsChange, rappel)
   }
 }
 
