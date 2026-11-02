@@ -48,6 +48,8 @@ export interface ReponseEnvoi {
   idConversation: string
   idQuestion: string
   idReponse: string
+  /** Réponse donnée tout de suite par le navigateur (« retiens… », « oublie… ») : pas de flux à attendre. */
+  reponseImmediate?: string
 }
 
 /** Morceaux de réponse envoyés pendant que l'IA écrit. */
@@ -60,6 +62,13 @@ export interface FluxChat {
   pages?: PageJointe[]
   image?: boolean
   alertes?: string[]
+}
+
+/** Un fait que l'utilisateur a demandé à l'IA de retenir. */
+export interface Souvenir {
+  id: string
+  texte: string
+  date: number
 }
 
 /** Une « Skill » : une consigne enregistrée, lancée en tapant /commande dans le chat. */

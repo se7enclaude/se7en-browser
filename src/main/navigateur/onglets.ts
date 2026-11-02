@@ -5,7 +5,7 @@
 import { WebContentsView, type BrowserWindow, type Input, type WebContents } from 'electron'
 import { estAdresseAutorisee, estPageInterne, PAGES_INTERNES, resoudreSaisie } from '../../shared/adresse'
 import { idDocDeVisionneuse, urlVisionneuse } from '../../shared/pdf'
-import type { EtatOnglet, EtatOnglets, OngletPrioritaireSauve, Split, Zone, ZoneOnglet } from '../../shared/onglets'
+import { COULEURS_GROUPES, type EtatOnglet, type EtatOnglets, type GroupeOnglets, type OngletPrioritaireSauve, type Split, type Zone, type ZoneOnglet } from '../../shared/onglets'
 import { preferencesPage, preparerSessionWeb } from '../securite/politiques'
 import { chargerFavicon } from './favicons'
 
@@ -41,6 +41,7 @@ export class GestionnaireOnglets {
   /** Où l'interface place chaque onglet visible (un seul, ou deux en vue partagée). */
   private zones = new Map<number, Zone>()
   private split: Split | null = null
+  private groupes: GroupeOnglets[] = []
   /** Vrai quand un écran de l'interface (accueil…) doit passer par-dessus les pages. */
   private masque = false
   private readonly fermes: string[] = []
@@ -56,7 +57,12 @@ export class GestionnaireOnglets {
   // ---------- lecture ----------
 
   etat(): EtatOnglets {
-    return { onglets: this.onglets.map((o) => ({ ...o.etat })), actifId: this.actifId, split: this.split && { ...this.split } }
+    return {
+      onglets: this.onglets.map((o) => ({ ...o.etat })),
+      actifId: this.actifId,
+      split: this.split && { ...this.split },
+      groupes: this.groupes.map((g) => ({ ...g }))
+    }
   }
 
   actif(): Onglet | undefined {
@@ -85,7 +91,9 @@ export class GestionnaireOnglets {
         plantee: false,
         prioritaire,
         endormi: !!sauve,
-        pdf: null
+        pdf: null,
+        bloques: 0,
+        groupe: null
       },
       vue: null,
       urlEpinglee: sauve?.url ?? null
@@ -105,7 +113,11 @@ export class GestionnaireOnglets {
   nouveau(saisie = '', options: { activer?: boolean; aCote?: boolean } = {}): number {
     const onglet = this.creer(false)
     const iActif = this.onglets.findIndex((o) => o.etat.id === this.actifId)
-    if (options.aCote && iActif >= 0 && !this.onglets[iActif].etat.prioritaire) this.onglets.splice(iActif + 1, 0, onglet)
+    if (options.aCote && iActif >= 0 && !this.onglets[iActif].etat.prioritaire) {
+      this.onglets.splice(iActif + 1, 0, onglet)
+      // un lien ouvert depuis un onglet rangé va dans le même groupe
+      onglet.etat.groupe = this.onglets[iActif].etat.groupe
+    }
     else this.onglets.push(onglet)
     if (options.activer !== false) this.actifId = onglet.etat.id
     if (saisie) this.naviguer(onglet.etat.id, saisie)
@@ -147,6 +159,7 @@ export class GestionnaireOnglets {
       if (this.fermes.length > MAX_FERMES) this.fermes.shift()
     }
     this.detruireVue(o)
+    this.nettoyerGroupes()
     if (this.actifId === id) this.activerApresFermeture(i)
     this.afficher()
     this.signaler()
@@ -183,6 +196,8 @@ export class GestionnaireOnglets {
     if (!o || o.etat.prioritaire === prioritaire) return
     if (prioritaire && !o.etat.url) return // un Nouvel onglet vide ne s'épingle pas
     o.etat.prioritaire = prioritaire
+    o.etat.groupe = null
+    this.nettoyerGroupes()
     o.urlEpinglee = prioritaire ? o.etat.url : null
     o.etat.endormi = false
     // il passe en fin de sa nouvelle liste
@@ -213,6 +228,9 @@ export class GestionnaireOnglets {
     if (!o) return
     const reveil = o.etat.endormi
     if (reveil) this.reveiller(o)
+    // ouvrir un onglet d'un groupe replié déplie le groupe
+    const groupe = this.groupes.find((g) => g.id === o.etat.groupe)
+    if (groupe?.replie) groupe.replie = false
     if (this.actifId === id && !reveil) return
     this.actifId = id
     this.afficher()
@@ -250,6 +268,8 @@ export class GestionnaireOnglets {
     const cible = this.trouver(versId)
     if (!o || !cible || o === cible) return
     if (o.etat.prioritaire !== cible.etat.prioritaire) this.definirPrioritaire(id, cible.etat.prioritaire)
+    // déposé au milieu d'un groupe : il en fait partie
+    if (!o.etat.prioritaire) o.etat.groupe = cible.etat.groupe
     const iO = this.onglets.indexOf(o)
     const iCible = this.onglets.indexOf(cible)
     this.onglets.splice(iO, 1)
@@ -273,6 +293,72 @@ export class GestionnaireOnglets {
     } else return
     this.afficher()
     this.signaler()
+  }
+
+  // ---------- bloqueur ----------
+
+  /** Une requête de cette page a été bloquée (pub ou traqueur). */
+  compterBloque(idWebContents: number): void {
+    const o = this.onglets.find((x) => x.vue?.webContents.id === idWebContents)
+    if (!o) return
+    o.etat.bloques++
+    this.signaler()
+  }
+
+  // ---------- groupes d'onglets (rangement par l'IA) ----------
+
+  /** Onglets que l'on peut ranger : les onglets normaux qui affichent une page. */
+  ongletsARanger(): { id: number; titre: string; url: string }[] {
+    return this.onglets.filter((o) => !o.etat.prioritaire && o.etat.url && !estPageInterne(o.etat.url)).map((o) => ({ id: o.etat.id, titre: o.etat.titre, url: o.etat.url }))
+  }
+
+  /** Crée les groupes proposés, et range les onglets pour que chaque groupe soit d'un seul tenant. */
+  appliquerGroupes(groupes: { nom: string; ids: number[] }[]): void {
+    for (const o of this.onglets) if (!o.etat.prioritaire) o.etat.groupe = null
+    this.groupes = []
+    groupes.forEach((g, i) => {
+      const membres = g.ids.map((id) => this.trouver(id)).filter((o): o is Onglet => !!o && !o.etat.prioritaire && !o.etat.groupe)
+      if (membres.length < 2) return // un groupe d'un seul onglet n'aide pas
+      const id = `g${Date.now().toString(36)}${i}`
+      this.groupes.push({ id, nom: g.nom.trim().slice(0, 30) || 'Groupe', couleur: COULEURS_GROUPES[this.groupes.length % COULEURS_GROUPES.length], replie: false })
+      for (const o of membres) o.etat.groupe = id
+    })
+    // ordre : prioritaires, puis chaque groupe, puis les onglets sans groupe
+    const rang = (o: Onglet): number => (o.etat.prioritaire ? -1 : o.etat.groupe ? this.groupes.findIndex((g) => g.id === o.etat.groupe) : this.groupes.length)
+    this.onglets.sort((a, b) => rang(a) - rang(b))
+    this.signaler()
+  }
+
+  basculerGroupe(id: string): void {
+    const g = this.groupes.find((x) => x.id === id)
+    if (!g) return
+    g.replie = !g.replie
+    // replier le groupe de l'onglet actif : on passe sur un onglet visible
+    const actif = this.actif()
+    if (g.replie && actif?.etat.groupe === id) {
+      const visible = this.onglets.find((o) => !o.etat.prioritaire && o.etat.groupe !== id)
+      if (visible) this.actifId = visible.etat.id
+      this.afficher()
+    }
+    this.signaler()
+  }
+
+  /** Retire le groupe, les onglets restent ouverts. */
+  dissoudreGroupe(id: string): void {
+    for (const o of this.onglets) if (o.etat.groupe === id) o.etat.groupe = null
+    this.nettoyerGroupes()
+    this.signaler()
+  }
+
+  fermerGroupe(id: string): void {
+    for (const o of [...this.onglets]) if (o.etat.groupe === id) this.fermer(o.etat.id)
+    this.nettoyerGroupes()
+    this.signaler()
+  }
+
+  /** Un groupe sans onglet disparaît. */
+  private nettoyerGroupes(): void {
+    this.groupes = this.groupes.filter((g) => this.onglets.some((o) => o.etat.groupe === g.id))
   }
 
   // ---------- PDF ----------
@@ -458,6 +544,7 @@ export class GestionnaireOnglets {
     })
     wc.on('did-navigate', (_e, url) => {
       o.etat.favicon = null
+      o.etat.bloques = 0
       o.etat.url = url
       maj()
       // l'adresse a pu passer d'un Nouvel onglet (sans page) à une page ou un PDF : la vue doit apparaître

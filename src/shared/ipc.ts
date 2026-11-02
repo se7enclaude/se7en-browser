@@ -2,7 +2,7 @@
  * Le preload n'expose que ces canaux ; le main ne répond qu'à eux. */
 import type { PageInterne } from './adresse'
 import type { ActionTelechargement, EntreeHistorique, Favori, SitePopulaire, Telechargement } from './donnees'
-import type { Conversation, DemandeChat, FluxChat, ReponseEnvoi, ResumeConversation, Skill } from './chat'
+import type { Conversation, DemandeChat, FluxChat, ReponseEnvoi, ResumeConversation, Skill, Souvenir } from './chat'
 import type { Coffre, EtatCoffre } from './coffre'
 import type { AnalyseFormulaire, ResultatRemplissage, ValeurARemplir } from './formulaire'
 import type { EtatOllama } from './ia'
@@ -84,7 +84,16 @@ export const CANAUX = {
   formulaireCompter: 'formulaire:compter',
   formulaireAnalyser: 'formulaire:analyser',
   formulaireRemplir: 'formulaire:remplir',
-  formulaireEnregistrer: 'formulaire:enregistrer'
+  formulaireEnregistrer: 'formulaire:enregistrer',
+  // bloqueur, groupes d'onglets, mémoire
+  bloqueurMenu: 'bloqueur:menu',
+  ongletsRanger: 'onglets:ranger',
+  groupeMenu: 'groupe:menu',
+  groupeBasculer: 'groupe:basculer',
+  memoireLire: 'memoire:lire',
+  memoireAjouter: 'memoire:ajouter',
+  memoireSupprimer: 'memoire:supprimer',
+  memoireEffacer: 'memoire:effacer'
 } as const
 
 export interface EtatFenetre {
@@ -208,5 +217,21 @@ export interface ApiSe7en {
     /** Remplit, après confirmation de l'utilisateur, dans un nouveau fichier affiché dans l'onglet. */
     remplir(idOnglet: number, valeurs: ValeurARemplir[]): Promise<ResultatRemplissage | { erreur: string }>
     enregistrerSous(idOnglet: number): Promise<string | null | { erreur: string }>
+  }
+  bloqueur: {
+    /** Menu du bouclier : nombre de blocages, désactiver sur ce site, activer / désactiver. */
+    menu(idOnglet: number): void
+  }
+  groupes: {
+    /** L'IA range les onglets en groupes par sujet. */
+    ranger(): Promise<{ groupes: number } | { erreur: string }>
+    basculer(id: string): void
+    menu(id: string): void
+  }
+  memoire: {
+    lire(): Promise<Souvenir[]>
+    ajouter(texte: string): Promise<Souvenir[]>
+    supprimer(id: string): Promise<Souvenir[]>
+    effacer(): Promise<Souvenir[]>
   }
 }

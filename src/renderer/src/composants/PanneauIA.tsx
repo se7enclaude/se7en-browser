@@ -155,9 +155,9 @@ export function PanneauIA({ etat, actif, ia, reglages, ouvert, fermer, demande }
     setMessages((liste) => [
       ...(options.nouvelle ? [] : liste),
       { id: r.idQuestion, role: 'user', texte, date },
-      { id: r.idReponse, role: 'assistant', texte: '', date }
+      { id: r.idReponse, role: 'assistant', texte: r.reponseImmediate ?? '', date }
     ])
-    setEnCours({ idReponse: r.idReponse, etape: 'lecture' })
+    if (r.reponseImmediate === undefined) setEnCours({ idReponse: r.idReponse, etape: 'lecture' })
     setSaisie('')
     setMentions([])
     setVue('chat')

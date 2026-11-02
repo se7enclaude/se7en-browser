@@ -72,6 +72,7 @@ export function App(): React.JSX.Element {
           <BarreOutils
             actif={actif}
             enSplit={enSplit}
+            bloqueurActif={reglages?.bloqueur ?? true}
             ia={{ ouverte: iaOuverte, basculer: () => setIaOuverte((v) => !v), demander: (t) => demanderIA(t, true) }}
             barre={barreDispo ? { ouverte: barreOuverte, basculer: () => modifier({ barreLaterale: !barreOuverte }) } : null}
           />

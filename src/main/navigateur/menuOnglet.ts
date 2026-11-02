@@ -1,6 +1,7 @@
 /* Menu clic droit d'un onglet. Menu natif de Windows : il passe toujours au-dessus des pages web. */
 import { Menu, type BrowserWindow } from 'electron'
 import type { GestionnaireOnglets } from './onglets'
+import { estException, hoteDe } from '../bloqueur/bloqueur'
 
 export function ouvrirMenuOnglet(fenetre: BrowserWindow, g: GestionnaireOnglets, id: number): void {
   const etat = g.etat()
@@ -25,7 +26,7 @@ export function ouvrirMenuOnglet(fenetre: BrowserWindow, g: GestionnaireOnglets,
 }
 
 /** Menu principal (bouton en haut à droite). */
-export function ouvrirMenuPrincipal(fenetre: BrowserWindow, g: GestionnaireOnglets, ouvrirFichier: () => void): void {
+export function ouvrirMenuPrincipal(fenetre: BrowserWindow, g: GestionnaireOnglets, ouvrirFichier: () => void, ranger: () => void): void {
   const etat = g.etat()
   Menu.buildFromTemplate([
     { label: 'Nouvel onglet', accelerator: 'Ctrl+T', click: () => g.nouveau() },
@@ -33,11 +34,67 @@ export function ouvrirMenuPrincipal(fenetre: BrowserWindow, g: GestionnaireOngle
     etat.split
       ? { label: 'Quitter la vue partagée', click: () => g.quitterSplit() }
       : { label: 'Vue partagée', click: () => g.diviser() },
+    { label: 'Ranger les onglets avec l’IA', enabled: g.ongletsARanger().length >= 3, click: ranger },
     { type: 'separator' },
     { label: 'Historique', accelerator: 'Ctrl+H', click: () => g.ouvrirInterne('se7en://historique') },
     { label: 'Favoris', accelerator: 'Ctrl+Shift+O', click: () => g.ouvrirInterne('se7en://favoris') },
     { label: 'Téléchargements', accelerator: 'Ctrl+J', click: () => g.ouvrirInterne('se7en://telechargements') },
     { type: 'separator' },
     { label: 'Paramètres', accelerator: 'Ctrl+,', click: () => g.ouvrirInterne('se7en://parametres') }
+  ]).popup({ window: fenetre })
+}
+
+/** Menu d'un groupe d'onglets. */
+export function ouvrirMenuGroupe(fenetre: BrowserWindow, g: GestionnaireOnglets, id: string): void {
+  const groupe = g.etat().groupes.find((x) => x.id === id)
+  if (!groupe) return
+  Menu.buildFromTemplate([
+    { label: groupe.replie ? 'Déplier le groupe' : 'Replier le groupe', click: () => g.basculerGroupe(id) },
+    { label: 'Dégrouper (garder les onglets)', click: () => g.dissoudreGroupe(id) },
+    { type: 'separator' },
+    { label: 'Fermer les onglets du groupe', click: () => g.fermerGroupe(id) }
+  ]).popup({ window: fenetre })
+}
+
+/** Menu du bouclier de la barre d'adresse. */
+export function ouvrirMenuBloqueur(
+  fenetre: BrowserWindow,
+  g: GestionnaireOnglets,
+  idOnglet: number,
+  r: { actif: boolean; pret: boolean; exceptions: string[]; changer: (actif: boolean, exceptions: string[]) => void }
+): void {
+  const o = g.etat().onglets.find((x) => x.id === idOnglet)
+  if (!o) return
+  const hote = hoteDe(o.url)
+  const exclu = !!hote && estException(hote, r.exceptions)
+  const n = o.bloques
+  const resume = !r.actif
+    ? 'Bloqueur désactivé'
+    : !r.pret
+      ? 'Listes de blocage en cours de chargement…'
+      : exclu
+        ? `Bloqueur désactivé sur ${hote}`
+        : `${n} pub${n > 1 ? 's' : ''} et traqueur${n > 1 ? 's' : ''} bloqué${n > 1 ? 's' : ''} sur cette page`
+  const recharger = (): void => g.actualiser(idOnglet)
+  Menu.buildFromTemplate([
+    { label: resume, enabled: false },
+    { type: 'separator' },
+    {
+      label: exclu ? `Réactiver le bloqueur sur ${hote}` : `Désactiver le bloqueur sur ${hote}`,
+      visible: !!hote && r.actif,
+      click: () => {
+        r.changer(r.actif, exclu ? r.exceptions.filter((e) => !(hote === e || hote.endsWith(`.${e}`))) : [...r.exceptions, hote])
+        recharger()
+      }
+    },
+    {
+      label: 'Bloquer les pubs et les traqueurs',
+      type: 'checkbox',
+      checked: r.actif,
+      click: () => {
+        r.changer(!r.actif, r.exceptions)
+        recharger()
+      }
+    }
   ]).popup({ window: fenetre })
 }

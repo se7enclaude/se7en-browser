@@ -21,6 +21,12 @@ export interface Reglages {
   modeleTexte: string
   modeleVision: string
   iaDemarrage: DemarrageIA
+  /** Bloqueur de pubs et de traqueurs. */
+  bloqueur: boolean
+  /** Sites où le bloqueur est désactivé (noms d'hôte sans www). */
+  bloqueurExceptions: string[]
+  /** L'IA se souvient de ce qu'on lui demande de retenir. */
+  memoire: boolean
 }
 
 export const REGLAGES_DEFAUT: Reglages = {
@@ -33,7 +39,10 @@ export const REGLAGES_DEFAUT: Reglages = {
   moteurRecherche: 'https://www.google.com/search?q=%s',
   modeleTexte: 'qwen3:8b',
   modeleVision: 'qwen3-vl:8b',
-  iaDemarrage: 'demander'
+  iaDemarrage: 'demander',
+  bloqueur: true,
+  bloqueurExceptions: [],
+  memoire: true
 }
 
 const THEMES: readonly Theme[] = ['clair', 'sombre', 'auto']
@@ -77,6 +86,10 @@ export function fusionnerReglages(base: Reglages, brut: unknown): Reglages {
   if (typeof o.accueilTermine === 'boolean') r.accueilTermine = o.accueilTermine
   if (typeof o.moteurRecherche === 'string' && /^https:\/\/[^\s]+%s/.test(o.moteurRecherche)) r.moteurRecherche = o.moteurRecherche
   if (typeof o.modeleTexte === 'string' && /^[\w.:\-/]{1,100}$/.test(o.modeleTexte)) r.modeleTexte = o.modeleTexte
+  if (typeof o.bloqueur === 'boolean') r.bloqueur = o.bloqueur
+  if (typeof o.memoire === 'boolean') r.memoire = o.memoire
+  if (Array.isArray(o.bloqueurExceptions))
+    r.bloqueurExceptions = [...new Set(o.bloqueurExceptions.filter((h): h is string => typeof h === 'string' && /^[a-z0-9.-]{1,253}$/.test(h)))].slice(0, 500)
   if (['demander', 'toujours', 'jamais'].includes(o.iaDemarrage as string)) r.iaDemarrage = o.iaDemarrage as DemarrageIA
   if (typeof o.modeleVision === 'string' && /^[\w.:\-/]{1,100}$/.test(o.modeleVision)) r.modeleVision = o.modeleVision
   return r

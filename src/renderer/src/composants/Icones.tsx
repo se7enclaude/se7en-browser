@@ -61,3 +61,9 @@ export const IconeIA = () => (
 export const IconePdf = () => (
   <svg {...base}><path d="M4 2.5h5.5L12.5 5.5v8H4Z" /><path d="M9.5 2.5v3h3M6 9h4M6 11h3" /></svg>
 )
+export const IconeBouclier = () => (
+  <svg {...base}><path d="M8 2.2 13 4v3.6c0 3-2.1 5.2-5 6.2-2.9-1-5-3.2-5-6.2V4Z" /></svg>
+)
+export const IconeRanger = () => (
+  <svg {...base}><rect x="2.5" y="3" width="4.5" height="4" rx="1" /><rect x="9" y="3" width="4.5" height="4" rx="1" /><rect x="2.5" y="9" width="11" height="4" rx="1" /></svg>
+)

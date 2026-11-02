@@ -7,6 +7,7 @@ import { ChoixRechercheIA, modeSaisie } from './ChoixRechercheIA'
 import {
   IconeActualiser,
   IconeBarreLaterale,
+  IconeBouclier,
   IconeCadenas,
   IconeCroix,
   IconeEtoile,
@@ -26,9 +27,10 @@ interface Props {
   barre: { ouverte: boolean; basculer: () => void } | null
   /** Panneau IA : ouvert ou non, et « Demande ou cherche ». */
   ia: { ouverte: boolean; basculer: () => void; demander: (texte: string) => void }
+  bloqueurActif: boolean
 }
 
-export function BarreOutils({ actif, enSplit, barre, ia }: Props): React.JSX.Element {
+export function BarreOutils({ actif, enSplit, barre, ia, bloqueurActif }: Props): React.JSX.Element {
   const o = window.se7en.onglets
   const favoris = useFavoris()
   const telechargements = useTelechargements()
@@ -128,6 +130,17 @@ export function BarreOutils({ actif, enSplit, barre, ia }: Props): React.JSX.Ele
           }}
         />
         {(mode === 'recherche' || mode === 'ia') && <ChoixRechercheIA mode={mode} changer={setForce} />}
+        {estWeb && brouillon === null && actif && (
+          <button
+            type="button"
+            className={`bouton-bouclier${bloqueurActif ? '' : ' eteint'}`}
+            title={bloqueurActif ? `Bloqueur : ${actif.bloques} pub(s) et traqueur(s) bloqué(s)` : 'Bloqueur désactivé'}
+            onClick={() => window.se7en.bloqueur.menu(actif.id)}
+          >
+            <IconeBouclier />
+            {bloqueurActif && actif.bloques > 0 && <span className="compteur-bloques">{actif.bloques > 99 ? '99+' : actif.bloques}</span>}
+          </button>
+        )}
         {estWeb && brouillon === null && (
           <button
             type="button"

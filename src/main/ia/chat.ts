@@ -11,6 +11,7 @@ import type { Conversations, Skills } from './conversations'
 import { capturerPage, lirePage } from './lecturePage'
 import type { DocumentsPdf } from '../pdf/documents'
 import { lireTextePdf } from '../pdf/texte'
+import { demandeDeRetenir, demandeDOublier, type Memoire } from './memoire'
 import { lireNdjson } from './ndjson'
 import { API_OLLAMA, type Ollama } from './ollama'
 import { alertesManipulation, construireMessages, titreConversation, type PageLue } from './prompts'
@@ -28,6 +29,7 @@ export class ServiceChat extends EventEmitter<{ flux: [FluxChat] }> {
     private readonly conversations: Conversations,
     private readonly skills: Skills,
     private readonly documents: DocumentsPdf,
+    private readonly memoire: Memoire,
     private readonly reglages: () => Reglages,
     private readonly onglets: () => GestionnaireOnglets | undefined
   ) {
@@ -57,12 +59,37 @@ export class ServiceChat extends EventEmitter<{ flux: [FluxChat] }> {
     conv.messages.push(question, reponse)
     this.conversations.toucher(conv)
 
+    // « retiens que … » / « oublie … » : réponse immédiate du navigateur, sans IA
+    const reponseLocale = this.commandeMemoire(d.texte)
+    if (reponseLocale !== null) {
+      reponse.texte = reponseLocale
+      this.conversations.toucher(conv)
+      return { idConversation: conv.id, idQuestion: question.id, idReponse: reponse.id, reponseImmediate: reponseLocale }
+    }
+
     this.enCours = new AbortController()
     void this.repondre(d, historique, question, reponse, conv.id, this.enCours.signal).finally(() => {
       this.enCours = null
       this.conversations.toucher(conv)
     })
     return { idConversation: conv.id, idQuestion: question.id, idReponse: reponse.id }
+  }
+
+  /** Réponse du navigateur à une demande de mémoire, ou null si ce n'en est pas une. */
+  private commandeMemoire(texte: string): string | null {
+    const aRetenir = demandeDeRetenir(texte)
+    const aOublier = aRetenir ? null : demandeDOublier(texte)
+    if (!aRetenir && !aOublier) return null
+    if (!this.reglages().memoire) return "La mémoire est désactivée. Tu peux l'activer dans Paramètres › Mémoire de l'IA."
+    if (aRetenir) {
+      const s = this.memoire.ajouter(aRetenir)
+      return `C'est noté, je m'en souviendrai : « ${s.texte} ».\n\nTu retrouves tout ce que je retiens dans Paramètres › Mémoire de l'IA.`
+    }
+    const n = this.memoire.oublier(aOublier!)
+    if (aOublier === 'tout') return n ? `C'est oublié : j'ai effacé ${n} souvenir${n > 1 ? 's' : ''}.` : "Je n'avais rien en mémoire."
+    return n
+      ? `C'est oublié (${n} souvenir${n > 1 ? 's' : ''}).`
+      : "Je n'ai rien trouvé à oublier sur ce sujet. Tu peux voir et supprimer mes souvenirs dans Paramètres › Mémoire de l'IA."
   }
 
   private async repondre(
@@ -119,7 +146,7 @@ export class ServiceChat extends EventEmitter<{ flux: [FluxChat] }> {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: image ? r.modeleVision : r.modeleTexte,
-          messages: construireMessages(historique, texte, pages, image),
+          messages: construireMessages(historique, texte, pages, image, undefined, r.memoire ? this.memoire.lire().map((s) => s.texte) : []),
           stream: true,
           think: false,
           options: { num_ctx: TAILLE_CONTEXTE }

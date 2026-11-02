@@ -95,9 +95,17 @@ export function construireMessages(
   question: string,
   pages: PageLue[],
   image?: string,
-  nonce?: string
+  nonce?: string,
+  souvenirs: string[] = []
 ): MessageOllama[] {
-  const messages: MessageOllama[] = [{ role: 'system', content: CONSIGNE_SYSTEME }]
+  // ce que l'utilisateur a demandé de retenir (tapé par lui, jamais venu d'une page)
+  const memoire = souvenirs.length
+    ? `\n\nCe que l'utilisateur t'a demandé de retenir (à utiliser quand c'est utile, sans le rappeler à chaque réponse) :\n${souvenirs
+        .slice(0, 50)
+        .map((s) => `- ${neutraliser(s).slice(0, 300)}`)
+        .join('\n')}`
+    : ''
+  const messages: MessageOllama[] = [{ role: 'system', content: CONSIGNE_SYSTEME + memoire }]
   for (const m of historique.slice(-MAX_HISTORIQUE)) messages.push({ role: m.role, content: m.texte })
   let contenu = question
   if (pages.length) {

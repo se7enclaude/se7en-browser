@@ -10,6 +10,10 @@ import { creerFenetrePrincipale, appliquerTheme } from './fenetre/fenetrePrincip
 import { ServiceChat } from './ia/chat'
 import { Conversations, Skills } from './ia/conversations'
 import { Ollama } from './ia/ollama'
+import { Memoire } from './ia/memoire'
+import { proposerGroupes } from './ia/rangement'
+import { Bloqueur } from './bloqueur/bloqueur'
+import { modelePresent } from '../shared/ia'
 import { enregistrerIpc } from './ipc/enregistrer'
 import { creerGestionRaccourcis } from './navigateur/commandes'
 import { GestionnaireOnglets } from './navigateur/onglets'
@@ -55,6 +59,12 @@ if (!app.requestSingleInstanceLock()) {
     const documents = new DocumentsPdf()
     brancherProtocolePdf(sessionWeb, documents)
     redirigerPdfVersVisionneuse(sessionWeb)
+
+    // bloqueur de pubs et de traqueurs (au niveau du réseau, sans script injecté dans les pages)
+    const bloqueur = new Bloqueur(dossier)
+    bloqueur.brancher(sessionWeb, () => reglages.get().bloqueur, () => reglages.get().bloqueurExceptions)
+    bloqueur.on('bloque', (idWc) => [...onglets.values()][0]?.compterBloque(idWc))
+    void bloqueur.charger()
     app.on('will-quit', () => documents.vider())
     telechargements.intercepteur = (item, wc) => {
       const estPdf = item.getMimeType() === 'application/pdf' || /\.pdf$/i.test(item.getFilename())
@@ -91,17 +101,35 @@ if (!app.requestSingleInstanceLock()) {
       if (e.phase === 'arrete' && reglages.get().iaDemarrage === 'toujours') void ollama.demarrer()
     })
     app.on('will-quit', () => ollama.arreter())
+    const memoire = new Memoire(dossier)
     const conversations = new Conversations(dossier)
     const skills = new Skills(dossier)
     app.on('before-quit', () => conversations.vider())
     // le chat lit les onglets de la fenêtre principale (une seule fenêtre pour l'instant)
-    const chat = new ServiceChat(ollama, conversations, skills, documents, () => reglages.get(), () => [...onglets.values()][0])
+    const chat = new ServiceChat(ollama, conversations, skills, documents, memoire, () => reglages.get(), () => [...onglets.values()][0])
+
+    /** L'IA range les onglets par sujet (titres et sites seulement). */
+    const ranger = async (g: GestionnaireOnglets): Promise<{ groupes: number } | { erreur: string }> => {
+      const r = reglages.get()
+      const e = ollama.etat()
+      if (e.phase !== 'pret' || !modelePresent(r.modeleTexte, e.modeles)) return { erreur: "Active l'IA locale pour ranger les onglets." }
+      const liste = g.ongletsARanger()
+      if (liste.length < 3) return { erreur: 'Il faut au moins 3 onglets ouverts pour les ranger.' }
+      try {
+        const groupes = await proposerGroupes(liste, r.modeleTexte)
+        if (!groupes.length) return { erreur: "L'IA n'a pas trouvé de sujets communs entre ces onglets." }
+        g.appliquerGroupes(groupes)
+        return { groupes: g.etat().groupes.length }
+      } catch (err) {
+        return { erreur: (err as Error).message }
+      }
+    }
 
     // coffre personnel chiffré, et remplissage des formulaires PDF avec ses informations
     const coffre = new CoffreChiffre(dossier)
     const formulaires = new ServiceFormulaire(documents, coffre, ollama, () => reglages.get())
 
-    enregistrerIpc({ reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, coffre, formulaires, ouvrirFichier: (f) => void ouvrirFichier(f), ongletsDe: (f) => onglets.get(f.id) })
+    enregistrerIpc({ reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, coffre, formulaires, bloqueur, memoire, ranger, ouvrirFichier: (f) => void ouvrirFichier(f), ongletsDe: (f) => onglets.get(f.id) })
 
     const fenetre = creerFenetrePrincipale()
     const idFenetre = fenetre.id

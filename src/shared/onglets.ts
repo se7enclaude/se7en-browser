@@ -18,6 +18,21 @@ export interface EtatOnglet {
   endormi: boolean
   /** Identifiant du PDF affiché par la visionneuse (url est alors l'adresse du PDF lui-même), ou null. */
   pdf: string | null
+  /** Publicités et traqueurs bloqués sur la page actuelle. */
+  bloques: number
+  /** Groupe d'onglets (rangement par l'IA), ou null. */
+  groupe: string | null
+}
+
+export const COULEURS_GROUPES = ['bleu', 'vert', 'orange', 'rose', 'violet', 'cyan', 'jaune', 'rouge'] as const
+export type CouleurGroupe = (typeof COULEURS_GROUPES)[number]
+
+export interface GroupeOnglets {
+  id: string
+  nom: string
+  couleur: CouleurGroupe
+  /** Groupe replié : ses onglets sont cachés dans la barre. */
+  replie: boolean
 }
 
 /** Vue partagée : deux onglets côte à côte. */
@@ -32,6 +47,7 @@ export interface EtatOnglets {
   onglets: EtatOnglet[]
   actifId: number | null
   split: Split | null
+  groupes: GroupeOnglets[]
 }
 
 /** Ce qu'on garde d'un onglet prioritaire entre deux sessions. */

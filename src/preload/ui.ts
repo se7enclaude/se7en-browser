@@ -113,6 +113,20 @@ const api: ApiSe7en = {
     analyser: demander(CANAUX.formulaireAnalyser),
     remplir: demander(CANAUX.formulaireRemplir),
     enregistrerSous: demander(CANAUX.formulaireEnregistrer)
+  },
+  bloqueur: {
+    menu: envoyer(CANAUX.bloqueurMenu)
+  },
+  groupes: {
+    ranger: demander(CANAUX.ongletsRanger),
+    basculer: envoyer(CANAUX.groupeBasculer),
+    menu: envoyer(CANAUX.groupeMenu)
+  },
+  memoire: {
+    lire: demander(CANAUX.memoireLire),
+    ajouter: demander(CANAUX.memoireAjouter),
+    supprimer: demander(CANAUX.memoireSupprimer),
+    effacer: demander(CANAUX.memoireEffacer)
   }
 }
 

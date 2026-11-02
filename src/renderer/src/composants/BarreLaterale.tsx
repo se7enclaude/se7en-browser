@@ -4,6 +4,7 @@ import type { EtatOnglets } from '../../../shared/onglets'
 import type { Glisser } from '../useGlisser'
 import { IconePlus } from './Icones'
 import { OngletItem } from './OngletItem'
+import { BoutonRanger, rendreAvecGroupes } from './OngletsHaut'
 
 interface Props {
   etat: EtatOnglets
@@ -36,13 +37,16 @@ export function BarreLaterale({ etat, glisser, ouverte, avecNormaux }: Props): R
         {avecNormaux && (
           <>
             <div className="separateur" />
-            <button className="ligne-nouvel-onglet" onClick={() => o.nouveau()}>
-              <IconePlus />
-              <span>Nouvel onglet</span>
-            </button>
+            <div className="ligne-actions-laterales">
+              <button className="ligne-nouvel-onglet" onClick={() => o.nouveau()}>
+                <IconePlus />
+                <span>Nouvel onglet</span>
+              </button>
+              <BoutonRanger etat={etat} />
+            </div>
             <div className="liste-onglets defile" {...glisser.zone((id) => o.prioritaire(id, false))}>
-              {normaux.map((x) => (
-                <OngletItem key={x.id} onglet={x} actif={x.id === etat.actifId} forme="ligne" glisser={glisser} />
+              {rendreAvecGroupes(normaux, etat.groupes, (x) => (
+                <OngletItem onglet={x} actif={x.id === etat.actifId} forme="ligne" glisser={glisser} />
               ))}
             </div>
           </>

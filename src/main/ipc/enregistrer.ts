@@ -11,13 +11,15 @@ import type { Historique } from '../stockage/historique'
 import type { MagasinReglages } from '../stockage/reglages'
 import { appliquerTheme, effetNatifDisponible } from '../fenetre/fenetrePrincipale'
 import type { GestionnaireOnglets } from '../navigateur/onglets'
-import { ouvrirMenuOnglet, ouvrirMenuPrincipal } from '../navigateur/menuOnglet'
+import { ouvrirMenuBloqueur, ouvrirMenuGroupe, ouvrirMenuOnglet, ouvrirMenuPrincipal } from '../navigateur/menuOnglet'
 import type { Telechargements } from '../navigateur/telechargements'
 import type { Ollama } from '../ia/ollama'
 import type { ServiceChat } from '../ia/chat'
 import type { Conversations, Skills } from '../ia/conversations'
 import type { CoffreChiffre } from '../coffre/coffre'
 import type { ServiceFormulaire } from '../pdf/serviceFormulaire'
+import type { Bloqueur } from '../bloqueur/bloqueur'
+import type { Memoire } from '../ia/memoire'
 import { RE_NOM_MODELE } from '../../shared/ia'
 
 export interface Services {
@@ -31,6 +33,10 @@ export interface Services {
   skills: Skills
   coffre: CoffreChiffre
   formulaires: ServiceFormulaire
+  bloqueur: Bloqueur
+  memoire: Memoire
+  /** Range les onglets de la fenêtre en groupes (IA). */
+  ranger: (g: GestionnaireOnglets) => Promise<{ groupes: number } | { erreur: string }>
   /** Fenêtre « Ouvrir » pour choisir un PDF du PC. */
   ouvrirFichier: (f: BrowserWindow) => void
   ongletsDe: (f: BrowserWindow) => GestionnaireOnglets | undefined
@@ -52,7 +58,7 @@ function diffuser(canal: string, valeur: unknown): void {
 }
 
 export function enregistrerIpc(s: Services): void {
-  const { reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, coffre, formulaires, ongletsDe } = s
+  const { reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, coffre, formulaires, bloqueur, memoire, ongletsDe } = s
 
   // ---------- fenêtre et application ----------
   ipcMain.on(CANAUX.fenetreReduire, (e) => fenetreDe(e)?.minimize())
@@ -94,7 +100,7 @@ export function enregistrerIpc(s: Services): void {
   ipcMain.on(CANAUX.appMenu, (e) => {
     const f = fenetreDe(e)
     const go = f && ongletsDe(f)
-    if (f && go) ouvrirMenuPrincipal(f, go, () => s.ouvrirFichier(f))
+    if (f && go) ouvrirMenuPrincipal(f, go, () => s.ouvrirFichier(f), () => void s.ranger(go))
   })
   ipcMain.on(CANAUX.ongletsMenu, (e, id: unknown) => {
     const f = fenetreDe(e)
@@ -201,5 +207,46 @@ export function enregistrerIpc(s: Services): void {
     const f = fenetreDe(e)
     const go = f && ongletsDe(f)
     return f && go && estId(id) ? formulaires.enregistrerSous(f, go, id).catch(erreur) : null
+  })
+
+  // ---------- bloqueur ----------
+  ipcMain.on(CANAUX.bloqueurMenu, (e, id: unknown) => {
+    const f = fenetreDe(e)
+    const go = f && ongletsDe(f)
+    if (!f || !go || !estId(id)) return
+    const r = reglages.get()
+    ouvrirMenuBloqueur(f, go, id, {
+      actif: r.bloqueur,
+      pret: bloqueur.pret,
+      exceptions: r.bloqueurExceptions,
+      changer: (actif, exceptions) => void reglages.modifier({ bloqueur: actif, bloqueurExceptions: exceptions })
+    })
+  })
+
+  // ---------- groupes d'onglets ----------
+  ipcMain.handle(CANAUX.ongletsRanger, async (e) => {
+    const go = g(e)
+    return go ? s.ranger(go) : { erreur: 'Fenêtre introuvable.' }
+  })
+  ipcMain.on(CANAUX.groupeBasculer, (e, id: unknown) => typeof id === 'string' && g(e)?.basculerGroupe(id))
+  ipcMain.on(CANAUX.groupeMenu, (e, id: unknown) => {
+    const f = fenetreDe(e)
+    const go = f && ongletsDe(f)
+    if (f && go && typeof id === 'string') ouvrirMenuGroupe(f, go, id)
+  })
+
+  // ---------- mémoire de l'IA ----------
+  ipcMain.handle(CANAUX.memoireLire, (e) => (fenetreDe(e) ? memoire.lire() : []))
+  ipcMain.handle(CANAUX.memoireAjouter, (e, texte: unknown) => {
+    if (fenetreDe(e) && estTexte(texte) && texte.trim()) memoire.ajouter(texte)
+    return memoire.lire()
+  })
+  ipcMain.handle(CANAUX.memoireSupprimer, (e, id: unknown) => {
+    if (fenetreDe(e) && typeof id === 'string') memoire.supprimer(id)
+    return memoire.lire()
+  })
+  ipcMain.handle(CANAUX.memoireEffacer, (e) => {
+    if (fenetreDe(e)) memoire.effacer()
+    return memoire.lire()
   })
 }

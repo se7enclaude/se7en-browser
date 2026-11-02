@@ -3,7 +3,7 @@
 Un navigateur web pour Windows au design « Liquid Glass », avec une IA qui tourne sur ton PC (Ollama + Qwen).
 Il fait partie de la suite se7en et s'installe depuis **Seventh OS**.
 
-> En construction : étapes 1 à 8 terminées. Voir « Avancement » plus bas.
+> En construction : étapes 1 à 8b terminées. Voir « Avancement » plus bas.
 
 ## Raccourcis
 
@@ -94,6 +94,19 @@ Sur un PDF qui contient un formulaire, le panneau IA propose « Remplir avec mon
 Testé sur un formulaire façon CERFA (15 champs, noms techniques f1…f15, libellé piégé) : 11 champs remplis
 correctement, « employeur », « Fait à », « Le » et le champ piégé laissés vides.
 
+**Bloqueur de pubs et de traqueurs** (`src/main/bloqueur`) : moteur de filtres de Ghostery (listes EasyList,
+EasyPrivacy… préparées par Ghostery, téléchargées une fois puis renouvelées chaque semaine), utilisé seul : le blocage
+se fait au niveau du réseau, **sans aucun script injecté dans les pages**. Le bouclier de la barre d'adresse montre le
+nombre de blocages de la page et permet de désactiver le bloqueur sur un site ; réglages dans Paramètres › Confidentialité.
+
+**Onglets rangés par l'IA** : le bouton « Ranger » (à côté de +) ou le menu demande à l'IA de grouper les onglets par
+sujet, à partir de leurs titres et de leurs sites seulement. Chaque groupe a une étiquette de couleur : clic pour le
+replier, clic droit pour le dégrouper ou fermer ses onglets. Un lien ouvert depuis un onglet rangé rejoint son groupe.
+
+**Mémoire de l'IA** : « retiens que… » / « oublie… » dans le panneau IA. Seul ce que l'utilisateur tape lui-même est
+retenu (jamais le contenu d'une page, jamais l'IA d'elle-même) ; les souvenirs sont ajoutés à la consigne système.
+Liste, ajout, suppression et désactivation dans Paramètres › Mémoire de l'IA.
+
 ## Tester sans toucher à son profil
 
 `SE7EN_PROFIL_TEST=<dossier>` lance le navigateur avec un profil à part (réglages, onglets, cookies),
@@ -159,7 +172,7 @@ tests/         tests Vitest
 6. ✅ Panneau IA (Ctrl+Espace), « Demande ou cherche », @onglets, Skills, résumé, protection anti-injection
 7. ✅ PDF : visionneuse isolée, discuter avec un PDF
 8. ✅ Coffre chiffré et remplissage de PDF
-8b. Bloqueur de pubs et traqueurs, onglets rangés par l'IA, mémoire
+8b. ✅ Bloqueur de pubs et traqueurs, onglets rangés par l'IA, mémoire
 8c. Profils et amis (serveur Cloudflare)
 9. Installeur Windows
 10. Publication et ajout dans Seventh OS

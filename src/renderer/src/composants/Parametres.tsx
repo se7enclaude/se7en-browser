@@ -5,6 +5,7 @@ import { MOTEURS, type Reglages } from '../../../shared/reglages'
 import { modelePresent } from '../../../shared/ia'
 import { ChoixDisposition, ChoixTeinte, ChoixTheme } from './ChoixApparence'
 import { EditeurCoffre } from './EditeurCoffre'
+import { ReglagesBloqueur, ReglagesMemoire } from './ReglagesViePrivee'
 import { EditeurSkills } from './EditeurSkills'
 import { useOllama } from './PageIA'
 
@@ -116,6 +117,10 @@ export function Parametres({ reglages, modifier, infos }: Props): React.JSX.Elem
           </button>
         </div>
       </section>
+
+      <ReglagesBloqueur reglages={reglages} modifier={modifier} />
+
+      <ReglagesMemoire reglages={reglages} modifier={modifier} />
 
       <EditeurCoffre />
 

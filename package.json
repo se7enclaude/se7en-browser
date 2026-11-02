@@ -1,7 +1,7 @@
 {
   "name": "se7en-browser",
   "productName": "se7en Browser",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "se7en Browser : un navigateur Liquid Glass avec IA locale (Ollama).",
   "main": "out/main/index.js",
   "private": true,
@@ -30,6 +30,7 @@
     "vitest": "^5.1.0"
   },
   "dependencies": {
+    "@ghostery/adblocker": "^2.20.3",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^6.5.438"
   }
