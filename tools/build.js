@@ -12,6 +12,7 @@
 const fs = require('fs')
 const path = require('path')
 const cp = require('child_process')
+const { preparerTor, UTILES, VERSION: VERSION_TOR } = require('./tor')
 
 const ROOT = path.resolve(__dirname, '..')
 const OUT = path.join(ROOT, 'dist')
@@ -78,9 +79,17 @@ const attendus = ['out/main/index.js', 'out/preload/ui.js', 'out/renderer/index.
 for (const f of attendus) if (!fs.existsSync(path.join(RES, f))) stop('absent du paquet : ' + f)
 console.log('Navigateur : ' + mb(taille) + ' (' + modules.length + ' modules) + Electron')
 
-// 3. installeur
-if (!fs.existsSync(ISCC)) stop('Inno Setup absent : ' + ISCC)
-const iss = cp.spawnSync(ISCC, ['/Q', '/DAppVersion=' + VERSION, '/DStage=' + B, '/O' + path.join(OUT, 'release'), path.join(ROOT, 'installer.iss')], { stdio: 'inherit' })
-if (iss.status !== 0) stop("Échec d'Inno Setup")
-const exe = path.join(OUT, 'release', 'se7en-Browser-Setup-' + VERSION + '.exe')
-console.log('Installeur : ' + exe + ' (' + mb(fs.statSync(exe).size) + ')')
+preparerTor().then(installeur, (e) => stop(e.message))
+
+/** 3. Tor (VPN du navigateur, vérifié par son empreinte) dans resources/tor, puis l'installeur. */
+function installeur(tor) {
+  let tailleTor = 0
+  for (const f of UTILES) tailleTor += copy(path.join(tor, f), path.join(APP, 'resources', 'tor', f))
+  console.log('Tor ' + VERSION_TOR + ' : ' + mb(tailleTor))
+
+  if (!fs.existsSync(ISCC)) stop('Inno Setup absent : ' + ISCC)
+  const iss = cp.spawnSync(ISCC, ['/Q', '/DAppVersion=' + VERSION, '/DStage=' + B, '/O' + path.join(OUT, 'release'), path.join(ROOT, 'installer.iss')], { stdio: 'inherit' })
+  if (iss.status !== 0) stop("Échec d'Inno Setup")
+  const exe = path.join(OUT, 'release', 'se7en-Browser-Setup-' + VERSION + '.exe')
+  console.log('Installeur : ' + exe + ' (' + mb(fs.statSync(exe).size) + ')')
+}

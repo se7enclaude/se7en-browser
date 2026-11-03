@@ -7,6 +7,7 @@ import type { EtatOllama } from '../shared/ia'
 import type { CommandeUi, EtatOnglets } from '../shared/onglets'
 import type { Reglages } from '../shared/reglages'
 import type { EtatEnsemble, EtatSocial, EvenementSocial } from '../shared/social'
+import type { EtatVpn } from '../shared/vpn'
 import type { EtatEcriture } from '../shared/ecriture'
 import type { EtatMiseAJour } from '../shared/miseAJour'
 
@@ -75,6 +76,13 @@ const api: ApiSe7en = {
     diviser: envoyer(CANAUX.ongletsDiviser),
     quitterSplit: envoyer(CANAUX.ongletsQuitterSplit),
     ratio: envoyer(CANAUX.ongletsRatio)
+  },
+  vpn: {
+    etat: demander(CANAUX.vpnEtat),
+    surEtat: (rappel) => ecouter<EtatVpn>(CANAUX.vpnChange, rappel),
+    activer: envoyer(CANAUX.vpnActiver),
+    desactiver: envoyer(CANAUX.vpnDesactiver),
+    nouvelleIdentite: envoyer(CANAUX.vpnNouvelleIdentite)
   },
   widgets: {
     villes: demander(CANAUX.widgetsVilles),

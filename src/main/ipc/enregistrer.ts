@@ -37,6 +37,8 @@ import { analyserFormulaireWeb, remplirFormulaireWeb } from '../ia/formulaireWeb
 import { chiffrer, dechiffrer, MOT_DE_PASSE_MIN, type ContenuSauvegarde } from '../sauvegarde'
 import { captureRaccourci } from '../navigateur/commandes'
 import type { Ensemble } from '../social/ensemble'
+import type { Vpn } from '../vpn'
+import { estPaysVpn } from '../../shared/vpn'
 import { estNavigateurParDefaut, ouvrirChoixNavigateur } from '../navigateurDefaut'
 import { lireFavorisExportes } from '../../shared/importFavoris'
 import { promises as fsp } from 'node:fs'
@@ -64,6 +66,7 @@ export interface Services {
   discussion: (f: BrowserWindow, cible: CibleSocial | null) => void
   agrandirDiscussion: (f: BrowserWindow, cible: CibleSocial) => void
   ensemble: Ensemble
+  vpn: Vpn
   /** Traduit la page d'un onglet (ou remet l'original). */
   traduire: (f: BrowserWindow, id: number, original: boolean) => void
   /** Capture l'onglet actif et l'envoie à l'interface pour choisir une zone. */
@@ -512,6 +515,13 @@ export function enregistrerIpc(s: Services): void {
     if (f) s.discussion(f, null)
   })
   ipcMain.handle(CANAUX.socialRecuperer, (e, code: unknown) => (typeof code === 'string' ? social$(e, () => social.recuperer(code.slice(0, 200))) : { erreur: 'Code invalide.' }))
+
+  // ---------- VPN (Tor) : seulement sur clic de l'utilisateur ----------
+  s.vpn.on('etat', (etat) => diffuser(CANAUX.vpnChange, etat))
+  ipcMain.handle(CANAUX.vpnEtat, (e) => (fenetreDe(e) ? s.vpn.etat() : null))
+  ipcMain.on(CANAUX.vpnActiver, (e, pays: unknown) => fenetreDe(e) && estPaysVpn(pays) && void s.vpn.activer(pays))
+  ipcMain.on(CANAUX.vpnDesactiver, (e) => fenetreDe(e) && void s.vpn.desactiver())
+  ipcMain.on(CANAUX.vpnNouvelleIdentite, (e) => fenetreDe(e) && void s.vpn.nouvelleIdentite())
 
   // ---------- naviguer ensemble ----------
   s.ensemble.on('etat', (etat) => diffuser(CANAUX.ensembleChange, etat))

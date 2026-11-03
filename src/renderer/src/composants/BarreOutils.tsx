@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { adresseLisible } from '../../../shared/adresse'
 import type { EtatOnglet, EtatOnglets } from '../../../shared/onglets'
+import { BoutonVpn } from './BoutonVpn'
 import { MenuPrincipal } from './MenuPrincipal'
 import { useFavoris, useTelechargements } from '../useDonnees'
 import { ChoixRechercheIA, modeSaisie } from './ChoixRechercheIA'
@@ -190,6 +191,7 @@ export function BarreOutils({ actif, etat, enSplit, barre, ia, bloqueurActif }: 
           )}
         </button>
       )}
+      <BoutonVpn />
       <button className={`bouton-icone bouton-ia${ia.ouverte ? ' enfonce' : ''}`} title="IA locale (Ctrl+Espace)" onClick={ia.basculer}>
         <IconeIA />
       </button>

@@ -12,6 +12,7 @@ import { Plantages } from './plantages'
 import { NotifMessages } from './social/notifMessages'
 import { LARGEUR_DISCUSSION, MiniDiscussion } from './social/miniDiscussion'
 import { Ensemble } from './social/ensemble'
+import { Vpn } from './vpn'
 import { creerFenetrePrincipale, appliquerTheme } from './fenetre/fenetrePrincipale'
 import { ServiceChat } from './ia/chat'
 import { Conversations, Skills } from './ia/conversations'
@@ -105,6 +106,9 @@ if (!app.requestSingleInstanceLock()) {
     bloqueur.on('bloque', (idWc) => [...onglets.values()][0]?.compterBloque(idWc))
     void bloqueur.charger()
     app.on('will-quit', () => documents.vider())
+
+    // VPN gratuit (réseau Tor) : arrêté au lancement, l'utilisateur l'active quand il veut
+    const vpn = new Vpn(dossier, [sessionWeb, sessionPrivee])
     telechargements.intercepteur = (item, wc) => {
       const estPdf = item.getMimeType() === 'application/pdf' || /\.pdf$/i.test(item.getFilename())
       // « Enregistrer » depuis la visionneuse : un vrai téléchargement, dans le dossier Téléchargements
@@ -340,7 +344,7 @@ if (!app.requestSingleInstanceLock()) {
       discussion(f, null)
       ouvrirConversation(f, cible)
     }
-    enregistrerIpc({ discussion, agrandirDiscussion, ensemble, traduire, plantages, miseAJour, navigation, ecriture, zone: (f) => void zone(f), social, reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, coffre, formulaires, bloqueur, memoire, ranger, ouvrirFichier: (f) => void ouvrirFichier(f), ongletsDe: (f) => onglets.get(f.id) })
+    enregistrerIpc({ vpn, discussion, agrandirDiscussion, ensemble, traduire, plantages, miseAJour, navigation, ecriture, zone: (f) => void zone(f), social, reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, coffre, formulaires, bloqueur, memoire, ranger, ouvrirFichier: (f) => void ouvrirFichier(f), ongletsDe: (f) => onglets.get(f.id) })
 
     const fenetre = creerFenetrePrincipale()
     const idFenetre = fenetre.id

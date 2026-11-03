@@ -4670,3 +4670,60 @@ textarea.champ {
     font-size: 40px;
   }
 }
+
+/* ---------- Bouton VPN (Tor) ---------- */
+.bouton-vpn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 13px;
+  border: 1px solid var(--verre-bord);
+  border-radius: var(--pilule);
+  background: transparent;
+  color: var(--texte-2);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background var(--anim), color var(--anim), border-color var(--anim), transform 240ms var(--ressort);
+}
+.bouton-vpn:hover {
+  background: var(--survol);
+}
+.bouton-vpn:active {
+  transform: scale(0.95);
+}
+.point-vpn {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--texte-discret);
+  transition: background var(--anim), box-shadow var(--anim);
+}
+/* en cours de connexion : la pastille se remplit avec la progression */
+.vpn-connexion {
+  color: var(--texte);
+  background: linear-gradient(90deg, color-mix(in srgb, #34c759 18%, transparent) var(--progression), transparent var(--progression));
+}
+.vpn-connexion .point-vpn {
+  background: #f5b13d;
+  animation: clignote-direct 1.2s ease-in-out infinite;
+}
+.vpn-actif {
+  color: #1f9d48;
+  border-color: color-mix(in srgb, #34c759 55%, transparent);
+  background: color-mix(in srgb, #34c759 12%, transparent);
+}
+.vpn-actif .point-vpn {
+  background: #34c759;
+  box-shadow: 0 0 8px #34c759;
+}
+.vpn-erreur {
+  color: #e0463c;
+  border-color: color-mix(in srgb, #e0463c 50%, transparent);
+}
+.vpn-erreur .point-vpn {
+  background: #e0463c;
+}

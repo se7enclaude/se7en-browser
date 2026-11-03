@@ -8,6 +8,7 @@ import type { AnalyseFormulaire, AnalyseFormulaireWeb, ResultatRemplissage, Vale
 import type { EtatOllama } from './ia'
 import type { CommandeUi, EtatOnglets, PageFigee, ZoneOnglet } from './onglets'
 import type { Reglages } from './reglages'
+import type { EtatVpn } from './vpn'
 import type { Actualite, Equipe, JeuGratuit, MeteoActuelle, ResultatsEquipe, SortieJeu, Ville } from './widgets'
 import type { Ami, CibleSocial, StatutSocial, EtatEnsemble, EtatSocial, EvenementSocial, GroupeSocial, MessageSocial } from './social'
 import type { EtatEcriture } from './ecriture'
@@ -40,6 +41,12 @@ export const CANAUX = {
   formulaireWebRemplir: 'formulaire-web:remplir',
   sauvegardeImporter: 'sauvegarde:importer',
   raccourciCapture: 'raccourci:capture',
+  // VPN (Tor)
+  vpnEtat: 'vpn:etat',
+  vpnChange: 'vpn:change', // main → interface
+  vpnActiver: 'vpn:activer',
+  vpnDesactiver: 'vpn:desactiver',
+  vpnNouvelleIdentite: 'vpn:nouvelle-identite',
   // widgets du Nouvel onglet
   widgetsVilles: 'widgets:villes',
   widgetsMeteo: 'widgets:meteo',
@@ -268,6 +275,15 @@ export interface ApiSe7en {
     deplacerVersSession(idOnglet: number, session: string): void
     quitterSplit(): void
     ratio(r: number): void
+  }
+  /** VPN gratuit du navigateur (réseau Tor), activé seulement par l'utilisateur. */
+  vpn: {
+    etat(): Promise<EtatVpn>
+    surEtat(rappel: (e: EtatVpn) => void): () => void
+    /** Active le VPN avec ce pays de sortie ('' : automatique), ou change de pays s'il est actif. */
+    activer(pays: string): void
+    desactiver(): void
+    nouvelleIdentite(): void
   }
   /** Données des widgets du Nouvel onglet (récupérées par le main ; null si le service ne répond pas). */
   widgets: {
