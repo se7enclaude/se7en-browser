@@ -10,12 +10,12 @@ import type { GestionnaireOnglets } from '../navigateur/onglets'
 import type { Conversations, Skills } from './conversations'
 import { capturerPage, lirePage } from './lecturePage'
 import type { DocumentsPdf } from '../pdf/documents'
-import { lireTextePdf } from '../pdf/texte'
+import { extraitPdf, lireTextePdf } from '../pdf/texte'
 import { demandeDeRetenir, demandeDOublier, type Memoire } from './memoire'
 import type { MemoireNavigation } from './memoireNavigation'
 import { lireNdjson } from './ndjson'
 import { API_OLLAMA, type Ollama } from './ollama'
-import { alertesManipulation, construireMessages, titreConversation, type PageLue } from './prompts'
+import { alertesManipulation, BUDGET_PAGES, construireMessages, titreConversation, type PageLue } from './prompts'
 
 /** Contexte du modèle : assez pour une page longue et la conversation, et ça tient dans 16 Go de carte graphique. */
 const TAILLE_CONTEXTE = 16384
@@ -167,7 +167,8 @@ export class ServiceChat extends EventEmitter<{ flux: [FluxChat] }> {
         const doc = p.etat.pdf ? this.documents.lire(p.etat.pdf) : undefined
         if (doc) {
           lue.titre = doc.nom
-          lue.texte = await lireTextePdf(doc.chemin).catch(() => '')
+          // long PDF : seules les pages utiles à la question sont jointes, avec leur numéro
+          lue.texte = extraitPdf(await lireTextePdf(doc.chemin).catch(() => ''), d.texte, Math.floor(BUDGET_PAGES / Math.max(1, ids.size)))
         }
         pages.push(lue)
         // peu de texte sur la page active : le modèle vision regarde une capture

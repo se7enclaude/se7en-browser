@@ -4,11 +4,11 @@ import type { PageInterne } from './adresse'
 import type { ActionTelechargement, EntreeHistorique, Favori, SitePopulaire, Telechargement } from './donnees'
 import type { Conversation, DemandeChat, FluxChat, ReponseEnvoi, ResumeConversation, Skill, Souvenir } from './chat'
 import type { Coffre, EtatCoffre } from './coffre'
-import type { AnalyseFormulaire, ResultatRemplissage, ValeurARemplir } from './formulaire'
+import type { AnalyseFormulaire, AnalyseFormulaireWeb, ResultatRemplissage, ValeurARemplir } from './formulaire'
 import type { EtatOllama } from './ia'
 import type { CommandeUi, EtatOnglets, PageFigee, ZoneOnglet } from './onglets'
 import type { Reglages } from './reglages'
-import type { Ami, CibleSocial, EtatEnsemble, EtatSocial, EvenementSocial, GroupeSocial, MessageSocial } from './social'
+import type { Ami, CibleSocial, StatutSocial, EtatEnsemble, EtatSocial, EvenementSocial, GroupeSocial, MessageSocial } from './social'
 import type { EtatEcriture } from './ecriture'
 import type { EtatMiseAJour } from './miseAJour'
 import type { RapportPlantage } from './plantages'
@@ -33,6 +33,12 @@ export const CANAUX = {
   notifOuvrir: 'notif:ouvrir',
   appMenu: 'app:menu',
   appOuvrirFichier: 'app:ouvrir-fichier',
+  menuChoix: 'menu:choix',
+  sauvegardeExporter: 'sauvegarde:exporter',
+  formulaireWebAnalyser: 'formulaire-web:analyser',
+  formulaireWebRemplir: 'formulaire-web:remplir',
+  sauvegardeImporter: 'sauvegarde:importer',
+  raccourciCapture: 'raccourci:capture',
   // réglages
   reglagesLire: 'reglages:lire',
   reglagesModifier: 'reglages:modifier',
@@ -57,6 +63,12 @@ export const CANAUX = {
   ongletsLiberer: 'onglets:liberer',
   ongletsInterne: 'onglets:interne',
   ongletsDiviser: 'onglets:diviser',
+  ongletsNouveauPrive: 'onglets:nouveau-prive',
+  sessionChanger: 'session:changer',
+  sessionCreer: 'session:creer',
+  sessionRenommer: 'session:renommer',
+  sessionSupprimer: 'session:supprimer',
+  sessionDeplacer: 'session:deplacer',
   ongletsQuitterSplit: 'onglets:quitter-split',
   ongletsRatio: 'onglets:ratio',
   // historique
@@ -137,6 +149,8 @@ export const CANAUX = {
   socialCodeSecours: 'social:code-secours',
   socialEnregistrerCode: 'social:enregistrer-code',
   socialRecuperer: 'social:recuperer',
+  socialEnvoyerVocal: 'social:envoyer-vocal',
+  socialStatut: 'social:statut',
   ensembleEtat: 'ensemble:etat',
   ensembleChange: 'ensemble:change', // main → interface
   ensembleInviter: 'ensemble:inviter',
@@ -191,6 +205,10 @@ export interface ApiSe7en {
     menu(): void
     /** Choisir un PDF sur le PC et l'ouvrir dans un onglet. */
     ouvrirFichier(): void
+    /** Réponse à un menu en verre : l'entrée choisie, ou null (fermé sans choix). */
+    choixMenu(id: number, entree: string | null): void
+    /** Les Paramètres attendent une combinaison : les raccourcis du navigateur sont suspendus. */
+    captureRaccourci(active: boolean): void
   }
   reglages: {
     lire(): Promise<Reglages>
@@ -226,7 +244,15 @@ export interface ApiSe7en {
     /** Rend le clavier à la page (après Entrée dans la barre d'adresse). */
     focusPage(): void
     /** Vue partagée entre l'onglet actif et un autre (un Nouvel onglet si aucun n'est donné). */
-    diviser(avecId?: number): void
+    diviser(avecId?: number, aGauche?: boolean): void
+    /** Ouvre un onglet privé (Ctrl+Maj+N). */
+    nouveauPrive(): void
+    /** Sessions d'onglets (espaces « Jeux vidéo », « Recherche travail »…). */
+    changerSession(id: string): void
+    creerSession(nom: string, emoji: string): void
+    renommerSession(id: string, nom: string, emoji?: string): void
+    supprimerSession(id: string): void
+    deplacerVersSession(idOnglet: number, session: string): void
     quitterSplit(): void
     ratio(r: number): void
   }
@@ -253,6 +279,16 @@ export interface ApiSe7en {
     repondre(accepter: boolean): void
     prendreLaMain(): void
     arreter(): void
+  }
+  /** Remplir le formulaire d'une page web avec le coffre (après confirmation de l'utilisateur). */
+  formulaireWeb: {
+    analyser(idOnglet: number): Promise<(AnalyseFormulaireWeb & { phishing: string | null }) | { erreur: string }>
+    remplir(idOnglet: number, valeurs: { nom: string; valeur: string }[]): Promise<{ remplis: number } | { erreur: string }>
+  }
+  /** Sauvegarde chiffrée (réglages, coffre, favoris, Skills) dans un fichier protégé par un mot de passe. */
+  sauvegarde: {
+    exporter(motDePasse: string): Promise<{ ok: true; fichier: string } | { erreur: string } | null>
+    importer(motDePasse: string): Promise<{ ok: true; favoris: number } | { erreur: string } | null>
   }
   traduction: {
     /** Traduit la page de l'onglet en français, en gardant sa mise en page (IA locale). */
@@ -409,6 +445,10 @@ export interface ApiSe7en {
     enregistrerCode(): Promise<boolean>
     /** Retrouve un profil existant avec son code de secours. */
     recuperer(code: string): Promise<EtatSocial | { erreur: string }>
+    /** Envoie un message vocal enregistré par l'interface (WebM/Opus). */
+    envoyerVocal(cible: CibleSocial, son: Uint8Array, type: string): Promise<MessageSocial | { erreur: string }>
+    /** Change son statut (null : disponible). */
+    statut(s: StatutSocial | null): Promise<EtatSocial | { erreur: string }>
     /** Ouvre un lien reçu dans un nouvel onglet (http/https seulement). */
     ouvrirLien(url: string): void
   }

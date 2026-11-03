@@ -30,11 +30,14 @@ import { lirePage } from '../ia/lecturePage'
 import { resumerPourEnvoi } from '../ia/eclair'
 import type { MiseAJour } from '../miseAJour'
 import type { Plantages } from '../plantages'
+import { analyserFormulaireWeb, remplirFormulaireWeb } from '../ia/formulaireWeb'
+import { chiffrer, dechiffrer, MOT_DE_PASSE_MIN, type ContenuSauvegarde } from '../sauvegarde'
+import { captureRaccourci } from '../navigateur/commandes'
 import type { Ensemble } from '../social/ensemble'
 import { estNavigateurParDefaut, ouvrirChoixNavigateur } from '../navigateurDefaut'
 import { lireFavorisExportes } from '../../shared/importFavoris'
 import { promises as fsp } from 'node:fs'
-import { MAX_MEMBRES_GROUPE, MAX_MESSAGE, type CibleSocial } from '../../shared/social'
+import { MAX_MEMBRES_GROUPE, MAX_MESSAGE, type CibleSocial, type StatutSocial } from '../../shared/social'
 
 export interface Services {
   reglages: MagasinReglages
@@ -154,6 +157,18 @@ export function enregistrerIpc(s: Services): void {
     const go = f && ongletsDe(f)
     if (f && go) ouvrirMenuPrincipal(f, go, () => s.ouvrirFichier(f), () => void s.ranger(go))
   })
+  ipcMain.on(CANAUX.ongletsNouveauPrive, (e) => g(e)?.nouveau('', { prive: true }))
+  const estTexteCourt = (v: unknown, max: number): v is string => typeof v === 'string' && v.length <= max
+  ipcMain.on(CANAUX.sessionChanger, (e, id: unknown) => estTexteCourt(id, 40) && g(e)?.changerSession(id))
+  ipcMain.on(CANAUX.sessionCreer, (e, nom: unknown, emoji: unknown) => estTexteCourt(nom, 60) && g(e)?.creerSession(nom, estTexteCourt(emoji, 16) ? emoji : '📁'))
+  ipcMain.on(CANAUX.sessionRenommer, (e, id: unknown, nom: unknown, emoji: unknown) =>
+    estTexteCourt(id, 40) && estTexteCourt(nom, 60) && g(e)?.renommerSession(id, nom, estTexteCourt(emoji, 16) ? emoji : undefined)
+  )
+  ipcMain.on(CANAUX.sessionSupprimer, (e, id: unknown) => estTexteCourt(id, 40) && g(e)?.supprimerSession(id))
+  ipcMain.on(CANAUX.sessionDeplacer, (e, idOnglet: unknown, session: unknown) => estId(idOnglet) && estTexteCourt(session, 40) && g(e)?.deplacerVersSession(idOnglet, session))
+  ipcMain.on(CANAUX.raccourciCapture, (e, oui: unknown) => {
+    if (fenetreDe(e)) captureRaccourci.active = oui === true
+  })
   ipcMain.on(CANAUX.appOuvrirFichier, (e) => {
     const f = fenetreDe(e)
     if (f) s.ouvrirFichier(f)
@@ -167,7 +182,7 @@ export function enregistrerIpc(s: Services): void {
   ipcMain.handle(CANAUX.ongletsFiger, (e) => g(e)?.figer() ?? [])
   ipcMain.on(CANAUX.ongletsLiberer, (e) => g(e)?.liberer())
   ipcMain.on(CANAUX.ongletsInterne, (e, page: unknown) => typeof page === 'string' && estPageInterne(page) && g(e)?.ouvrirInterne(page))
-  ipcMain.on(CANAUX.ongletsDiviser, (e, id: unknown) => g(e)?.diviser(estId(id) ? id : undefined))
+  ipcMain.on(CANAUX.ongletsDiviser, (e, id: unknown, aGauche: unknown) => g(e)?.diviser(estId(id) ? id : undefined, aGauche === true))
   ipcMain.on(CANAUX.ongletsQuitterSplit, (e) => g(e)?.quitterSplit())
   ipcMain.on(CANAUX.ongletsRatio, (e, r: unknown) => typeof r === 'number' && g(e)?.definirRatio(r))
 
@@ -436,6 +451,17 @@ export function enregistrerIpc(s: Services): void {
     )
     return true
   })
+  ipcMain.handle(CANAUX.socialEnvoyerVocal, (e, cible: unknown, son: unknown, type: unknown) => {
+    if (!estCible(cible) || !(son instanceof Uint8Array) || (type !== 'audio/webm' && type !== 'audio/ogg')) return { erreur: 'Message vocal invalide.' }
+    if (son.byteLength > 1024 * 1024) return { erreur: 'Message vocal trop long.' }
+    if (son.byteLength < 200) return { erreur: 'Message vocal vide.' }
+    return social$(e, () => social.envoyerVocal(cible, Buffer.from(son), type))
+  })
+  ipcMain.handle(CANAUX.socialStatut, (e, s: unknown) => {
+    const o = s as { type?: unknown; texte?: unknown } | null
+    const statut: StatutSocial | null = o && (o.type === 'occupe' || o.type === 'jeu' || o.type === 'absent') ? { type: o.type, texte: typeof o.texte === 'string' ? o.texte.slice(0, 60) : '' } : null
+    return social$(e, () => social.changerStatut(statut))
+  })
   ipcMain.handle(CANAUX.socialRecuperer, (e, code: unknown) => (typeof code === 'string' ? social$(e, () => social.recuperer(code.slice(0, 200))) : { erreur: 'Code invalide.' }))
 
   // ---------- naviguer ensemble ----------
@@ -489,6 +515,67 @@ export function enregistrerIpc(s: Services): void {
   ipcMain.on(CANAUX.traductionOriginal, (e, id: unknown) => {
     const f = fenetreDe(e)
     if (f && estId(id)) s.traduire(f, id, true)
+  })
+
+  // ---------- remplir un formulaire web avec le coffre ----------
+  ipcMain.handle(CANAUX.formulaireWebAnalyser, async (e, id: unknown) => {
+    const p = estId(id) ? g(e)?.pageDe(id) : null
+    if (!p) return { erreur: 'Cette page ne peut pas être remplie.' }
+    const etat = ollama.etat()
+    const r = reglages.get()
+    const modele = etat.phase === 'pret' && modelePresent(r.modeleTexte, etat.modeles) ? r.modeleTexte : null
+    try {
+      return { ...(await analyserFormulaireWeb(p.wc, coffre.lire(), modele)), phishing: p.etat.phishing }
+    } catch {
+      return { erreur: 'Impossible de lire les champs de cette page.' }
+    }
+  })
+  ipcMain.handle(CANAUX.formulaireWebRemplir, async (e, id: unknown, valeurs: unknown) => {
+    const p = estId(id) ? g(e)?.pageDe(id) : null
+    if (!p || !Array.isArray(valeurs)) return { erreur: 'Cette page ne peut pas être remplie.' }
+    const propres = (valeurs as { nom?: unknown; valeur?: unknown }[]).filter((v) => typeof v?.nom === 'string' && typeof v.valeur === 'string') as { nom: string; valeur: string }[]
+    try {
+      return { remplis: await remplirFormulaireWeb(p.wc, propres) }
+    } catch {
+      return { erreur: 'Le formulaire a changé entre-temps : relance le remplissage.' }
+    }
+  })
+
+  // ---------- sauvegarde chiffrée ----------
+  ipcMain.handle(CANAUX.sauvegardeExporter, async (e, mdp: unknown) => {
+    const f = fenetreDe(e)
+    if (!f || typeof mdp !== 'string') return null
+    if (mdp.length < MOT_DE_PASSE_MIN) return { erreur: `Choisis un mot de passe d'au moins ${MOT_DE_PASSE_MIN} caractères.` }
+    const date = new Date().toISOString().slice(0, 10)
+    const r = await dialog.showSaveDialog(f, {
+      title: 'Enregistrer la sauvegarde',
+      defaultPath: `se7en Browser - sauvegarde ${date}.se7en`,
+      filters: [{ name: 'Sauvegarde se7en', extensions: ['se7en'] }]
+    })
+    if (!r.filePath) return null
+    const contenu: ContenuSauvegarde = { version: 1, date: Date.now(), reglages: reglages.get(), coffre: coffre.lire(), favoris: favoris.lire(), skills: skills.lire() }
+    await fsp.writeFile(r.filePath, chiffrer(contenu, mdp))
+    return { ok: true as const, fichier: r.filePath }
+  })
+  ipcMain.handle(CANAUX.sauvegardeImporter, async (e, mdp: unknown) => {
+    const f = fenetreDe(e)
+    if (!f || typeof mdp !== 'string') return null
+    const r = await dialog.showOpenDialog(f, { title: 'Restaurer une sauvegarde', filters: [{ name: 'Sauvegarde se7en', extensions: ['se7en'] }], properties: ['openFile'] })
+    if (!r.filePaths[0]) return null
+    const st = await fsp.stat(r.filePaths[0])
+    if (st.size > 50 * 1024 * 1024) return { erreur: 'Fichier trop gros pour une sauvegarde se7en.' }
+    const c = dechiffrer(await fsp.readFile(r.filePaths[0]), mdp)
+    if (!c) return { erreur: 'Mot de passe incorrect, ou ce fichier n’est pas une sauvegarde se7en Browser.' }
+    // chaque partie passe par les mêmes vérifications que si l'utilisateur l'avait saisie
+    await reglages.modifier(c.reglages)
+    if (coffre.disponible()) await coffre.sauver(c.coffre).catch(() => undefined)
+    if (Array.isArray(c.skills)) skills.sauver(c.skills)
+    const liste = Array.isArray(c.favoris)
+      ? (c.favoris as { url?: unknown; titre?: unknown; favicon?: unknown; date?: unknown }[])
+          .filter((x) => typeof x?.url === 'string' && estAdresseAutorisee(x.url))
+          .map((x) => ({ url: x.url as string, titre: typeof x.titre === 'string' ? x.titre : '', favicon: typeof x.favicon === 'string' ? x.favicon : null, date: typeof x.date === 'number' ? x.date : Date.now() }))
+      : []
+    return { ok: true as const, favoris: favoris.importer(liste) }
   })
 
   // ---------- rapports de plantage ----------

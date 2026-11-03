@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import type { EtatOnglet, EtatOnglets } from '../../shared/onglets'
 
 export function useOnglets(): { etat: EtatOnglets; actif: EtatOnglet | undefined } {
-  const [etat, setEtat] = useState<EtatOnglets>({ onglets: [], actifId: null, split: null, groupes: [] })
+  const [etat, setEtat] = useState<EtatOnglets>({ onglets: [], actifId: null, split: null, groupes: [], sessions: [{ id: 'principale', nom: 'Principale', emoji: '🏠' }], sessionActive: 'principale' })
   useEffect(() => {
     window.se7en.onglets.lire().then((e) => e && setEtat(e))
     return window.se7en.onglets.surEtat(setEtat)

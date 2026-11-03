@@ -51,3 +51,29 @@ describe('actionDuRaccourci', () => {
     expect(actionDuRaccourci({ ...t('t', { control: true }), type: 'keyUp' })).toBeNull()
   })
 })
+
+describe('raccourcis personnalisés', () => {
+  const touche = (key: string, code: string, o: Partial<{ control: boolean; shift: boolean; alt: boolean }> = {}) => ({
+    type: 'keyDown',
+    key,
+    code,
+    control: false,
+    shift: false,
+    alt: false,
+    meta: false,
+    ...o
+  })
+  it('Ctrl+Maj+N ouvre un onglet privé', () => {
+    expect(actionDuRaccourci(touche('N', 'KeyN', { control: true, shift: true }))).toEqual({ type: 'nouvel-onglet-prive' })
+  })
+  it('un raccourci réattribué remplace l’ancien', () => {
+    const perso = { 'nouvel-onglet': 'Ctrl+Alt+N' }
+    expect(actionDuRaccourci(touche('n', 'KeyN', { control: true, alt: true }), perso)).toEqual({ type: 'nouvel-onglet' })
+    expect(actionDuRaccourci(touche('t', 'KeyT', { control: true }), perso)).toBeNull()
+    // les autres raccourcis ne bougent pas
+    expect(actionDuRaccourci(touche('w', 'KeyW', { control: true }), perso)).toEqual({ type: 'fermer-onglet' })
+  })
+  it('une page interne peut changer de raccourci', () => {
+    expect(actionDuRaccourci(touche('F2', 'F2'), { 'page-historique': 'F2' })).toEqual({ type: 'page', page: 'se7en://historique' })
+  })
+})

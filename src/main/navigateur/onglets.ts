@@ -5,8 +5,9 @@
 import { systemPreferences, WebContentsView, type BrowserWindow, type ContextMenuParams, type Input, type WebContents } from 'electron'
 import { estAdresseAutorisee, estPageInterne, PAGES_INTERNES, resoudreSaisie } from '../../shared/adresse'
 import { idDocDeVisionneuse, urlVisionneuse } from '../../shared/pdf'
-import { COULEURS_GROUPES, type CommandeUi, type EtatTraduction, type EtatOnglet, type EtatOnglets, type GroupeOnglets, type OngletPrioritaireSauve, type PageFigee, type Split, type Zone, type ZoneOnglet } from '../../shared/onglets'
-import { preferencesPage, preparerSessionWeb } from '../securite/politiques'
+import { COULEURS_GROUPES, SESSION_PRINCIPALE, type SessionOnglets, type SessionSauvee, type CommandeUi, type EtatTraduction, type EtatOnglet, type EtatOnglets, type GroupeOnglets, type OngletPrioritaireSauve, type PageFigee, type Split, type Zone, type ZoneOnglet } from '../../shared/onglets'
+import { session } from 'electron'
+import { PARTITION_PRIVEE, preferencesPage, preparerSessionWeb } from '../securite/politiques'
 import { chargerFavicon } from './favicons'
 
 interface Onglet {
@@ -35,6 +36,8 @@ export interface OptionsGestionnaire {
   menuPage?: (idOnglet: number, wc: WebContents, params: ContextMenuParams) => void
   /** Une page a fini de charger (mémoire de navigation). */
   pageChargee?: (wc: WebContents, etat: EtatOnglet) => void
+  /** Appelé quand les sessions ou leurs onglets changent, pour les sauvegarder. */
+  sauverSessions?: (liste: SessionSauvee[]) => void
   /** Changement d'onglet animé : l'interface dessine le fondu entre les deux images. */
   transition?: (t: Extract<CommandeUi, { type: 'transition-onglet' }>) => void
 }
@@ -74,6 +77,10 @@ export class GestionnaireOnglets {
   private zones = new Map<number, Zone>()
   private split: Split | null = null
   private groupes: GroupeOnglets[] = []
+  private sessions: SessionOnglets[] = [{ id: SESSION_PRINCIPALE, nom: 'Principale', emoji: '🏠' }]
+  private sessionActive = SESSION_PRINCIPALE
+  /** Dernier onglet ouvert dans chaque session (on y revient en changeant de session). */
+  private readonly dernierDeSession = new Map<string, number>()
   /** Nombre d'écrans ou d'animations de l'interface qui passent par-dessus les pages (elles sont cachées tant qu'il y en a). */
   private figeage = 0
   /** Pendant le fondu d'un changement d'onglet, la nouvelle page attend sous l'image de l'ancienne. */
@@ -99,7 +106,9 @@ export class GestionnaireOnglets {
       onglets: this.onglets.map((o) => ({ ...o.etat })),
       actifId: this.actifId,
       split: this.split && { ...this.split },
-      groupes: this.groupes.map((g) => ({ ...g }))
+      groupes: this.groupes.map((g) => ({ ...g })),
+      sessions: this.sessions.map((s) => ({ ...s })),
+      sessionActive: this.sessionActive
     }
   }
 
@@ -116,7 +125,7 @@ export class GestionnaireOnglets {
 
   // ---------- création ----------
 
-  private creer(prioritaire: boolean, sauve?: OngletPrioritaireSauve): Onglet {
+  private creer(prioritaire: boolean, sauve?: OngletPrioritaireSauve, prive = false): Onglet {
     return {
       etat: {
         id: this.prochainId++,
@@ -133,7 +142,9 @@ export class GestionnaireOnglets {
         bloques: 0,
         groupe: null,
         phishing: null,
-        traduction: null
+        traduction: null,
+        prive,
+        session: this.sessionActive
       },
       vue: null,
       urlEpinglee: sauve?.url ?? null,
@@ -151,8 +162,8 @@ export class GestionnaireOnglets {
   }
 
   /** Ouvre un onglet. `saisie` vide : Nouvel onglet ; `aCote` : juste après l'onglet actif (liens ouverts depuis une page). */
-  nouveau(saisie = '', options: { activer?: boolean; aCote?: boolean } = {}): number {
-    const onglet = this.creer(false)
+  nouveau(saisie = '', options: { activer?: boolean; aCote?: boolean; prive?: boolean } = {}): number {
+    const onglet = this.creer(false, undefined, !!options.prive)
     const iActif = this.onglets.findIndex((o) => o.etat.id === this.actifId)
     if (options.aCote && iActif >= 0 && !this.onglets[iActif].etat.prioritaire) {
       this.onglets.splice(iActif + 1, 0, onglet)
@@ -176,7 +187,7 @@ export class GestionnaireOnglets {
 
   dupliquer(id: number): void {
     const o = this.trouver(id)
-    if (o?.etat.url) this.nouveau(o.etat.url, { aCote: true })
+    if (o?.etat.url) this.nouveau(o.etat.url, { aCote: true, prive: o.etat.prive })
   }
 
   // ---------- fermeture ----------
@@ -195,7 +206,8 @@ export class GestionnaireOnglets {
     }
     const i = this.onglets.indexOf(o)
     this.onglets.splice(i, 1)
-    if (o.etat.url && !estPageInterne(o.etat.url)) {
+    // un onglet privé ne laisse pas de trace, même dans « Rouvrir l'onglet fermé »
+    if (o.etat.url && !estPageInterne(o.etat.url) && !o.etat.prive) {
       this.fermes.push(o.etat.url)
       if (this.fermes.length > MAX_FERMES) this.fermes.shift()
     }
@@ -214,8 +226,9 @@ export class GestionnaireOnglets {
   /** Après fermeture de l'onglet actif : comme Chrome, l'onglet normal de droite, sinon celui de gauche ;
    * s'il n'en reste aucun, un Nouvel onglet (la fenêtre ne se ferme jamais ainsi). */
   private activerApresFermeture(indexFerme: number): void {
-    const normaux = this.onglets.filter((o) => !o.etat.prioritaire)
-    const droite = indexFerme >= 0 ? this.onglets.slice(indexFerme).find((o) => !o.etat.prioritaire) : undefined
+    const dansSession = (o: Onglet): boolean => !o.etat.prioritaire && o.etat.session === this.sessionActive
+    const normaux = this.onglets.filter(dansSession)
+    const droite = indexFerme >= 0 ? this.onglets.slice(indexFerme).find(dansSession) : undefined
     const voisin = droite ?? normaux.at(-1)
     if (voisin) this.actifId = voisin.etat.id
     else {
@@ -235,7 +248,7 @@ export class GestionnaireOnglets {
   definirPrioritaire(id: number, prioritaire: boolean): void {
     const o = this.trouver(id)
     if (!o || o.etat.prioritaire === prioritaire) return
-    if (prioritaire && !o.etat.url) return // un Nouvel onglet vide ne s'épingle pas
+    if (prioritaire && (!o.etat.url || o.etat.prive)) return // un Nouvel onglet vide (ou privé) ne s'épingle pas
     o.etat.prioritaire = prioritaire
     o.etat.groupe = null
     this.nettoyerGroupes()
@@ -262,11 +275,117 @@ export class GestionnaireOnglets {
     )
   }
 
+  // ---------- sessions ----------
+
+  /** Rouvre les sessions sauvegardées, avec leurs onglets endormis (chargés à l'ouverture). */
+  restaurerSessions(liste: SessionSauvee[]): void {
+    for (const s of liste) {
+      if (s.id === SESSION_PRINCIPALE) {
+        this.sessions[0] = { id: s.id, nom: s.nom, emoji: s.emoji }
+        continue
+      }
+      if (this.sessions.some((x) => x.id === s.id)) continue
+      this.sessions.push({ id: s.id, nom: s.nom, emoji: s.emoji })
+      for (const sauve of s.onglets) {
+        if (!estAdresseAutorisee(sauve.url)) continue
+        const o = this.creer(false, sauve)
+        o.urlEpinglee = null
+        o.etat.session = s.id
+        this.onglets.push(o)
+      }
+    }
+    this.signaler()
+  }
+
+  /** Passe dans une session : on retrouve son dernier onglet (ou un Nouvel onglet si elle est vide). */
+  changerSession(id: string): void {
+    if (!this.sessions.some((s) => s.id === id) || id === this.sessionActive) return
+    const actuel = this.actif()
+    if (actuel && !actuel.etat.prioritaire) this.dernierDeSession.set(this.sessionActive, actuel.etat.id)
+    this.sessionActive = id
+    this.split = null
+    const siens = this.onglets.filter((o) => !o.etat.prioritaire && o.etat.session === id)
+    const dernier = siens.find((o) => o.etat.id === this.dernierDeSession.get(id)) ?? siens[0]
+    if (dernier) this.activer(dernier.etat.id)
+    else this.nouveau()
+    this.afficher()
+    this.signaler()
+  }
+
+  creerSession(nom: string, emoji: string): string {
+    const id = `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
+    this.sessions.push({ id, nom: nom.trim().slice(0, 30) || 'Session', emoji: [...(emoji || '📁')].slice(0, 2).join('') })
+    this.changerSession(id)
+    this.sauverSessions()
+    return id
+  }
+
+  renommerSession(id: string, nom: string, emoji?: string): void {
+    const s = this.sessions.find((x) => x.id === id)
+    if (!s) return
+    if (nom.trim()) s.nom = nom.trim().slice(0, 30)
+    if (emoji) s.emoji = [...emoji].slice(0, 2).join('')
+    this.sauverSessions()
+    this.signaler()
+  }
+
+  /** Supprime une session et ferme ses onglets (la session principale ne se supprime pas). */
+  supprimerSession(id: string): void {
+    if (id === SESSION_PRINCIPALE || !this.sessions.some((s) => s.id === id)) return
+    if (this.sessionActive === id) this.changerSession(SESSION_PRINCIPALE)
+    for (const o of [...this.onglets]) {
+      if (o.etat.prioritaire || o.etat.session !== id) continue
+      this.onglets.splice(this.onglets.indexOf(o), 1)
+      this.detruireVue(o)
+    }
+    this.sessions = this.sessions.filter((s) => s.id !== id)
+    this.dernierDeSession.delete(id)
+    this.afficher()
+    this.sauverSessions()
+    this.signaler()
+  }
+
+  /** Range un onglet dans une autre session (il disparaît de la session actuelle). */
+  deplacerVersSession(idOnglet: number, session: string): void {
+    const o = this.trouver(idOnglet)
+    if (!o || o.etat.prioritaire || o.etat.prive || !this.sessions.some((s) => s.id === session) || o.etat.session === session) return
+    const etaitActif = this.actifId === idOnglet
+    if (this.split && (this.split.gauche === idOnglet || this.split.droite === idOnglet)) this.split = null
+    o.etat.session = session
+    o.etat.groupe = null
+    if (etaitActif) this.activerApresFermeture(this.onglets.indexOf(o))
+    this.afficher()
+    this.sauverSessions()
+    this.signaler()
+  }
+
+  /** Sessions nommées et leurs onglets, pour les retrouver au prochain lancement (jamais les onglets privés). */
+  sessionsASauver(): SessionSauvee[] {
+    return this.sessions.map((s) => ({
+      ...s,
+      onglets:
+        s.id === SESSION_PRINCIPALE
+          ? []
+          : this.onglets
+              .filter((o) => !o.etat.prioritaire && !o.etat.prive && o.etat.session === s.id && estAdresseAutorisee(o.etat.url))
+              .map((o) => ({ url: o.etat.url, titre: o.etat.titre, favicon: o.etat.favicon }))
+    }))
+  }
+
+  private sauverSessions(): void {
+    this.options.sauverSessions?.(this.sessionsASauver())
+  }
+
   // ---------- activation ----------
 
   activer(id: number): void {
     const o = this.trouver(id)
     if (!o) return
+    if (!o.etat.prioritaire && o.etat.session !== this.sessionActive) {
+      this.sessionActive = o.etat.session
+      this.split = null
+    }
+    if (!o.etat.prioritaire) this.dernierDeSession.set(o.etat.session, id)
     const reveil = o.etat.endormi
     if (reveil) this.reveiller(o)
     // ouvrir un onglet d'un groupe replié déplie le groupe
@@ -334,6 +453,12 @@ export class GestionnaireOnglets {
     return this.images.get(id)
   }
 
+  /** Position de la page de cet onglet dans la fenêtre. */
+  origineDe(id: number): { x: number; y: number } | null {
+    const z = this.zones.get(id)
+    return z ? { x: z.x, y: z.y } : null
+  }
+
   /** L'onglet actif (pour y revenir après une capture). */
   idActif(): number | null {
     return this.actifId
@@ -398,13 +523,13 @@ export class GestionnaireOnglets {
 
   /** Ctrl+1…8 : parmi les onglets normaux ; Ctrl+9 : le dernier. */
   activerNumero(index: number): void {
-    const normaux = this.onglets.filter((o) => !o.etat.prioritaire)
+    const normaux = this.onglets.filter((o) => !o.etat.prioritaire && o.etat.session === this.sessionActive)
     const o = index < 0 ? normaux.at(-1) : normaux[index]
     if (o) this.activer(o.etat.id)
   }
 
   private ordreAffiche(): Onglet[] {
-    return [...this.onglets.filter((o) => o.etat.prioritaire), ...this.onglets.filter((o) => !o.etat.prioritaire)]
+    return [...this.onglets.filter((o) => o.etat.prioritaire), ...this.onglets.filter((o) => !o.etat.prioritaire && o.etat.session === this.sessionActive)]
   }
 
   /** Déplace un onglet à la place d'un autre (glisser-déposer). Glisser sur un onglet de l'autre liste change de liste. */
@@ -454,7 +579,7 @@ export class GestionnaireOnglets {
 
   /** Onglets que l'on peut ranger : les onglets normaux qui affichent une page. */
   ongletsARanger(): { id: number; titre: string; url: string }[] {
-    return this.onglets.filter((o) => !o.etat.prioritaire && o.etat.url && !estPageInterne(o.etat.url)).map((o) => ({ id: o.etat.id, titre: o.etat.titre, url: o.etat.url }))
+    return this.onglets.filter((o) => !o.etat.prioritaire && o.etat.session === this.sessionActive && o.etat.url && !estPageInterne(o.etat.url)).map((o) => ({ id: o.etat.id, titre: o.etat.titre, url: o.etat.url }))
   }
 
   /** Crée les groupes proposés, et range les onglets pour que chaque groupe soit d'un seul tenant. */
@@ -584,7 +709,7 @@ export class GestionnaireOnglets {
   // ---------- vue partagée ----------
 
   /** Partage l'écran entre l'onglet actif et `avecId` (ou un Nouvel onglet). */
-  diviser(avecId?: number): void {
+  diviser(avecId?: number, aGauche = false): void {
     const actif = this.actif()
     if (!actif) return
     let autre = avecId !== undefined ? this.trouver(avecId) : undefined
@@ -592,7 +717,8 @@ export class GestionnaireOnglets {
     if (!autre) autre = this.trouver(this.nouveau('', { activer: false, aCote: true }))
     if (!autre) return
     if (autre.etat.endormi) this.reveiller(autre)
-    this.split = { gauche: actif.etat.id, droite: autre.etat.id, ratio: 0.5 }
+    // onglet glissé sur la moitié gauche de la page : il s'y met, l'onglet actif passe à droite
+    this.split = aGauche ? { gauche: autre.etat.id, droite: actif.etat.id, ratio: 0.5 } : { gauche: actif.etat.id, droite: autre.etat.id, ratio: 0.5 }
     this.actifId = autre.etat.id
     this.afficher()
     this.signaler()
@@ -661,7 +787,14 @@ export class GestionnaireOnglets {
   }
 
   /** Regroupe les notifications d'un même tour (un chargement en déclenche plusieurs d'affilée). */
+  private minuteurSessions: NodeJS.Timeout | null = null
+
   private signaler(): void {
+    if (this.sessions.length > 1 && !this.minuteurSessions)
+      this.minuteurSessions = setTimeout(() => {
+        this.minuteurSessions = null
+        this.sauverSessions()
+      }, 2000)
     if (this.notification) return
     this.notification = setImmediate(() => {
       this.notification = null
@@ -670,7 +803,7 @@ export class GestionnaireOnglets {
   }
 
   private creerVue(o: Onglet): WebContentsView {
-    const vue = new WebContentsView({ webPreferences: preferencesPage() })
+    const vue = new WebContentsView({ webPreferences: preferencesPage(o.etat.prive) })
     vue.setBorderRadius(RAYON_PAGE)
     vue.setBackgroundColor('#ffffff')
     vue.setVisible(false)
@@ -682,6 +815,11 @@ export class GestionnaireOnglets {
 
   private detruireVue(o: Onglet): void {
     this.images.delete(o.etat.id)
+    if (o.etat.prive && !this.onglets.some((x) => x !== o && x.etat.prive)) {
+      // plus aucun onglet privé : cookies, cache et données des sites visités en privé sont effacés
+      const s = session.fromPartition(PARTITION_PRIVEE)
+      void s.clearStorageData().then(() => s.clearCache(), () => undefined)
+    }
     if (!o.vue) return
     this.fenetre.contentView.removeChildView(o.vue)
     o.vue.webContents.close()
@@ -722,15 +860,15 @@ export class GestionnaireOnglets {
       maj()
       // l'adresse a pu passer d'un Nouvel onglet (sans page) à une page ou un PDF : la vue doit apparaître
       this.afficher()
-      if (estAdresseAutorisee(o.etat.url)) this.options.journal?.visite(o.etat.url, o.etat.titre)
+      if (estAdresseAutorisee(o.etat.url) && !o.etat.prive) this.options.journal?.visite(o.etat.url, o.etat.titre)
     })
     wc.on('did-navigate-in-page', (_e, url, principal) => {
       maj()
-      if (principal && estAdresseAutorisee(url)) this.options.journal?.visite(url, wc.getTitle())
+      if (principal && estAdresseAutorisee(url) && !o.etat.prive) this.options.journal?.visite(url, wc.getTitle())
     })
     wc.on('page-title-updated', (_e, titre) => {
       maj()
-      this.options.journal?.titre(wc.getURL(), titre)
+      if (!o.etat.prive) this.options.journal?.titre(wc.getURL(), titre)
     })
     // vue partagée : cliquer dans un volet en fait l'onglet actif (la barre d'adresse le suit)
     wc.on('focus', () => {
@@ -766,7 +904,7 @@ export class GestionnaireOnglets {
 
     // window.open et liens target=_blank : nouvel onglet à côté, jamais de nouvelle fenêtre.
     wc.setWindowOpenHandler(({ url, disposition }) => {
-      if (estAdresseAutorisee(url)) this.nouveau(url, { aCote: true, activer: disposition !== 'background-tab' })
+      if (estAdresseAutorisee(url)) this.nouveau(url, { aCote: true, activer: disposition !== 'background-tab', prive: o.etat.prive })
       return { action: 'deny' }
     })
 

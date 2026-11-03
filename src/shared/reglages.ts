@@ -1,4 +1,5 @@
 /* Réglages de l'utilisateur : types et valeurs par défaut, partagés entre le main et l'interface. */
+import { combinaisonValide, RACCOURCIS_CONFIGURABLES } from './raccourcis'
 import { adresseServeur } from './social'
 
 export type Theme = 'clair' | 'sombre' | 'auto'
@@ -44,6 +45,8 @@ export interface Reglages {
   serveurSocial: string
   /** Effets de verre : complets, allégés (flou plus léger, pour les PC modestes), ou choisis selon le PC. */
   effetsVerre: 'auto' | 'complets' | 'legers'
+  /** Raccourcis personnalisés : identifiant d'action → combinaison (« Ctrl+Maj+N »). Absent : raccourci par défaut. */
+  raccourcis: Record<string, string>
 }
 
 export const REGLAGES_DEFAUT: Reglages = {
@@ -65,6 +68,7 @@ export const REGLAGES_DEFAUT: Reglages = {
   modeleRapide: 'qwen3:1.7b',
   veilleOnglets: 30,
   effetsVerre: 'auto',
+  raccourcis: {},
   phishingExceptions: [],
   modelesAuto: true,
   serveurSocial: ''
@@ -116,6 +120,12 @@ export function fusionnerReglages(base: Reglages, brut: unknown): Reglages {
   if (typeof o.memoireNavigation === 'boolean') r.memoireNavigation = o.memoireNavigation
   if (typeof o.miseAJourAuto === 'boolean') r.miseAJourAuto = o.miseAJourAuto
   if (typeof o.modeleRapide === 'string' && /^[\w.:\-/]{1,100}$/.test(o.modeleRapide)) r.modeleRapide = o.modeleRapide
+  if (o.raccourcis && typeof o.raccourcis === 'object' && !Array.isArray(o.raccourcis)) {
+    const ids = new Set(RACCOURCIS_CONFIGURABLES.map((x) => x.id))
+    r.raccourcis = Object.fromEntries(
+      Object.entries(o.raccourcis as Record<string, unknown>).filter(([k, v]) => ids.has(k) && typeof v === 'string' && combinaisonValide(v) && v.length <= 40)
+    ) as Record<string, string>
+  }
   if (o.effetsVerre === 'auto' || o.effetsVerre === 'complets' || o.effetsVerre === 'legers') r.effetsVerre = o.effetsVerre
   if (typeof o.veilleOnglets === 'number' && [0, 10, 30, 60, 120].includes(o.veilleOnglets)) r.veilleOnglets = o.veilleOnglets
   if (Array.isArray(o.phishingExceptions))

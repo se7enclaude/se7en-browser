@@ -5,17 +5,20 @@
  * d'onglet l'image de l'ancienne page s'efface en fondu sur la nouvelle. */
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { CommandeUi, EtatOnglet, EtatOnglets, ZoneOnglet } from '../../../shared/onglets'
-import { figerPages, useImagesFigees } from '../pagesFigees'
+import { figerPages, useFigerPages, useImagesFigees } from '../pagesFigees'
+import type { Glisser } from '../useGlisser'
 
 type Fondu = Extract<CommandeUi, { type: 'transition-onglet' }> & { n: number }
 
 interface Props {
   etat: EtatOnglets
+  /** Onglet en train d'être glissé : le lâcher sur la page l'ouvre en vue partagée. */
+  glisser: Glisser
   /** Ce que l'interface dessine pour un onglet sans page web. */
   contenu: (onglet: EtatOnglet) => ReactNode
 }
 
-export function ZonePage({ etat, contenu }: Props): React.JSX.Element {
+export function ZonePage({ etat, contenu, glisser }: Props): React.JSX.Element {
   const volets = useRef(new Map<number, HTMLDivElement>())
   const zone = useRef<HTMLDivElement>(null)
   const [ratioGlisse, setRatioGlisse] = useState<number | null>(null)
@@ -123,6 +126,36 @@ export function ZonePage({ etat, contenu }: Props): React.JSX.Element {
         </div>
         </Fragment>
       ))}
+      {glisser.id !== null && glisser.id !== etat.actifId && !enSplit && <DeposerEnPartage glisser={glisser} />}
     </main>
+  )
+}
+
+/** Pendant qu'on glisse un onglet : la page est figée et deux zones apparaissent pour l'ouvrir à gauche ou à droite. */
+function DeposerEnPartage({ glisser }: { glisser: Glisser }): React.JSX.Element {
+  useFigerPages()
+  const [survol, setSurvol] = useState<'gauche' | 'droite' | null>(null)
+  const zone = (cote: 'gauche' | 'droite'): React.JSX.Element => (
+    <div
+      className={`zone-depot ${cote}${survol === cote ? ' survol' : ''}`}
+      onDragOver={(e) => {
+        e.preventDefault()
+        setSurvol(cote)
+      }}
+      onDragLeave={() => setSurvol((s) => (s === cote ? null : s))}
+      onDrop={(e) => {
+        e.preventDefault()
+        if (glisser.id !== null) window.se7en.onglets.diviser(glisser.id, cote === 'gauche')
+        glisser.lacher()
+      }}
+    >
+      <span>Ouvrir {cote === 'gauche' ? 'à gauche' : 'à droite'}</span>
+    </div>
+  )
+  return (
+    <div className="depot-partage">
+      {zone('gauche')}
+      {zone('droite')}
+    </div>
   )
 }

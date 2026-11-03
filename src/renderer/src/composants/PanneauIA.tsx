@@ -1,7 +1,7 @@
 /* Panneau IA, à droite (Ctrl+Espace) : chat en flux avec l'IA locale, « discute avec la page », @onglets, /Skills,
  * résumé en un clic, historique des conversations. L'IA ne fait que répondre : aucune action sur les pages. */
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { FluxChat, MessageChat, PageJointe, ResumeConversation, Skill, ZoneCapture } from '../../../shared/chat'
+import { DEMANDE_EXPLIQUE_PAGE, type FluxChat, type MessageChat, type PageJointe, type ResumeConversation, type Skill, type ZoneCapture } from '../../../shared/chat'
 import { modelePresent, type EtatOllama } from '../../../shared/ia'
 import type { EtatOnglet, EtatOnglets } from '../../../shared/onglets'
 import type { Reglages } from '../../../shared/reglages'
@@ -404,6 +404,17 @@ export function PanneauIA({ etat, actif, ia, reglages, ouvert, fermer, demande }
                 >
                   <IconeHistorique />
                   <span>Ma navigation</span>
+                </button>
+              )}
+              {pageActive && (
+                <button
+                  className="chip chip-ia"
+                  disabled={!!enCours}
+                  title="Ce qu’est la page, ce qu’elle t’engage à faire, les points à surveiller"
+                  onClick={() => void envoyer(DEMANDE_EXPLIQUE_PAGE, { avecPage: true, nouvelle: true })}
+                >
+                  <IconeIA />
+                  <span>Explique-moi cette page</span>
                 </button>
               )}
               {pageActive && estGmail(pageActive.url) && (

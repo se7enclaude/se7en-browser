@@ -16,9 +16,12 @@ import {
   type EtatSocial,
   type GroupeSocial,
   type MessageSocial,
-  type ProfilSocial
+  type ProfilSocial,
+  type StatutSocial,
+  MAX_VOCAL_SECONDES,
+  texteStatut
 } from '../../../shared/social'
-import { IconeCroix, IconeEnsemble, IconeGlobe, IconeImage, IconePrecedent } from './Icones'
+import { IconeCroix, IconeEnsemble, IconeGlobe, IconeImage, IconeMicro, IconePrecedent } from './Icones'
 
 const estErreur = (v: unknown): v is { erreur: string } => !!v && typeof v === 'object' && 'erreur' in v
 const memeCible = (a: CibleSocial | null, b: CibleSocial | null): boolean => !!a && !!b && a.type === b.type && a.id === b.id
@@ -278,6 +281,7 @@ function EspaceAmis({ etat, profil, onglets }: { etat: EtatSocial; profil: Profi
     () =>
       window.se7en.social.surEvenement((ev) => {
         if (ev.type === 'presence') setAmis((l) => l.map((a) => (a.id === ev.id ? { ...a, enLigne: ev.enLigne } : a)))
+        else if (ev.type === 'statut') setAmis((l) => l.map((a) => (a.id === ev.id ? { ...a, humeur: ev.statut } : a)))
         else if (ev.type === 'amis') void charger()
         else if (ev.type === 'groupes') void chargerGroupes()
         else if (ev.type === 'message') {
@@ -377,6 +381,7 @@ function EspaceAmis({ etat, profil, onglets }: { etat: EtatSocial; profil: Profi
           <span className="discret">
             Ton code ami : <span className="code-ami">{codeAmi(profil)}</span>
           </span>
+          <ChoixStatut statut={profil.humeur ?? null} />
           <div className="actions-profil">
             <button
               className="bouton-verre"
@@ -469,7 +474,7 @@ function EspaceAmis({ etat, profil, onglets }: { etat: EtatSocial; profil: Profi
             <Avatar profil={a} enLigne={a.enLigne} />
             <span className="nom-ami">
               <strong>{a.pseudo}</strong>
-              <span className="discret"> {a.enLigne ? 'en ligne' : ''}</span>
+              <span className="discret"> {texteStatut(a.humeur) || (a.enLigne ? 'en ligne' : '')}</span>
             </span>
             {a.nonLus > 0 && <span className="pastille-non-lus">{a.nonLus}</span>}
           </button>
@@ -606,6 +611,48 @@ function Conversation({ cible, ami, groupe, amis, moi, onglets, retour }: PropsC
   const [envoi, setEnvoi] = useState<string | null>(null)
   const [ecrivent, setEcrivent] = useState<Record<string, number>>({})
   const [agrandie, setAgrandie] = useState<string | null>(null)
+  const [enregistrement, setEnregistrement] = useState<number | null>(null)
+  const micro = useRef<{ mr: MediaRecorder; morceaux: Blob[]; annule: boolean; minuteur: ReturnType<typeof setTimeout> } | null>(null)
+  const [maintenant, setMaintenant] = useState(Date.now())
+  useEffect(() => {
+    if (enregistrement === null) return
+    const t = setInterval(() => setMaintenant(Date.now()), 250)
+    return () => clearInterval(t)
+  }, [enregistrement])
+  // la conversation se ferme pendant un enregistrement : il est abandonné
+  useEffect(() => () => arreterMicro(true), [])
+
+  /** Enregistre au micro (seulement après le clic, et le micro est relâché dès la fin). */
+  const demarrerMicro = async (): Promise<void> => {
+    try {
+      const flux = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } })
+      const mr = new MediaRecorder(flux, { mimeType: 'audio/webm;codecs=opus', audioBitsPerSecond: 32_000 })
+      const etat = { mr, morceaux: [] as Blob[], annule: false, minuteur: setTimeout(() => arreterMicro(false), MAX_VOCAL_SECONDES * 1000) }
+      micro.current = etat
+      mr.ondataavailable = (e) => e.data.size && etat.morceaux.push(e.data)
+      mr.onstop = async () => {
+        flux.getTracks().forEach((t) => t.stop())
+        clearTimeout(etat.minuteur)
+        setEnregistrement(null)
+        if (etat.annule) return
+        const son = new Uint8Array(await new Blob(etat.morceaux, { type: 'audio/webm' }).arrayBuffer())
+        setEnvoi('Envoi du message vocal…')
+        ajouter(await window.se7en.social.envoyerVocal(cible, son, 'audio/webm'))
+        setEnvoi(null)
+      }
+      mr.start(250)
+      setEnregistrement(Date.now())
+    } catch {
+      setErreur('Impossible d’utiliser le micro (aucun micro, ou il est refusé dans Windows).')
+    }
+  }
+  function arreterMicro(annuler: boolean): void {
+    const m = micro.current
+    if (!m) return
+    micro.current = null
+    m.annule = annuler
+    if (m.mr.state !== 'inactive') m.mr.stop()
+  }
   const [ajoutMembre, setAjoutMembre] = useState(false)
   const fil = useRef<HTMLDivElement>(null)
   const enBas = useRef(true)
@@ -713,9 +760,7 @@ function Conversation({ cible, ami, groupe, amis, moi, onglets, retour }: PropsC
             {nomsEcrivent.length
               ? texteEcrit(nomsEcrivent)
               : ami
-                ? ami.enLigne
-                  ? 'En ligne'
-                  : 'Hors ligne'
+                ? texteStatut(ami.humeur) || (ami.enLigne ? 'En ligne' : 'Hors ligne')
                 : groupe?.membres.map((m) => (m.id === moi.id ? 'toi' : m.pseudo)).join(', ')}
           </span>
         </div>
@@ -805,6 +850,7 @@ function Conversation({ cible, ami, groupe, amis, moi, onglets, retour }: PropsC
               )}
               <div className={`bulle-ami${deMoi ? ' de-moi' : ''}${m.image ? ' avec-image' : ''}`}>
                 {m.image && <ImageMessage id={m.image} agrandir={setAgrandie} />}
+                {m.vocal && <MessageVocal id={m.vocal} deMoi={deMoi} />}
                 {m.url && estAdresseAutorisee(m.url) ? (
                   <button className="carte-lien" onClick={() => window.se7en.social.ouvrirLien(m.url!)} title={m.url}>
                     <IconeGlobe />
@@ -889,6 +935,22 @@ function Conversation({ cible, ami, groupe, amis, moi, onglets, retour }: PropsC
         <button type="button" className="bouton-icone" onClick={() => setMenuImage((v) => !v)} title="Envoyer une image ou une capture">
           <IconeImage />
         </button>
+        {enregistrement !== null ? (
+          <div className="enregistrement-vocal">
+            <span className="point-rouge" />
+            <span>{Math.floor((maintenant - enregistrement) / 1000)} s</span>
+            <button type="button" className="bouton-verre petit" onClick={() => arreterMicro(true)}>
+              Annuler
+            </button>
+            <button type="button" className="bouton-principal petit" onClick={() => arreterMicro(false)}>
+              Envoyer
+            </button>
+          </div>
+        ) : (
+          <button type="button" className="bouton-icone" onClick={() => void demarrerMicro()} title={`Message vocal (${MAX_VOCAL_SECONDES} s au plus)`}>
+            <IconeMicro />
+          </button>
+        )}
         <button type="button" className="bouton-verre" onClick={() => setChoixOnglet((v) => (v === 'lien' ? null : 'lien'))} title="Envoyer un de tes onglets">
           Envoyer un onglet
         </button>
@@ -934,6 +996,102 @@ function Conversation({ cible, ami, groupe, amis, moi, onglets, retour }: PropsC
           </button>
         </div>
       )}
+    </div>
+  )
+}
+
+/** Message vocal : bouton lecture, barre d'avancement, durée. Le son n'est chargé qu'au premier clic. */
+function MessageVocal({ id, deMoi }: { id: string; deMoi: boolean }): React.JSX.Element {
+  const audio = useRef<HTMLAudioElement | null>(null)
+  const [src, setSrc] = useState<string | null>(null)
+  const [lecture, setLecture] = useState(false)
+  const [temps, setTemps] = useState({ t: 0, d: 0 })
+  const lire = async (): Promise<void> => {
+    if (!src) {
+      const s = await window.se7en.social.image(id)
+      if (!s) return
+      setSrc(s)
+      return
+    }
+    if (audio.current?.paused) void audio.current.play()
+    else audio.current?.pause()
+  }
+  useEffect(() => {
+    if (src && audio.current) void audio.current.play()
+  }, [src])
+  const fmt = (x: number): string => `${Math.floor(x / 60)}:${String(Math.floor(x % 60)).padStart(2, '0')}`
+  return (
+    <div className={`message-vocal${deMoi ? ' de-moi' : ''}`}>
+      <button className="bouton-lecture" onClick={() => void lire()} title={lecture ? 'Pause' : 'Écouter'}>
+        {lecture ? '❚❚' : '▶'}
+      </button>
+      <div className="onde">
+        <div style={{ width: `${temps.d ? (100 * temps.t) / temps.d : 0}%` }} />
+      </div>
+      <span className="duree">{fmt(lecture || temps.t ? temps.t : temps.d)}</span>
+      {src && (
+        <audio
+          ref={audio}
+          src={src}
+          onPlay={() => setLecture(true)}
+          onPause={() => setLecture(false)}
+          onEnded={() => {
+            setLecture(false)
+            setTemps((x) => ({ ...x, t: 0 }))
+          }}
+          onLoadedMetadata={(e) => {
+            const a = e.currentTarget
+            if (Number.isFinite(a.duration)) setTemps({ t: 0, d: a.duration })
+          }}
+          onTimeUpdate={(e) => {
+            const a = e.currentTarget
+            setTemps((x) => ({ t: a.currentTime, d: Number.isFinite(a.duration) ? a.duration : Math.max(x.d, a.currentTime) }))
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+/** Statut visible par les amis : disponible, ne pas déranger (plus de notifications), en train de jouer à…, absent. */
+function ChoixStatut({ statut }: { statut: StatutSocial | null }): React.JSX.Element {
+  const [type, setType] = useState<StatutSocial['type'] | 'dispo'>(statut?.type ?? 'dispo')
+  const [texte, setTexte] = useState(statut?.texte ?? '')
+  useEffect(() => {
+    setType(statut?.type ?? 'dispo')
+    setTexte(statut?.texte ?? '')
+  }, [statut?.type, statut?.texte])
+  const enregistrer = (t: typeof type, x: string): void => {
+    void window.se7en.social.statut(t === 'dispo' ? null : { type: t, texte: x.trim() })
+  }
+  return (
+    <div className="choix-statut">
+      <select
+        className="champ"
+        value={type}
+        onChange={(e) => {
+          const t = e.target.value as typeof type
+          setType(t)
+          enregistrer(t, t === 'dispo' ? '' : texte)
+        }}
+      >
+        <option value="dispo">🟢 Disponible</option>
+        <option value="jeu">🎮 En train de jouer à…</option>
+        <option value="occupe">⛔ Ne pas déranger</option>
+        <option value="absent">🌙 Absent</option>
+      </select>
+      {type !== 'dispo' && (
+        <input
+          className="champ"
+          value={texte}
+          maxLength={60}
+          placeholder={type === 'jeu' ? 'Nom du jeu' : 'Un petit mot (facultatif)'}
+          onChange={(e) => setTexte(e.target.value)}
+          onBlur={() => enregistrer(type, texte)}
+          onKeyDown={(e) => e.key === 'Enter' && (e.currentTarget as HTMLInputElement).blur()}
+        />
+      )}
+      {type === 'occupe' && <span className="discret petit">Plus de notification de message tant que ce statut est actif.</span>}
     </div>
   )
 }

@@ -1,11 +1,12 @@
 /* Un onglet, dans l'une de ses trois formes : en haut, en ligne (barre latérale) ou en icône seule. */
 import { useRef } from 'react'
 import type { EtatOnglet } from '../../../shared/onglets'
-import { IconeAmis, IconeCroix, IconeEtoile, IconeGlobe, IconeHistorique, IconeIA, IconePdf, IconeReglages, IconeTelecharger } from './Icones'
+import { IconePrive, IconeAmis, IconeCroix, IconeEtoile, IconeGlobe, IconeHistorique, IconeIA, IconePdf, IconeReglages, IconeTelecharger } from './Icones'
 import type { Glisser } from '../useGlisser'
 
 export function IconeOnglet({ onglet }: { onglet: EtatOnglet }): React.JSX.Element {
   if (onglet.chargement) return <span className="roue" aria-label="Chargement" />
+  if (onglet.prive && !onglet.favicon) return <IconePrive />
   if (onglet.url === 'se7en://parametres') return <IconeReglages />
   if (onglet.url === 'se7en://historique') return <IconeHistorique />
   if (onglet.url === 'se7en://favoris') return <IconeEtoile />
@@ -27,7 +28,7 @@ interface Props {
 export function OngletItem({ onglet, actif, forme, glisser }: Props): React.JSX.Element {
   const o = window.se7en.onglets
   const ref = useRef<HTMLDivElement>(null)
-  const classes = ['onglet', `onglet-${forme}`, actif && 'actif', onglet.endormi && 'endormi', glisser.id === onglet.id && 'glisse']
+  const classes = ['onglet', `onglet-${forme}`, actif && 'actif', onglet.endormi && 'endormi', onglet.prive && 'prive', glisser.id === onglet.id && 'glisse']
   /** L'onglet se replie avant de disparaître (un prioritaire, lui, se met juste en veille). */
   const fermer = (): void => {
     const el = ref.current

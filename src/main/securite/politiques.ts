@@ -21,9 +21,9 @@ export const PARTITION_WEB = 'persist:web'
 const PERMISSIONS_SURES = new Set(['fullscreen', 'clipboard-sanitized-write', 'pointerLock'])
 
 /** Réglages imposés à toutes les pages web : aucun accès à Node ni au navigateur lui-même. */
-export function preferencesPage(): WebPreferences {
+export function preferencesPage(prive = false): WebPreferences {
   return {
-    partition: PARTITION_WEB,
+    partition: prive ? PARTITION_PRIVEE : PARTITION_WEB,
     contextIsolation: true,
     nodeIntegration: false,
     nodeIntegrationInSubFrames: false,
@@ -35,15 +35,20 @@ export function preferencesPage(): WebPreferences {
   }
 }
 
+/** Onglets privés : session en mémoire seulement (rien n'est écrit sur le disque), partagée par les onglets privés
+ * et vidée quand le dernier se ferme. */
+export const PARTITION_PRIVEE = 'prive'
+
 let sessionWebPreparee = false
 /** Règles de la session web, appliquées une seule fois. */
 export function preparerSessionWeb(): void {
   if (sessionWebPreparee) return
   sessionWebPreparee = true
-  const s = session.fromPartition(PARTITION_WEB)
-  s.setPermissionRequestHandler((_wc, permission, rappel) => rappel(PERMISSIONS_SURES.has(permission)))
-  s.setPermissionCheckHandler((_wc, permission) => PERMISSIONS_SURES.has(permission))
-  s.setSpellCheckerLanguages(['fr', 'en-US'])
+  for (const s of [session.fromPartition(PARTITION_WEB), session.fromPartition(PARTITION_PRIVEE)]) {
+    s.setPermissionRequestHandler((_wc, permission, rappel) => rappel(PERMISSIONS_SURES.has(permission)))
+    s.setPermissionCheckHandler((_wc, permission) => PERMISSIONS_SURES.has(permission))
+    s.setSpellCheckerLanguages(['fr', 'en-US'])
+  }
 }
 
 /** Vrai si l'adresse appartient à l'interface elle-même (serveur Vite en dev, fichiers locaux en prod). */
@@ -59,8 +64,12 @@ export function verrouillerInterface(wc: WebContents): void {
     if (!estAdresseInterface(url)) e.preventDefault()
   })
   wc.setWindowOpenHandler(() => ({ action: 'deny' }))
-  // seule permission de l'interface : écrire dans le presse-papiers (bouton « Copier » des réponses de l'IA)
-  wc.session.setPermissionRequestHandler((_wc, perm, rappel) => rappel(perm === 'clipboard-sanitized-write'))
+  // permissions de l'interface : écrire dans le presse-papiers (bouton « Copier »), et le micro seul (messages vocaux,
+  // enregistrés seulement quand l'utilisateur appuie sur le bouton) ; jamais la caméra ni l'écran
+  wc.session.setPermissionRequestHandler((_wc, perm, rappel, details) => {
+    const micro = perm === 'media' && (details as { mediaTypes?: string[] }).mediaTypes?.every((t) => t === 'audio') === true
+    rappel(perm === 'clipboard-sanitized-write' || micro)
+  })
 }
 
 /** Bloque, pour toute l'appli, l'ajout de <webview> et les preloads injectés par une page. */

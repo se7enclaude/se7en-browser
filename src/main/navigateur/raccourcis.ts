@@ -2,6 +2,7 @@
  * que le focus soit dans l'interface ou dans une page web. */
 
 import type { PageInterne } from '../../shared/adresse'
+import { combinaison, RACCOURCIS_CONFIGURABLES } from '../../shared/raccourcis'
 
 /** Ce qu'il faut savoir d'une touche (sous-ensemble d'Electron.Input, pour pouvoir tester sans Electron). */
 export interface Touche {
@@ -17,6 +18,7 @@ export interface Touche {
 
 export type ActionRaccourci =
   | { type: 'nouvel-onglet' }
+  | { type: 'nouvel-onglet-prive' }
   | { type: 'fermer-onglet' }
   | { type: 'rouvrir-onglet' }
   | { type: 'onglet-suivant' }
@@ -34,13 +36,39 @@ export type ActionRaccourci =
   | { type: 'ouvrir-fichier' }
   | { type: 'rechercher-onglets' }
 
-export function actionDuRaccourci(t: Touche): ActionRaccourci | null {
+/** Action configurable (identifiant de shared/raccourcis.ts) → action du navigateur. */
+function actionConfigurable(id: string): ActionRaccourci | null {
+  if (id.startsWith('page-')) return { type: 'page', page: `se7en://${id.slice(5)}` as PageInterne }
+  return RACCOURCIS_CONFIGURABLES.some((r) => r.id === id) ? ({ type: id } as ActionRaccourci) : null
+}
+
+/** Identifiant configurable d'une action par défaut (null : action fixe, comme Ctrl+1…9 ou F5). */
+function idConfigurable(a: ActionRaccourci): string | null {
+  const id = a.type === 'page' ? `page-${a.page.replace('se7en://', '')}` : a.type
+  return RACCOURCIS_CONFIGURABLES.some((r) => r.id === id) ? id : null
+}
+
+/** Avec les raccourcis personnalisés : ils passent en premier, et le raccourci par défaut d'une action réattribuée ne marche plus. */
+export function actionDuRaccourci(t: Touche, perso: Record<string, string> = {}): ActionRaccourci | null {
   if (t.type !== 'keyDown' || t.meta) return null
+  const combo = combinaison(t)
+  if (combo) {
+    const choisi = Object.entries(perso).find(([, c]) => c === combo)?.[0]
+    if (choisi) return actionConfigurable(choisi)
+  }
+  const a = actionParDefaut(t)
+  if (!a) return null
+  const id = idConfigurable(a)
+  return id && perso[id] ? null : a
+}
+
+function actionParDefaut(t: Touche): ActionRaccourci | null {
   const k = t.key.length === 1 ? t.key.toLowerCase() : t.key
   const ctrl = t.control && !t.alt
 
   if (ctrl && !t.shift && k === 't') return { type: 'nouvel-onglet' }
   if (ctrl && t.shift && k === 't') return { type: 'rouvrir-onglet' }
+  if (ctrl && t.shift && k === 'n') return { type: 'nouvel-onglet-prive' }
   if (ctrl && t.shift && k === 'a') return { type: 'rechercher-onglets' }
   if (ctrl && !t.shift && (k === 'w' || k === 'F4')) return { type: 'fermer-onglet' }
   if (ctrl && k === 'Tab') return { type: t.shift ? 'onglet-precedent' : 'onglet-suivant' }

@@ -5,6 +5,8 @@ import { MOTEURS, type Reglages } from '../../../shared/reglages'
 import { modelePresent } from '../../../shared/ia'
 import { adresseServeur, SERVEUR_SOCIAL_OFFICIEL } from '../../../shared/social'
 import { SectionPlantages } from './Plantages'
+import { ReglagesRaccourcis } from './ReglagesRaccourcis'
+import { SauvegardeChiffree } from './SauvegardeChiffree'
 import { ChoixDisposition, ChoixTeinte, ChoixTheme } from './ChoixApparence'
 import { EditeurCoffre } from './EditeurCoffre'
 import { ReglagesBloqueur, ReglagesMemoire, ReglagesNavigation } from './ReglagesViePrivee'
@@ -167,6 +169,10 @@ export function Parametres({ reglages, modifier, infos }: Props): React.JSX.Elem
       <EditeurCoffre />
 
       <EditeurSkills />
+
+      <ReglagesRaccourcis reglages={reglages} modifier={modifier} />
+
+      <SauvegardeChiffree />
 
       <SectionPlantages />
 

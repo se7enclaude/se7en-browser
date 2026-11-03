@@ -5,7 +5,7 @@ import type { SitePopulaire } from '../../../shared/donnees'
 import type { EtatOnglet } from '../../../shared/onglets'
 import { initiale, useFavoris } from '../useDonnees'
 import { ChoixRechercheIA, modeSaisie } from './ChoixRechercheIA'
-import { IconeRecherche } from './Icones'
+import { IconePrive, IconeRecherche } from './Icones'
 
 function salutation(): string {
   const h = new Date().getHours()
@@ -47,9 +47,23 @@ export function NouvelOnglet({ onglet, demanderIA }: { onglet: EtatOnglet; deman
 
   return (
     <div className="nouvel-onglet-page">
-      <div className="orbe" aria-hidden />
-      <h1 className="salutation">{salutation()}.</h1>
-      <p className="sous-salutation">Que veux-tu explorer ?</p>
+      {onglet.prive ? (
+        <>
+          <div className="orbe orbe-prive" aria-hidden>
+            <IconePrive />
+          </div>
+          <h1 className="salutation">Navigation privée</h1>
+          <p className="sous-salutation">
+            Rien n’est gardé : ni historique, ni mémoire de l’IA, ni cookies. Tout s’efface quand tu fermes le dernier onglet privé.
+          </p>
+        </>
+      ) : (
+        <>
+          <div className="orbe" aria-hidden />
+          <h1 className="salutation">{salutation()}.</h1>
+          <p className="sous-salutation">Que veux-tu explorer ?</p>
+        </>
+      )}
       <form
         className="grande-recherche verre-fort"
         onSubmit={(e) => {
@@ -77,7 +91,7 @@ export function NouvelOnglet({ onglet, demanderIA }: { onglet: EtatOnglet; deman
         />
         {(mode === 'recherche' || mode === 'ia') && <ChoixRechercheIA mode={mode} changer={setForce} />}
       </form>
-      {tuiles.length > 0 && (
+      {tuiles.length > 0 && !onglet.prive && (
         <div className="tuiles">
           {tuiles.map((t, i) => (
             <button key={t.url} className="tuile" title={t.titre} style={{ animationDelay: `${i * 30}ms` }} onClick={() => aller(t.url)}>

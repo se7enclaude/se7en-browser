@@ -1,6 +1,8 @@
 /* Interface du navigateur : barre de titre (onglets du haut), barre latérale (prioritaires), barre d'outils, zone de page. */
 import { useEffect, useState } from 'react'
-import type { EtatOnglet } from '../../shared/onglets'
+import type { CommandeUi, EtatOnglet } from '../../shared/onglets'
+import { MenuVerre } from './composants/MenuVerre'
+import { RemplissageWeb } from './composants/RemplissageWeb'
 import { Accueil } from './composants/Accueil'
 import { BarreLaterale } from './composants/BarreLaterale'
 import { BarreOutils } from './composants/BarreOutils'
@@ -36,6 +38,9 @@ export function App(): React.JSX.Element {
   const [demande, setDemande] = useState<DemandeExterne | null>(null)
   const [zone, setZone] = useState<{ idCapture: string; image: string } | null>(null)
   const [rechercheOnglets, setRechercheOnglets] = useState(false)
+  const [remplissage, setRemplissage] = useState<number | null>(null)
+  /** Menu en verre préparé par le main (clic droit dans une page, sur un onglet…). */
+  const [menu, setMenu] = useState<Extract<CommandeUi, { type: 'menu' }> | null>(null)
   /** « Demande ou cherche », clic droit › IA, zone de l'écran : la question part dans le panneau IA. */
   const demanderIA = (texte: string, avecPage: boolean, z?: ZoneCapture): void => {
     setIaOuverte(true)
@@ -49,6 +54,13 @@ export function App(): React.JSX.Element {
         else if (c.type === 'demander-ia') demanderIA(c.texte, c.avecPage)
         else if (c.type === 'zone') setZone({ idCapture: c.idCapture, image: c.image })
         else if (c.type === 'rechercher-onglets') setRechercheOnglets((v) => !v)
+        else if (c.type === 'remplir-formulaire') setRemplissage(c.idOnglet)
+        else if (c.type === 'menu')
+          setMenu((ancien) => {
+            // un nouveau menu remplace l'ancien (fermé sans choix)
+            if (ancien) window.se7en.app.choixMenu(ancien.id, null)
+            return c
+          })
         else if (c.type === 'ouvrir-conversation') ouvrirConversation(c.cible)
       }),
     []
@@ -137,12 +149,24 @@ export function App(): React.JSX.Element {
               </button>
             </div>
           )}
-          <ZonePage etat={etat} contenu={contenu} />
+          <ZonePage etat={etat} contenu={contenu} glisser={glisser} />
         </div>
         {reglages && (
           <PanneauIA etat={etat} actif={actif} ia={ia} reglages={reglages} ouvert={panneauOuvert} fermer={() => setIaOuverte(false)} demande={demande} />
         )}
       </div>
+      {menu && (
+        <MenuVerre
+          key={menu.id}
+          elements={menu.entrees}
+          position={{ type: 'point', x: menu.x, y: menu.y }}
+          fermer={(choix) => {
+            setMenu(null)
+            window.se7en.app.choixMenu(menu.id, choix?.id ?? null)
+          }}
+        />
+      )}
+      {remplissage !== null && <RemplissageWeb idOnglet={remplissage} fermer={() => setRemplissage(null)} />}
       {rechercheOnglets && <RechercheOnglets etat={etat} fermer={() => setRechercheOnglets(false)} />}
       {zone && (
         <SelecteurZone

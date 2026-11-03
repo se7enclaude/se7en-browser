@@ -13,6 +13,7 @@ import {
   IconeCroix,
   IconeEtoile,
   IconeTraduire,
+  IconePrive,
   IconeIA,
   IconePrecedent,
   IconeRecherche,
@@ -145,6 +146,11 @@ export function BarreOutils({ actif, etat, enSplit, barre, ia, bloqueurActif }: 
             <IconeBouclier />
             {bloqueurActif && actif.bloques > 0 && <span className="compteur-bloques">{actif.bloques > 99 ? '99+' : actif.bloques}</span>}
           </button>
+        )}
+        {actif?.prive && (
+          <span className="badge-prive" title="Onglet privé : rien n’est gardé">
+            <IconePrive /> Privé
+          </span>
         )}
         {estWeb && actif && brouillon === null && (
           <button

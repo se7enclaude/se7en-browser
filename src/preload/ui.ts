@@ -38,7 +38,9 @@ const api: ApiSe7en = {
     infos: demander(CANAUX.appInfos),
     surCommande: (rappel) => ecouter<CommandeUi>(CANAUX.uiCommande, rappel),
     menu: envoyer(CANAUX.appMenu),
-    ouvrirFichier: envoyer(CANAUX.appOuvrirFichier)
+    ouvrirFichier: envoyer(CANAUX.appOuvrirFichier),
+    choixMenu: envoyer(CANAUX.menuChoix),
+    captureRaccourci: envoyer(CANAUX.raccourciCapture)
   },
   reglages: {
     lire: demander(CANAUX.reglagesLire),
@@ -49,6 +51,12 @@ const api: ApiSe7en = {
     lire: demander(CANAUX.ongletsLire),
     surEtat: (rappel) => ecouter<EtatOnglets>(CANAUX.ongletsEtat, rappel),
     nouveau: envoyer(CANAUX.ongletsNouveau),
+    nouveauPrive: envoyer(CANAUX.ongletsNouveauPrive),
+    changerSession: envoyer(CANAUX.sessionChanger),
+    creerSession: envoyer(CANAUX.sessionCreer),
+    renommerSession: envoyer(CANAUX.sessionRenommer),
+    supprimerSession: envoyer(CANAUX.sessionSupprimer),
+    deplacerVersSession: envoyer(CANAUX.sessionDeplacer),
     fermer: envoyer(CANAUX.ongletsFermer),
     activer: envoyer(CANAUX.ongletsActiver),
     deplacer: envoyer(CANAUX.ongletsDeplacer),
@@ -151,6 +159,14 @@ const api: ApiSe7en = {
     prendreLaMain: envoyer(CANAUX.ensembleMain),
     arreter: envoyer(CANAUX.ensembleArreter)
   },
+  formulaireWeb: {
+    analyser: demander(CANAUX.formulaireWebAnalyser),
+    remplir: demander(CANAUX.formulaireWebRemplir)
+  },
+  sauvegarde: {
+    exporter: demander(CANAUX.sauvegardeExporter),
+    importer: demander(CANAUX.sauvegardeImporter)
+  },
   traduction: {
     traduire: envoyer(CANAUX.traductionTraduire),
     original: envoyer(CANAUX.traductionOriginal)
@@ -203,7 +219,9 @@ const api: ApiSe7en = {
     ecrit: envoyer(CANAUX.socialEcrit),
     codeSecours: demander(CANAUX.socialCodeSecours),
     enregistrerCode: demander(CANAUX.socialEnregistrerCode),
-    recuperer: demander(CANAUX.socialRecuperer)
+    recuperer: demander(CANAUX.socialRecuperer),
+    envoyerVocal: demander(CANAUX.socialEnvoyerVocal),
+    statut: demander(CANAUX.socialStatut)
   }
 }
 

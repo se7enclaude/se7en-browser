@@ -1,9 +1,12 @@
-/* Menu clic droit d'une page web : actions habituelles (copier, coller, liens, images) et actions de l'IA
+/* Menu clic droit d'une page web (menu en verre, voir menuVerre.ts) : actions habituelles (copier, coller, liens, images) et actions de l'IA
  * (expliquer une sélection, réécrire le texte d'un champ, demander sur une zone de l'écran).
- * Menu natif : il passe au-dessus des pages. Aucune action de l'IA ne modifie la page sans confirmation. */
-import { clipboard, Menu, type BrowserWindow, type ContextMenuParams, type MenuItemConstructorOptions, type WebContents } from 'electron'
+
+ * Aucune action de l'IA ne modifie la page sans confirmation. */
+import { clipboard, type BrowserWindow, type ContextMenuParams, type MenuItemConstructorOptions, type WebContents } from 'electron'
 import { estAdresseAutorisee } from '../../shared/adresse'
 import { ACTIONS_ECRITURE } from '../../shared/ecriture'
+import { DEMANDE_EXPLIQUE_PAGE } from '../../shared/chat'
+import { afficherMenu } from './menuVerre'
 
 export interface ActionsMenuPage {
   /** Question envoyée au panneau IA, avec la page (et sa sélection) jointe. */
@@ -17,6 +20,10 @@ export interface ActionsMenuPage {
   /** Traduire la page (ou remettre l'original si elle est déjà traduite). */
   traduire: () => void
   traduite: () => boolean
+  /** Ouvre l'aperçu « Remplir ce formulaire avec mon coffre ». */
+  remplirFormulaire: () => void
+  /** Position de la page dans la fenêtre (pour placer le menu au clic). */
+  origine: () => { x: number; y: number } | null
 }
 
 const court = (t: string, n = 28): string => {
@@ -41,6 +48,7 @@ export function ouvrirMenuPage(fenetre: BrowserWindow, wc: WebContents, p: Conte
   }
   if (p.isEditable) {
     modele.push(
+      { label: '✦ Remplir ce formulaire avec mon coffre…', click: () => a.remplirFormulaire() },
       {
         label: '✦ Aide à l’écriture',
         submenu: ACTIONS_ECRITURE.map((x) => ({ label: x.libelle, click: () => a.ecrire(wc, x.id) }))
@@ -52,16 +60,16 @@ export function ouvrirMenuPage(fenetre: BrowserWindow, wc: WebContents, p: Conte
   // ---------- édition ----------
   if (p.isEditable) {
     modele.push(
-      { label: 'Annuler', role: 'undo', enabled: p.editFlags.canUndo },
+      { label: 'Annuler', accelerator: 'Ctrl+Z', enabled: p.editFlags.canUndo, click: () => wc.undo() },
       { type: 'separator' },
-      { label: 'Couper', role: 'cut', enabled: p.editFlags.canCut },
-      { label: 'Copier', role: 'copy', enabled: p.editFlags.canCopy },
-      { label: 'Coller', role: 'paste', enabled: p.editFlags.canPaste },
-      { label: 'Tout sélectionner', role: 'selectAll' },
+      { label: 'Couper', accelerator: 'Ctrl+X', enabled: p.editFlags.canCut, click: () => wc.cut() },
+      { label: 'Copier', accelerator: 'Ctrl+C', enabled: p.editFlags.canCopy, click: () => wc.copy() },
+      { label: 'Coller', accelerator: 'Ctrl+V', enabled: p.editFlags.canPaste, click: () => wc.paste() },
+      { label: 'Tout sélectionner', accelerator: 'Ctrl+A', click: () => wc.selectAll() },
       { type: 'separator' }
     )
   } else if (selection) {
-    modele.push({ label: 'Copier', role: 'copy' }, { type: 'separator' })
+    modele.push({ label: 'Copier', accelerator: 'Ctrl+C', click: () => wc.copy() }, { type: 'separator' })
   }
 
   // ---------- liens et images ----------
@@ -85,6 +93,8 @@ export function ouvrirMenuPage(fenetre: BrowserWindow, wc: WebContents, p: Conte
       { label: 'Actualiser', click: () => wc.reload() },
       { type: 'separator' },
       { label: '✦ Résumer la page', enabled: ia, click: () => a.demander('/resume') },
+      { label: '✦ Explique-moi cette page', enabled: ia, click: () => a.demander(DEMANDE_EXPLIQUE_PAGE) },
+      { label: '✦ Remplir un formulaire avec mon coffre…', click: () => a.remplirFormulaire() },
       a.traduite()
         ? { label: 'Afficher la page d’origine', click: () => a.traduire() }
         : { label: '✦ Traduire la page en français', enabled: ia, click: () => a.traduire() }
@@ -93,5 +103,8 @@ export function ouvrirMenuPage(fenetre: BrowserWindow, wc: WebContents, p: Conte
   modele.push({ label: '✦ Demander sur une zone de l’écran', enabled: ia, click: () => a.zone() })
 
   while (modele.at(-1)?.type === 'separator') modele.pop()
-  Menu.buildFromTemplate(modele).popup({ window: fenetre })
+  // menu en verre, à l'endroit du clic (coordonnées de la page + position de la page dans la fenêtre)
+  const b = a.origine()
+  // après le choix, le clavier revient à la page (pour coller, taper…)
+  afficherMenu(fenetre, modele, b ? { x: b.x + p.x, y: b.y + p.y } : undefined, () => !wc.isDestroyed() && wc.focus())
 }

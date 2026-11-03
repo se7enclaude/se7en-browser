@@ -92,6 +92,12 @@ export interface Skill {
   consigne: string
 }
 
+/** « Explique-moi cette page » : ce qu'est la page, ce qu'elle engage, les points à surveiller. */
+export const DEMANDE_EXPLIQUE_PAGE =
+  'Explique-moi cette page simplement : 1) de quoi il s’agit, en deux phrases ; 2) ce qu’elle me demande ou m’engage à faire ' +
+  '(paiement, abonnement, inscription, données personnelles, délais) ; 3) les points à surveiller ou les pièges éventuels ; ' +
+  '4) ce que je devrais vérifier avant d’agir. Sois concret et honnête : si rien d’important n’est à signaler, dis-le.'
+
 export const RE_COMMANDE_SKILL = /^[a-z0-9-]{1,30}$/
 
 export const SKILLS_DEFAUT: Skill[] = [

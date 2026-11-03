@@ -6,6 +6,7 @@ import type { EtatOnglet, EtatOnglets, GroupeOnglets } from '../../../shared/ong
 import type { Glisser } from '../useGlisser'
 import { IconePlus, IconeRanger } from './Icones'
 import { OngletItem } from './OngletItem'
+import { ongletsDeSession, PastilleSession } from './Sessions'
 
 interface Props {
   etat: EtatOnglets
@@ -84,7 +85,7 @@ export function BoutonRanger({ etat }: { etat: EtatOnglets }): React.JSX.Element
 
 export function OngletsHaut({ etat, glisser, avecNormaux, avecPrioritaires }: Props): React.JSX.Element {
   const prioritaires = etat.onglets.filter((o) => o.prioritaire)
-  const normaux = etat.onglets.filter((o) => !o.prioritaire)
+  const normaux = ongletsDeSession(etat)
   const liste = useRef<HTMLDivElement>(null)
   useFlip(liste)
   return (
@@ -94,6 +95,7 @@ export function OngletsHaut({ etat, glisser, avecNormaux, avecPrioritaires }: Pr
       {avecPrioritaires && prioritaires.length > 0 && avecNormaux && <span className="separateur-vertical" />}
       {avecNormaux && (
         <>
+          {avecPrioritaires && <PastilleSession etat={etat} />}
           {rendreAvecGroupes(normaux, etat.groupes, (o) => (
             <OngletItem onglet={o} actif={o.id === etat.actifId} forme="haut" glisser={glisser} />
           ))}

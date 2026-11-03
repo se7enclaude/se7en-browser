@@ -7,6 +7,7 @@ import { ServiceFormulaire } from './pdf/serviceFormulaire'
 import { CoffreChiffre } from './coffre/coffre'
 import { brancherProtocolePdf, declarerProtocolePdf, redirigerPdfVersVisionneuse } from './pdf/protocole'
 import { TraducteurPages } from './ia/traduction'
+import { brancherMenusVerre } from './navigateur/menuVerre'
 import { Plantages } from './plantages'
 import { NotifMessages } from './social/notifMessages'
 import { Ensemble } from './social/ensemble'
@@ -25,10 +26,11 @@ import { enregistrerIpc } from './ipc/enregistrer'
 import { creerGestionRaccourcis } from './navigateur/commandes'
 import { GestionnaireOnglets } from './navigateur/onglets'
 import { Telechargements } from './navigateur/telechargements'
-import { durcirApplication, PARTITION_WEB } from './securite/politiques'
+import { durcirApplication, PARTITION_PRIVEE, PARTITION_WEB } from './securite/politiques'
 import { Favoris } from './stockage/favoris'
 import { Historique } from './stockage/historique'
 import { MagasinPrioritaires } from './stockage/prioritaires'
+import { MagasinSessions } from './stockage/sessions'
 import { MagasinReglages } from './stockage/reglages'
 import { ClientSocial } from './social/client'
 import { AssistantEcriture } from './ia/ecriture'
@@ -60,6 +62,8 @@ if (!app.requestSingleInstanceLock()) {
   // rapports de plantage : gardés sur ce PC, visibles dans les Paramètres
   const plantages = new Plantages((wc) => BrowserWindow.getAllWindows().some((f) => f.webContents === wc))
   app.whenReady().then(() => plantages.demarrer())
+  // menus en verre : l'interface renvoie l'entrée choisie
+  brancherMenusVerre((wc) => BrowserWindow.getAllWindows().some((f) => f.webContents === wc))
   declarerProtocolePdf()
   const onglets = new Map<number, GestionnaireOnglets>()
   /** Ouvre les liens et PDF passés en argument (navigateur par défaut) ; prêt une fois la fenêtre créée. */
@@ -78,20 +82,25 @@ if (!app.requestSingleInstanceLock()) {
     const reglages = new MagasinReglages(dossier)
     appliquerTheme(reglages.get().theme)
     const prioritaires = new MagasinPrioritaires(dossier)
+    const sessionsSauvees = new MagasinSessions(dossier)
     const historique = new Historique(dossier)
     const favoris = new Favoris(dossier)
     const sessionWeb = session.fromPartition(PARTITION_WEB)
+    const sessionPrivee = session.fromPartition(PARTITION_PRIVEE)
     const telechargements = new Telechargements(dossier)
     telechargements.brancher(sessionWeb)
+    telechargements.brancher(sessionPrivee)
 
     // PDF : affichés dans la visionneuse isolée (protocole se7en-pdf://) au lieu d'être téléchargés
     const documents = new DocumentsPdf()
-    brancherProtocolePdf(sessionWeb, documents)
-    redirigerPdfVersVisionneuse(sessionWeb)
+    for (const s of [sessionWeb, sessionPrivee]) {
+      brancherProtocolePdf(s, documents)
+      redirigerPdfVersVisionneuse(s)
+    }
 
     // bloqueur de pubs et de traqueurs (au niveau du réseau, sans script injecté dans les pages)
     const bloqueur = new Bloqueur(dossier)
-    bloqueur.brancher(sessionWeb, () => reglages.get().bloqueur, () => reglages.get().bloqueurExceptions)
+    for (const s of [sessionWeb, sessionPrivee]) bloqueur.brancher(s, () => reglages.get().bloqueur, () => reglages.get().bloqueurExceptions)
     bloqueur.on('bloque', (idWc) => [...onglets.values()][0]?.compterBloque(idWc))
     void bloqueur.charger()
     app.on('will-quit', () => documents.vider())
@@ -206,10 +215,10 @@ if (!app.requestSingleInstanceLock()) {
     }
     /** Ce que dit la notification d'un message (texte, lien, image). */
     const apercu = (m: MessageSocial): string =>
-      m.image ? 'a envoyé une image' : m.type === 'lien' ? `a envoyé un lien : ${m.titre || m.url}` : m.texte.slice(0, 300)
+      m.vocal ? 'a envoyé un message vocal' : m.image ? 'a envoyé une image' : m.type === 'lien' ? `a envoyé un lien : ${m.titre || m.url}` : m.texte.slice(0, 300)
     social.on('evenement', async (ev) => {
       const f = BrowserWindow.getAllWindows()[0]
-      if (ev.type !== 'message' || !f || f.isMinimized()) return
+      if (ev.type !== 'message' || !f || f.isMinimized() || social.etat().profil?.humeur?.type === 'occupe') return
       const surAmis = f.isFocused() && onglets.get(f.id)?.actif()?.etat.url === 'se7en://amis'
       if (surAmis) return
       const m = ev.message
@@ -225,7 +234,7 @@ if (!app.requestSingleInstanceLock()) {
     })
     social.on('evenement', (ev) => {
       const f = BrowserWindow.getAllWindows()[0]
-      if (ev.type !== 'message' || !Notification.isSupported() || (f && f.isFocused())) return
+      if (ev.type !== 'message' || !Notification.isSupported() || (f && f.isFocused()) || social.etat().profil?.humeur?.type === 'occupe') return
       const m = ev.message
       const n = new Notification({ title: m.groupe ? `${ev.pseudo} · ${noms.groupes.get(m.groupe) ?? 'Groupe'}` : ev.pseudo, body: apercu(m).slice(0, 200), silent: false })
       n.on('click', () => f && ouvrirConversation(f, m.groupe ? { type: 'groupe', id: m.groupe } : { type: 'ami', id: m.de }))
@@ -322,6 +331,7 @@ if (!app.requestSingleInstanceLock()) {
       notifier: (etat) => fenetre.webContents.send(CANAUX.ongletsEtat, etat),
       surTouche,
       sauverPrioritaires: (liste) => prioritaires.sauver(liste),
+      sauverSessions: (liste) => sessionsSauvees.sauver(liste),
       journal: { visite: (url, titre) => historique.ajouter(url, titre), titre: (url, titre) => historique.majTitre(url, titre) },
       documentPdf: (id) => documents.lire(id),
       transition: (t) => fenetre.webContents.send(CANAUX.uiCommande, t),
@@ -346,7 +356,8 @@ if (!app.requestSingleInstanceLock()) {
             }
             if (alerte && !wc.isDestroyed() && wc.getURL() === url) gestionnaire.definirPhishing(wc, alerte)
           }
-          if (p.motDePasse || !r.memoireNavigation) return // page de connexion ou de paiement : jamais gardée
+          // page de connexion ou de paiement, ou onglet privé : jamais gardée
+          if (p.motDePasse || !r.memoireNavigation || etat.prive) return
           await navigation.enregistrer({ url, titre: p.titre, date: Date.now(), texte: p.texte }).catch(() => false)
         }, 2500)
       },
@@ -366,11 +377,14 @@ if (!app.requestSingleInstanceLock()) {
           nouvelOnglet: (url) => gestionnaire.nouveau(url, { aCote: true, activer: false }),
           iaPrete,
           traduite: () => !!gestionnaire.pageDe(idOnglet)?.etat.traduction,
+          origine: () => gestionnaire.origineDe(idOnglet),
+          remplirFormulaire: () => commande({ type: 'remplir-formulaire', idOnglet }),
           traduire: () => traduire(fenetre, idOnglet, !!gestionnaire.pageDe(idOnglet)?.etat.traduction)
         })
       }
     })
     gestionnaire.restaurerPrioritaires(prioritaires.lire())
+    gestionnaire.restaurerSessions(sessionsSauvees.lire())
     onglets.set(idFenetre, gestionnaire)
     fenetre.on('closed', () => onglets.delete(idFenetre))
     // les raccourcis marchent aussi quand le focus est dans l'interface

@@ -1,5 +1,6 @@
-/* Menu clic droit d'un onglet. Menu natif de Windows : il passe toujours au-dessus des pages web. */
-import { Menu, type BrowserWindow } from 'electron'
+/* Menus des onglets, des groupes et du bouclier : des menus en verre (voir menuVerre.ts). */
+import type { BrowserWindow } from 'electron'
+import { afficherMenu } from './menuVerre'
 import type { GestionnaireOnglets } from './onglets'
 import { estException, hoteDe } from '../bloqueur/bloqueur'
 
@@ -7,7 +8,7 @@ export function ouvrirMenuOnglet(fenetre: BrowserWindow, g: GestionnaireOnglets,
   const etat = g.etat()
   const o = etat.onglets.find((x) => x.id === id)
   if (!o) return
-  Menu.buildFromTemplate([
+  afficherMenu(fenetre, [
     o.prioritaire
       ? { label: 'Retirer des prioritaires', click: () => g.definirPrioritaire(id, false) }
       : { label: 'Épingler en prioritaire', enabled: !!o.url, click: () => g.definirPrioritaire(id, true) },
@@ -19,16 +20,21 @@ export function ouvrirMenuOnglet(fenetre: BrowserWindow, g: GestionnaireOnglets,
       : id === etat.actifId
         ? { label: 'Vue partagée avec un nouvel onglet', click: () => g.diviser() }
         : { label: "Vue partagée avec l'onglet actif", click: () => g.diviser(id) },
+    {
+      label: 'Déplacer vers la session',
+      visible: !o.prioritaire && !o.prive && etat.sessions.length > 1,
+      submenu: etat.sessions.filter((s) => s.id !== o.session).map((s) => ({ label: `${s.emoji} ${s.nom}`, click: () => g.deplacerVersSession(id, s.id) }))
+    },
     { type: 'separator' },
     { label: o.prioritaire ? 'Mettre en veille' : 'Fermer', accelerator: 'Ctrl+W', click: () => g.fermer(id) },
     { label: 'Fermer les autres onglets', visible: !o.prioritaire, click: () => g.fermerAutres(id) }
-  ]).popup({ window: fenetre })
+  ])
 }
 
 /** Menu principal (bouton en haut à droite). */
 export function ouvrirMenuPrincipal(fenetre: BrowserWindow, g: GestionnaireOnglets, ouvrirFichier: () => void, ranger: () => void): void {
   const etat = g.etat()
-  Menu.buildFromTemplate([
+  afficherMenu(fenetre, [
     { label: 'Nouvel onglet', accelerator: 'Ctrl+T', click: () => g.nouveau() },
     { label: 'Ouvrir un fichier PDF…', accelerator: 'Ctrl+O', click: ouvrirFichier },
     etat.split
@@ -42,19 +48,19 @@ export function ouvrirMenuPrincipal(fenetre: BrowserWindow, g: GestionnaireOngle
     { label: 'Amis', click: () => g.ouvrirInterne('se7en://amis') },
     { type: 'separator' },
     { label: 'Paramètres', accelerator: 'Ctrl+,', click: () => g.ouvrirInterne('se7en://parametres') }
-  ]).popup({ window: fenetre })
+  ])
 }
 
 /** Menu d'un groupe d'onglets. */
 export function ouvrirMenuGroupe(fenetre: BrowserWindow, g: GestionnaireOnglets, id: string): void {
   const groupe = g.etat().groupes.find((x) => x.id === id)
   if (!groupe) return
-  Menu.buildFromTemplate([
+  afficherMenu(fenetre, [
     { label: groupe.replie ? 'Déplier le groupe' : 'Replier le groupe', click: () => g.basculerGroupe(id) },
     { label: 'Dégrouper (garder les onglets)', click: () => g.dissoudreGroupe(id) },
     { type: 'separator' },
     { label: 'Fermer les onglets du groupe', click: () => g.fermerGroupe(id) }
-  ]).popup({ window: fenetre })
+  ])
 }
 
 /** Menu du bouclier de la barre d'adresse. */
@@ -77,7 +83,7 @@ export function ouvrirMenuBloqueur(
         ? `Bloqueur désactivé sur ${hote}`
         : `${n} pub${n > 1 ? 's' : ''} et traqueur${n > 1 ? 's' : ''} bloqué${n > 1 ? 's' : ''} sur cette page`
   const recharger = (): void => g.actualiser(idOnglet)
-  Menu.buildFromTemplate([
+  afficherMenu(fenetre, [
     { label: resume, enabled: false },
     { type: 'separator' },
     {
@@ -97,5 +103,5 @@ export function ouvrirMenuBloqueur(
         recharger()
       }
     }
-  ]).popup({ window: fenetre })
+  ])
 }

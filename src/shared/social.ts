@@ -8,7 +8,24 @@ export interface ProfilSocial {
   /** 4 chiffres : on ajoute quelqu'un avec « pseudo#code ». */
   code: string
   photo: boolean
+  /** Statut choisi (« ne pas déranger », « en train de jouer à… ») ; absent ou null : disponible. */
+  humeur?: StatutSocial | null
 }
+
+export interface StatutSocial {
+  type: 'occupe' | 'jeu' | 'absent'
+  texte: string
+}
+
+/** Texte d'un statut, tel qu'on l'affiche sous un pseudo. */
+export function texteStatut(s: StatutSocial | null | undefined): string {
+  if (!s) return ''
+  if (s.type === 'occupe') return s.texte ? `Ne pas déranger · ${s.texte}` : 'Ne pas déranger'
+  if (s.type === 'jeu') return s.texte ? `Joue à ${s.texte}` : 'En train de jouer'
+  return s.texte ? `Absent · ${s.texte}` : 'Absent'
+}
+
+export const MAX_VOCAL_SECONDES = 120
 
 export type StatutAmi = 'ami' | 'envoyee' | 'recue'
 
@@ -31,6 +48,8 @@ export interface MessageSocial {
   groupe: string | null
   /** Image ou capture jointe : son identifiant (à charger à part). */
   image: string | null
+  /** Message vocal : identifiant du son (à charger à part). */
+  vocal?: string | null
   date: number
   lu: number
 }
@@ -102,6 +121,8 @@ export type EvenementSocial =
   | { type: 'ecrit'; id: string; groupe?: string }
   /** La liste des groupes a changé (création, membre ajouté, départ…). */
   | { type: 'groupes' }
+  /** Un ami a changé de statut. */
+  | { type: 'statut'; id: string; statut: StatutSocial | null }
   | ({ type: 'ensemble' } & SignalEnsemble)
 
 /** Serveur officiel (Cloudflare) ; le réglage « Serveur » des paramètres peut le remplacer. */

@@ -41,3 +41,20 @@ export interface ResultatRemplissage {
   rempli: number
   nomDocument: string
 }
+
+/** Formulaire d'une page web : champs relevés et valeurs proposées depuis le coffre (rien n'est encore écrit). */
+export interface ChampWebPropose {
+  /** Identifiant du champ dans la page (f0, f1…). */
+  nom: string
+  libelle: string
+  cles: string[]
+  source: 'autocomplete' | 'libelle' | 'ia' | 'aucune'
+  valeur: string
+  valeurActuelle: string
+}
+
+export interface AnalyseFormulaireWeb {
+  champs: ChampWebPropose[]
+  iaUtilisee: boolean
+  coffreVide: boolean
+}

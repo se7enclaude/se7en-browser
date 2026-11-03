@@ -5,7 +5,7 @@ import { EventEmitter } from 'node:events'
 import { promises as fs, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { Identite } from './identite'
-import type { ActionEnsemble, Ami, CibleSocial, EtatSocial, EvenementSocial, GroupeSocial, MessageSocial, ProfilSocial } from '../../shared/social'
+import type { ActionEnsemble, Ami, CibleSocial, StatutSocial, EtatSocial, EvenementSocial, GroupeSocial, MessageSocial, ProfilSocial } from '../../shared/social'
 
 /** Réponse d'erreur du serveur ou du réseau, déjà en français. */
 export class ErreurSocial extends Error {
@@ -236,11 +236,27 @@ export class ClientSocial extends EventEmitter<{ etat: [EtatSocial]; evenement: 
     if (enCache) return enCache
     const r = await this.brut('GET', `/api/image/${encodeURIComponent(id)}`)
     const type = r.headers.get('Content-Type') ?? ''
-    if (!r.ok || !/^image\/(jpeg|png|webp)$/.test(type)) return null
+    if (!r.ok || !/^(image\/(jpeg|png|webp)|audio\/(webm|ogg))$/.test(type)) return null
     const url = `data:${type};base64,${Buffer.from(await r.arrayBuffer()).toString('base64')}`
     this.images.set(id, url)
     while (this.images.size > 60) this.images.delete(this.images.keys().next().value!)
     return url
+  }
+
+  /** Envoie un message vocal (WebM/Opus enregistré par l'interface). */
+  async envoyerVocal(c: CibleSocial, son: Buffer, type: string): Promise<MessageSocial> {
+    const chemin = c.type === 'ami' ? `/api/messages/${encodeURIComponent(c.id)}/vocal` : `/api/groupes/${encodeURIComponent(c.id)}/vocal`
+    const m = (await this.requete<{ message: MessageSocial }>('PUT', chemin, son, type)).message
+    if (m.vocal) this.images.set(m.vocal, `data:${type};base64,${son.toString('base64')}`)
+    return m
+  }
+
+  /** Change son statut ; les amis le voient tout de suite. */
+  async changerStatut(s: StatutSocial | null): Promise<EtatSocial> {
+    const r = await this.requete<{ statut: StatutSocial | null }>('POST', '/api/statut', s ? { type: s.type, texte: s.texte } : { type: 'dispo' })
+    const p = this.etatActuel.profil
+    if (p) this.changer({ profil: { ...p, humeur: r.statut } })
+    return this.etatActuel
   }
 
   /** Petit signal relayé en direct (« écrit… », naviguer ensemble) ; ignoré hors connexion. */
@@ -362,6 +378,7 @@ export function lireEvenement(texte: string): EvenementSocial | null {
   }
   if (o?.type === 'amis') return { type: 'amis' }
   if (o?.type === 'groupes') return { type: 'groupes' }
+  if (o?.type === 'statut' && typeof o.id === 'string') return { type: 'statut', id: o.id, statut: lireStatut(o.statut) }
   if (o?.type === 'presence' && typeof o.id === 'string' && typeof o.enLigne === 'boolean') return { type: 'presence', id: o.id, enLigne: o.enLigne }
   if (o?.type === 'lu' && typeof o.id === 'string') return { type: 'lu', id: o.id }
   if (o?.type === 'ecrit' && typeof o.id === 'string') return { type: 'ecrit', id: o.id, ...(typeof o.groupe === 'string' ? { groupe: o.groupe } : {}) }
@@ -394,10 +411,18 @@ export function lireEvenement(texte: string): EvenementSocial | null {
         titre: url && typeof m.titre === 'string' ? m.titre.slice(0, 200) : null,
         groupe: typeof m.groupe === 'string' ? m.groupe : null,
         image: typeof m.image === 'string' && /^[\w-]{8,64}$/.test(m.image) ? m.image : null,
+        vocal: typeof m.vocal === 'string' && /^[\w-]{8,64}$/.test(m.vocal) ? m.vocal : null,
         date: m.date,
         lu: 0
       }
     }
   }
   return null
+}
+
+/** Statut reçu du serveur, vérifié. */
+function lireStatut(v: unknown): StatutSocial | null {
+  const o = v as { type?: unknown; texte?: unknown } | null
+  if (!o || (o.type !== 'occupe' && o.type !== 'jeu' && o.type !== 'absent')) return null
+  return { type: o.type, texte: typeof o.texte === 'string' ? o.texte.slice(0, 60) : '' }
 }

@@ -3586,11 +3586,9 @@ textarea.champ {
   display: flex;
 }
 .menu-verre {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
   z-index: 40;
-  width: 280px;
+  min-width: 220px;
+  max-width: 340px;
   padding: 6px;
   border-radius: 22px;
   background: var(--verre-fort);
@@ -3601,7 +3599,13 @@ textarea.champ {
   /* il se déroule depuis le bouton : la découpe descend, le verre grandit légèrement */
   animation: menu-deroule 300ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
 }
-.menu-verre::before {
+.menu-verre.ancre {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 280px;
+}
+.menu-verre.ancre::before {
   /* petite pointe sous le bouton : le menu sort de lui */
   content: '';
   position: absolute;
@@ -3614,6 +3618,12 @@ textarea.champ {
   transform: rotate(45deg);
   box-shadow: -1px -1px 0 0 var(--verre-bord);
   backdrop-filter: inherit;
+}
+.menu-verre.sous-menu {
+  z-index: 41;
+}
+.racine-menu {
+  display: contents;
 }
 .menu-verre.sortie {
   animation: menu-enroule 160ms cubic-bezier(0.4, 0, 1, 1) both;
@@ -3680,4 +3690,368 @@ textarea.champ {
   margin: 5px 10px;
   background: var(--verre-bord);
   opacity: 0.6;
+}
+
+.entree-menu .libelle-entree {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.entree-menu .coche {
+  width: 14px;
+  flex: none;
+  color: var(--ia);
+}
+.entree-menu .fleche-sous {
+  color: var(--texte-discret);
+}
+.entree-menu.ouverte {
+  background: var(--survol);
+}
+
+/* ---------- Onglets privés ---------- */
+.onglet.prive {
+  background: rgb(120 90 200 / 0.14);
+}
+.onglet.prive.actif {
+  background: rgb(120 90 200 / 0.28);
+  box-shadow: inset 0 0 0 1px rgb(160 130 240 / 0.45);
+}
+.onglet.prive .icone {
+  color: #b9a4ff;
+}
+.badge-prive {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  padding: 2px 8px;
+  border-radius: var(--pilule);
+  background: rgb(120 90 200 / 0.25);
+  color: #d6cbff;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.orbe.orbe-prive {
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 34% 28%, #e9e2ff 0%, #a690f0 40%, #4b3a8f 100%);
+  animation: none;
+}
+.orbe.orbe-prive .icone {
+  width: 44%;
+  height: 44%;
+  color: #1c1533;
+  stroke-width: 1.4;
+}
+
+/* ---------- Glisser un onglet sur la page : vue partagée ---------- */
+.zone-page {
+  position: relative;
+}
+.depot-partage {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  animation: fondu 160ms ease;
+}
+.zone-depot {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  border-radius: calc(var(--rayon-fenetre) - 4px);
+  border: 2px dashed var(--verre-bord);
+  background: rgb(0 0 0 / 0.18);
+  backdrop-filter: blur(10px) saturate(1.2);
+  color: var(--texte);
+  font-weight: 600;
+  transition: background var(--anim), border-color var(--anim), transform 240ms var(--ressort);
+}
+.zone-depot span {
+  pointer-events: none;
+  padding: 8px 16px;
+  border-radius: var(--pilule);
+  background: var(--verre-fort);
+}
+.zone-depot.survol {
+  background: rgb(230 207 151 / 0.18);
+  border-color: var(--ia);
+  transform: scale(0.985);
+}
+
+/* ---------- Paramètres : raccourcis clavier ---------- */
+.liste-raccourcis {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 4px 20px;
+}
+.ligne-raccourci {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+}
+.touche-raccourci {
+  min-width: 120px;
+  padding: 5px 12px;
+  border: 1px solid var(--verre-bord);
+  border-radius: 10px;
+  background: var(--verre-creux);
+  color: var(--texte);
+  font: inherit;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background var(--anim), box-shadow var(--anim);
+}
+.touche-raccourci.perso {
+  box-shadow: inset 0 0 0 1px var(--ia);
+}
+.touche-raccourci.en-attente {
+  background: var(--verre-fort);
+  box-shadow: 0 0 0 2px var(--ia);
+  animation: pulsation 1.2s ease-in-out infinite;
+}
+.formulaire-sauvegarde {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 460px;
+}
+
+/* ---------- Remplir un formulaire web ---------- */
+.fond-remplissage {
+  position: fixed;
+  inset: 0;
+  z-index: 26;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(0 0 0 / 0.3);
+  backdrop-filter: blur(12px) saturate(1.15);
+  animation: fondu 160ms ease;
+}
+.carte-remplissage {
+  width: min(680px, 94vw);
+  max-height: 84vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 20px;
+  border-radius: 28px;
+  animation: apparition 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.carte-remplissage h2 {
+  margin: 0;
+}
+.liste-remplissage {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ligne-remplissage {
+  display: grid;
+  grid-template-columns: auto 1fr 1.2fr;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 6px;
+  border-radius: 12px;
+  transition: opacity var(--anim);
+}
+.ligne-remplissage.decochee {
+  opacity: 0.55;
+}
+.libelle-remplissage {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- Messages vocaux et statut ---------- */
+.message-vocal {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 200px;
+}
+.bouton-lecture {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border: none;
+  border-radius: 50%;
+  background: var(--verre-fort);
+  color: var(--texte);
+  font-size: 11px;
+  cursor: pointer;
+}
+.message-vocal.de-moi .bouton-lecture {
+  background: rgb(255 255 255 / 0.2);
+  color: var(--sur-accent);
+}
+.onde {
+  flex: 1;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--verre-creux);
+  overflow: hidden;
+}
+.message-vocal.de-moi .onde {
+  background: rgb(255 255 255 / 0.25);
+}
+.onde > div {
+  height: 100%;
+  background: var(--ia);
+  transition: width 250ms linear;
+}
+.message-vocal .duree {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+}
+.enregistrement-vocal {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px;
+}
+.point-rouge {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #e5484d;
+  animation: pulsation 1s ease-in-out infinite;
+}
+.choix-statut {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0;
+}
+.choix-statut .champ {
+  max-width: 240px;
+}
+
+/* ---------- Sessions d'onglets (barre latérale) ---------- */
+.sessions .titre-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.bouton-ajout-session {
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 50%;
+  background: var(--verre-creux);
+  color: var(--texte-2);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background var(--anim), transform 240ms var(--ressort);
+}
+.bouton-ajout-session:hover {
+  background: var(--survol);
+  transform: scale(1.1);
+}
+.liste-sessions {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 4px 0 2px;
+}
+.session {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--texte);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--anim), border-color var(--anim), transform 240ms var(--ressort);
+}
+.session:hover {
+  background: var(--survol);
+}
+.session.active {
+  background: var(--verre-fort);
+  border-color: var(--verre-bord);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+}
+.session.depot {
+  border-color: var(--ia);
+  transform: scale(1.03);
+}
+.emoji-session {
+  width: 20px;
+  text-align: center;
+}
+.nom-session {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+.nombre-session {
+  font-size: 11px;
+  color: var(--texte-discret);
+}
+.formulaire-session {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 6px 0;
+  padding: 8px;
+  border-radius: 14px;
+  background: var(--verre-creux);
+  animation: apparition 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.choix-emoji {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+.choix-emoji button {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 15px;
+  cursor: pointer;
+}
+.choix-emoji button.choisi {
+  background: var(--verre-fort);
+  box-shadow: inset 0 0 0 1.5px var(--ia);
+}
+.actions-session {
+  display: flex;
+  gap: 6px;
+}
+.pastille-session {
+  flex: none;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--verre-bord);
+  border-radius: var(--pilule);
+  background: var(--verre-fort);
+  color: var(--texte);
+  font: inherit;
+  font-size: 12.5px;
+  white-space: nowrap;
+  cursor: pointer;
 }

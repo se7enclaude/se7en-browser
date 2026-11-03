@@ -7,6 +7,9 @@ import type { MagasinReglages } from '../stockage/reglages'
 import type { GestionnaireOnglets } from './onglets'
 import { actionDuRaccourci } from './raccourcis'
 
+/** Vrai pendant que les Paramètres attendent la nouvelle combinaison d'un raccourci. */
+export const captureRaccourci = { active: false }
+
 export function creerGestionRaccourcis(
   fenetre: BrowserWindow,
   onglets: () => GestionnaireOnglets,
@@ -21,13 +24,19 @@ export function creerGestionRaccourcis(
 
   /** Renvoie vrai si la touche était un raccourci du navigateur (elle n'atteint alors pas la page). */
   return (input: Input): boolean => {
-    const action = actionDuRaccourci(input)
+    // pendant que l'utilisateur choisit un nouveau raccourci (Paramètres), les touches ne déclenchent rien
+    if (captureRaccourci.active) return false
+    const action = actionDuRaccourci(input, reglages.get().raccourcis)
     if (!action) return false
     const g = onglets()
     const id = g.etat().actifId
     switch (action.type) {
       case 'nouvel-onglet':
         g.nouveau()
+        versUi({ type: 'focus-adresse' })
+        break
+      case 'nouvel-onglet-prive':
+        g.nouveau('', { prive: true })
         versUi({ type: 'focus-adresse' })
         break
       case 'fermer-onglet':

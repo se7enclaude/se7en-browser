@@ -7,6 +7,7 @@ import type { Glisser } from '../useGlisser'
 import { IconePlus } from './Icones'
 import { OngletItem } from './OngletItem'
 import { BoutonRanger, rendreAvecGroupes } from './OngletsHaut'
+import { ListeSessions, ongletsDeSession } from './Sessions'
 
 interface Props {
   etat: EtatOnglets
@@ -18,13 +19,15 @@ interface Props {
 export function BarreLaterale({ etat, glisser, ouverte, avecNormaux }: Props): React.JSX.Element {
   const o = window.se7en.onglets
   const prioritaires = etat.onglets.filter((x) => x.prioritaire)
-  const normaux = etat.onglets.filter((x) => !x.prioritaire)
+  const normaux = ongletsDeSession(etat)
   const contenu = useRef<HTMLDivElement>(null)
   useFlip(contenu)
 
   return (
     <aside className={`barre-laterale${ouverte ? ' ouverte' : ''}`} aria-hidden={!ouverte}>
       <div ref={contenu} className="barre-laterale-contenu">
+        <ListeSessions etat={etat} glisser={glisser} />
+        <div className="separateur" />
         <div className="titre-section">Prioritaires</div>
         <div className="liste-onglets" {...glisser.zone((id) => o.prioritaire(id, true))}>
           {prioritaires.map((x) => (

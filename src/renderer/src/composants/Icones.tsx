@@ -82,3 +82,9 @@ export const IconeImage = () => (
 export const IconeEnsemble = () => (
   <svg {...base}><circle cx="5.4" cy="5.6" r="2" /><circle cx="10.8" cy="5.6" r="2" /><path d="M1.8 12.6c.5-2 1.9-3 3.6-3s3.1 1 3.6 3M7.6 9.9c.8-.8 1.9-1.3 3.2-1.3 1.7 0 3.1 1 3.6 3" /></svg>
 )
+export const IconePrive = () => (
+  <svg {...base}><path d="M2 7.2c1.4-.9 3.6-1.4 6-1.4s4.6.5 6 1.4" /><path d="M4.2 5.9 5 2.8h6l.8 3.1" /><circle cx="5.2" cy="10.6" r="1.8" /><circle cx="10.8" cy="10.6" r="1.8" /><path d="M7 10.4c.6-.4 1.4-.4 2 0" /></svg>
+)
+export const IconeMicro = () => (
+  <svg {...base}><rect x="5.8" y="1.8" width="4.4" height="8" rx="2.2" /><path d="M3.4 7.6a4.6 4.6 0 0 0 9.2 0M8 12.2v2" /></svg>
+)

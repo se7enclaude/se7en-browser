@@ -25,6 +25,10 @@ export interface EtatOnglet {
   groupe: string | null
   /** Alerte anti-phishing sur la page actuelle (texte à montrer), ou null. */
   phishing: string | null
+  /** Session à laquelle appartient l'onglet (les prioritaires sont communs à toutes les sessions). */
+  session: string
+  /** Onglet privé : rien n'est gardé (historique, mémoire, cookies effacés à la fermeture du dernier onglet privé). */
+  prive: boolean
   /** Traduction de la page par l'IA locale (en cours, faite, ou en erreur), ou null. */
   traduction: EtatTraduction
 }
@@ -57,6 +61,22 @@ export interface EtatOnglets {
   actifId: number | null
   split: Split | null
   groupes: GroupeOnglets[]
+  /** Sessions : des espaces d'onglets (« Jeux vidéo », « Recherche travail »…), la première est la session principale. */
+  sessions: SessionOnglets[]
+  sessionActive: string
+}
+
+export interface SessionOnglets {
+  id: string
+  nom: string
+  emoji: string
+}
+
+export const SESSION_PRINCIPALE = 'principale'
+
+/** Session sauvegardée d'un lancement à l'autre, avec ses onglets (rouverts endormis). */
+export interface SessionSauvee extends SessionOnglets {
+  onglets: OngletPrioritaireSauve[]
 }
 
 /** Ce qu'on garde d'un onglet prioritaire entre deux sessions. */
@@ -87,10 +107,25 @@ export interface PageFigee {
   image: string
 }
 
+/** Entrée d'un menu en verre (dessiné par l'interface, actions gardées par le main). */
+export interface EntreeMenuVerre {
+  id?: string
+  libelle?: string
+  raccourci?: string
+  actif?: boolean
+  coche?: boolean
+  separateur?: boolean
+  sous?: EntreeMenuVerre[]
+}
+
 export type CommandeUi =
+  /** Menu en verre à afficher à (x, y) dans la fenêtre ; la réponse part par `app.choixMenu`. */
+  | { type: 'menu'; id: number; entrees: EntreeMenuVerre[]; x: number; y: number }
   /** Changement d'onglet : l'ancienne page s'efface en fondu sur la nouvelle (`depart` null : fondu annulé). */
   /** Clic sur la notification d'un message : ouvrir la conversation avec cet ami. */
   | { type: 'ouvrir-conversation'; cible: CibleSocial }
+  /** Remplir le formulaire de cette page avec le coffre (ouvre l'aperçu à confirmer). */
+  | { type: 'remplir-formulaire'; idOnglet: number }
   | { type: 'transition-onglet'; depart: string | null; arrivee: string | null; duree: number }
   | { type: 'focus-adresse' }
   | { type: 'basculer-ia' }

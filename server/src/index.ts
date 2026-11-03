@@ -17,6 +17,7 @@ interface Utilisateur {
   pseudo: string
   code: string
   photo: string | null
+  statut?: string | null
 }
 
 const RE_PSEUDO = /^[\p{L}\p{N}_ .-]{2,24}$/u
@@ -27,7 +28,10 @@ const MAX_MEMBRES = 20
 const RE_NOM_GROUPE = /^[^\u0000-\u001f]{1,40}$/u
 const MESSAGES_PAR_MINUTE = 30
 const TYPES_PHOTO = ['image/jpeg', 'image/png', 'image/webp']
-const COLONNES_MESSAGE = 'id, de, a, groupe, type, texte, url, titre, image, date, lu'
+const COLONNES_MESSAGE = 'id, de, a, groupe, type, texte, url, titre, image, vocal, date, lu'
+const TYPES_SON = ['audio/webm', 'audio/ogg']
+const MAX_SON = 1024 * 1024
+const TYPES_STATUT = ['dispo', 'occupe', 'jeu', 'absent']
 
 const json = (donnees: unknown, statut = 200): Response =>
   new Response(JSON.stringify(donnees), { status: statut, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } })
@@ -36,8 +40,17 @@ const erreur = (message: string, statut = 400): Response => json({ erreur: messa
 const paire = (x: string, y: string): [string, string] => (x < y ? [x, y] : [y, x])
 const boite = (env: Env, id: string) => env.BOITES.get(env.BOITES.idFromName(id))
 
-function profilPublic(u: Utilisateur): { id: string; pseudo: string; code: string; photo: boolean } {
-  return { id: u.id, pseudo: u.pseudo, code: u.code, photo: !!u.photo }
+function lireStatut(brut: string | null | undefined): { type: string; texte: string } | null {
+  try {
+    const o = JSON.parse(brut ?? 'null') as { type?: unknown; texte?: unknown } | null
+    return o && typeof o.type === 'string' && TYPES_STATUT.includes(o.type) ? { type: o.type, texte: typeof o.texte === 'string' ? o.texte.slice(0, 60) : '' } : null
+  } catch {
+    return null
+  }
+}
+
+function profilPublic(u: Utilisateur): { id: string; pseudo: string; code: string; photo: boolean; humeur: { type: string; texte: string } | null } {
+  return { id: u.id, pseudo: u.pseudo, code: u.code, photo: !!u.photo, humeur: lireStatut(u.statut) }
 }
 
 /** Lit la signature (en-têtes, ou paramètres d'adresse pour le direct), la vérifie et retrouve l'utilisateur. */
@@ -49,7 +62,7 @@ async function authentifier(req: Request, env: Env, url: URL, corps: ArrayBuffer
   // un nonce ne sert qu'une fois : une requête interceptée ne peut pas être rejouée
   const deja = await env.DB.prepare('INSERT OR IGNORE INTO nonces (nonce, expire) VALUES (?, ?)').bind(s.nonce, Date.now() + FENETRE * 2).run()
   if (!deja.meta.changes) return erreur('Requête déjà utilisée.', 401)
-  const moi = await env.DB.prepare('SELECT id, cle, pseudo, code, photo FROM utilisateurs WHERE cle = ?').bind(s.cle).first<Utilisateur>()
+  const moi = await env.DB.prepare('SELECT id, cle, pseudo, code, photo, statut FROM utilisateurs WHERE cle = ?').bind(s.cle).first<Utilisateur>()
   return { cle: s.cle, moi }
 }
 
@@ -74,7 +87,7 @@ async function membresDe(env: Env, groupe: string): Promise<string[]> {
 
 async function profils(env: Env, ids: string[]): Promise<Utilisateur[]> {
   if (!ids.length) return []
-  return (await env.DB.prepare(`SELECT id, cle, pseudo, code, photo FROM utilisateurs WHERE id IN (${ids.map(() => '?').join(',')})`).bind(...ids).all<Utilisateur>())
+  return (await env.DB.prepare(`SELECT id, cle, pseudo, code, photo, statut FROM utilisateurs WHERE id IN (${ids.map(() => '?').join(',')})`).bind(...ids).all<Utilisateur>())
     .results
 }
 
@@ -117,9 +130,11 @@ function contenuMessage(d: Record<string, unknown>): { texte: string; url: strin
 }
 
 /** Image envoyée (corps brut) : vérifiée puis rangée ; renvoie son identifiant ou une Response d'erreur. */
-async function rangerImage(env: Env, req: Request, corps: ArrayBuffer, de: string, cible: { a?: string; groupe?: string }): Promise<string | Response> {
+async function rangerImage(env: Env, req: Request, corps: ArrayBuffer, de: string, cible: { a?: string; groupe?: string }, son = false): Promise<string | Response> {
   const type = (req.headers.get('Content-Type') ?? '').split(';')[0]
-  if (!TYPES_PHOTO.includes(type) || corps.byteLength > MAX_IMAGE || corps.byteLength < 100) return erreur('Image invalide (JPEG, PNG ou WebP, 1,5 Mo au plus).')
+  if (son) {
+    if (!TYPES_SON.includes(type) || corps.byteLength > MAX_SON || corps.byteLength < 100) return erreur('Message vocal invalide (1 Mo au plus).')
+  } else if (!TYPES_PHOTO.includes(type) || corps.byteLength > MAX_IMAGE || corps.byteLength < 100) return erreur('Image invalide (JPEG, PNG ou WebP, 1,5 Mo au plus).')
   const id = crypto.randomUUID()
   await env.DB.prepare('INSERT INTO images (id, de, a, groupe, type, donnees, date) VALUES (?, ?, ?, ?, ?, ?, ?)')
     .bind(id, de, cible.a ?? null, cible.groupe ?? null, type, corps, Date.now())
@@ -132,7 +147,7 @@ async function publierMessage(
   env: Env,
   moi: Utilisateur,
   cible: { a?: string; groupe?: string },
-  contenu: { texte: string; url: string | null; titre: string | null; image?: string | null }
+  contenu: { texte: string; url: string | null; titre: string | null; image?: string | null; vocal?: string | null }
 ): Promise<Response> {
   const message = {
     id: crypto.randomUUID(),
@@ -144,11 +159,12 @@ async function publierMessage(
     url: contenu.url,
     titre: contenu.titre,
     image: contenu.image ?? null,
+    vocal: contenu.vocal ?? null,
     date: Date.now(),
     lu: 0
   }
-  await env.DB.prepare(`INSERT INTO messages (${COLONNES_MESSAGE}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`)
-    .bind(message.id, message.de, message.a, message.groupe, message.type, message.texte, message.url, message.titre, message.image, message.date)
+  await env.DB.prepare(`INSERT INTO messages (${COLONNES_MESSAGE}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`)
+    .bind(message.id, message.de, message.a, message.groupe, message.type, message.texte, message.url, message.titre, message.image, message.vocal, message.date)
     .run()
   const destinataires = cible.groupe ? (await membresDe(env, cible.groupe)).filter((x) => x !== moi.id) : [cible.a!]
   await Promise.allSettled(destinataires.map((id) => boite(env, id).pousser({ type: 'message', message, pseudo: moi.pseudo })))
@@ -248,7 +264,7 @@ async function routeur(req: Request, env: Env): Promise<Response> {
       const liste = await amis(env, moi.id)
       const ids = liste.map((x) => x.id)
       const profils = ids.length
-        ? (await env.DB.prepare(`SELECT id, cle, pseudo, code, photo FROM utilisateurs WHERE id IN (${ids.map(() => '?').join(',')})`).bind(...ids).all<Utilisateur>()).results
+        ? (await env.DB.prepare(`SELECT id, cle, pseudo, code, photo, statut FROM utilisateurs WHERE id IN (${ids.map(() => '?').join(',')})`).bind(...ids).all<Utilisateur>()).results
         : []
       const nonLus = (
         await env.DB.prepare('SELECT de, COUNT(*) AS n FROM messages WHERE a = ? AND lu = 0 GROUP BY de').bind(moi.id).all<{ de: string; n: number }>()
@@ -269,7 +285,7 @@ async function routeur(req: Request, env: Env): Promise<Response> {
       // demande d'ami par « pseudo#1234 »
       const m = /^(.{2,24})#(\d{4})$/u.exec(String(lireJson().code ?? '').trim())
       if (!m) return erreur('Code invalide : il ressemble à « Claire#4821 ».')
-      const cible = await env.DB.prepare('SELECT id, cle, pseudo, code, photo FROM utilisateurs WHERE pseudo = ? COLLATE NOCASE AND code = ?')
+      const cible = await env.DB.prepare('SELECT id, cle, pseudo, code, photo, statut FROM utilisateurs WHERE pseudo = ? COLLATE NOCASE AND code = ?')
         .bind(m[1].trim(), m[2])
         .first<Utilisateur>()
       if (!cible) return erreur('Personne avec ce code.', 404)
@@ -326,11 +342,12 @@ async function routeur(req: Request, env: Env): Promise<Response> {
       if (contenu instanceof Response) return contenu
       return publierMessage(env, moi, { a: ami }, contenu)
     }
-    if (req.method === 'PUT' && chemin[2] === 'image') {
+    if (req.method === 'PUT' && (chemin[2] === 'image' || chemin[2] === 'vocal')) {
       if (await tropDeMessages(env, moi.id)) return erreur('Trop de messages d’un coup : attends une minute.', 429)
-      const image = await rangerImage(env, req, corps, moi.id, { a: ami })
-      if (image instanceof Response) return image
-      return publierMessage(env, moi, { a: ami }, { texte: '', url: null, titre: null, image })
+      const son = chemin[2] === 'vocal'
+      const media = await rangerImage(env, req, corps, moi.id, { a: ami }, son)
+      if (media instanceof Response) return media
+      return publierMessage(env, moi, { a: ami }, { texte: '', url: null, titre: null, ...(son ? { vocal: media } : { image: media }) })
     }
     if (req.method === 'POST' && chemin[2] === 'lu') {
       const r = await env.DB.prepare('UPDATE messages SET lu = 1 WHERE de = ? AND a = ? AND lu = 0').bind(ami, moi.id).run()
@@ -338,6 +355,18 @@ async function routeur(req: Request, env: Env): Promise<Response> {
       if (r.meta.changes) await boite(env, ami).pousser({ type: 'lu', id: moi.id })
       return json({ ok: true })
     }
+  }
+
+  // ---------- statut (« en train de jouer à… », « ne pas déranger ») ----------
+  if (chemin[0] === 'statut' && req.method === 'POST') {
+    const d = lireJson()
+    const type = String(d.type ?? '')
+    if (!TYPES_STATUT.includes(type)) return erreur('Statut invalide.')
+    const statut = type === 'dispo' ? null : { type, texte: String(d.texte ?? '').replace(/[\u0000-\u001f]/g, '').trim().slice(0, 60) }
+    await env.DB.prepare('UPDATE utilisateurs SET statut = ? WHERE id = ?').bind(statut ? JSON.stringify(statut) : null, moi.id).run()
+    const liste = (await amis(env, moi.id)).filter((x) => x.statut === 'acceptee')
+    await Promise.allSettled(liste.map((x) => boite(env, x.id).pousser({ type: 'statut', id: moi.id, statut })))
+    return json({ statut })
   }
 
   // ---------- images ----------
@@ -425,11 +454,12 @@ async function routeur(req: Request, env: Env): Promise<Response> {
         if (contenu instanceof Response) return contenu
         return publierMessage(env, moi, { groupe: g }, contenu)
       }
-      if (chemin[2] === 'image' && req.method === 'PUT') {
+      if ((chemin[2] === 'image' || chemin[2] === 'vocal') && req.method === 'PUT') {
         if (await tropDeMessages(env, moi.id)) return erreur('Trop de messages d’un coup : attends une minute.', 429)
-        const image = await rangerImage(env, req, corps, moi.id, { groupe: g })
-        if (image instanceof Response) return image
-        return publierMessage(env, moi, { groupe: g }, { texte: '', url: null, titre: null, image })
+        const son = chemin[2] === 'vocal'
+        const media = await rangerImage(env, req, corps, moi.id, { groupe: g }, son)
+        if (media instanceof Response) return media
+        return publierMessage(env, moi, { groupe: g }, { texte: '', url: null, titre: null, ...(son ? { vocal: media } : { image: media }) })
       }
     }
   }

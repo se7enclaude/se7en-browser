@@ -11,6 +11,8 @@ export interface Glisser {
     onDragOver: (e: DragEvent) => void
     onDrop: (e: DragEvent) => void
   }
+  /** Fin du glissement (onglet lâché ailleurs, par exemple sur la page). */
+  lacher(): void
   /** Propriétés d'une zone vide où lâcher un onglet (ex. « épingler en prioritaire »). */
   zone(lacher: (id: number) => void): { onDragOver: (e: DragEvent) => void; onDrop: (e: DragEvent) => void }
 }
@@ -19,6 +21,7 @@ export function useGlisser(): Glisser {
   const [id, setId] = useState<number | null>(null)
   return {
     id,
+    lacher: () => setId(null),
     sur: (cible) => ({
       onDragStart: (e) => {
         setId(cible)
