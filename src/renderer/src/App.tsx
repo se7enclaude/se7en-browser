@@ -96,6 +96,7 @@ export function App(): React.JSX.Element {
         <div className="colonne">
           <BarreOutils
             actif={actif}
+            etat={etat}
             enSplit={enSplit}
             bloqueurActif={reglages?.bloqueur ?? true}
             ia={{ ouverte: iaOuverte, basculer: () => setIaOuverte((v) => !v), demander: (t) => demanderIA(t, true) }}

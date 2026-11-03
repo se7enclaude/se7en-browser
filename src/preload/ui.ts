@@ -37,7 +37,8 @@ const api: ApiSe7en = {
   app: {
     infos: demander(CANAUX.appInfos),
     surCommande: (rappel) => ecouter<CommandeUi>(CANAUX.uiCommande, rappel),
-    menu: envoyer(CANAUX.appMenu)
+    menu: envoyer(CANAUX.appMenu),
+    ouvrirFichier: envoyer(CANAUX.appOuvrirFichier)
   },
   reglages: {
     lire: demander(CANAUX.reglagesLire),

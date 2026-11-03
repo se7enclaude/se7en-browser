@@ -1,7 +1,8 @@
 /* Précédent / suivant / actualiser et barre d'adresse. */
 import { useEffect, useRef, useState } from 'react'
 import { adresseLisible } from '../../../shared/adresse'
-import type { EtatOnglet } from '../../../shared/onglets'
+import type { EtatOnglet, EtatOnglets } from '../../../shared/onglets'
+import { MenuPrincipal } from './MenuPrincipal'
 import { useFavoris, useTelechargements } from '../useDonnees'
 import { ChoixRechercheIA, modeSaisie } from './ChoixRechercheIA'
 import {
@@ -23,6 +24,8 @@ import {
 
 interface Props {
   actif: EtatOnglet | undefined
+  /** Pour le menu principal (vue partagée, onglets à ranger). */
+  etat: EtatOnglets
   enSplit: boolean
   /** Bouton de la barre latérale (absent en disposition « onglets en haut »). */
   barre: { ouverte: boolean; basculer: () => void } | null
@@ -31,7 +34,8 @@ interface Props {
   bloqueurActif: boolean
 }
 
-export function BarreOutils({ actif, enSplit, barre, ia, bloqueurActif }: Props): React.JSX.Element {
+export function BarreOutils({ actif, etat, enSplit, barre, ia, bloqueurActif }: Props): React.JSX.Element {
+  const [menuOuvert, setMenuOuvert] = useState(false)
   const o = window.se7en.onglets
   const favoris = useFavoris()
   const telechargements = useTelechargements()
@@ -183,9 +187,12 @@ export function BarreOutils({ actif, enSplit, barre, ia, bloqueurActif }: Props)
       <button className={`bouton-icone bouton-ia${ia.ouverte ? ' enfonce' : ''}`} title="IA locale (Ctrl+Espace)" onClick={ia.basculer}>
         <IconeIA />
       </button>
-      <button className="bouton-icone" title="Menu" onClick={() => window.se7en.app.menu()}>
-        <IconeReglages />
-      </button>
+      <div className="ancre-menu">
+        <button className={`bouton-icone bouton-menu${menuOuvert ? ' enfonce' : ''}`} title="Menu" aria-expanded={menuOuvert} onClick={() => setMenuOuvert((v) => !v)}>
+          <IconeReglages />
+        </button>
+        {menuOuvert && <MenuPrincipal etat={etat} fermer={() => setMenuOuvert(false)} />}
+      </div>
     </div>
   )
 }

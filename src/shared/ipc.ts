@@ -32,6 +32,7 @@ export const CANAUX = {
   notifTaille: 'notif:taille',
   notifOuvrir: 'notif:ouvrir',
   appMenu: 'app:menu',
+  appOuvrirFichier: 'app:ouvrir-fichier',
   // réglages
   reglagesLire: 'reglages:lire',
   reglagesModifier: 'reglages:modifier',
@@ -188,6 +189,8 @@ export interface ApiSe7en {
     surCommande(rappel: (c: CommandeUi) => void): () => void
     /** Menu principal (historique, favoris, téléchargements, paramètres). */
     menu(): void
+    /** Choisir un PDF sur le PC et l'ouvrir dans un onglet. */
+    ouvrirFichier(): void
   }
   reglages: {
     lire(): Promise<Reglages>

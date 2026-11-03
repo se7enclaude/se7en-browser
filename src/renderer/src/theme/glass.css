@@ -3559,3 +3559,125 @@ textarea.champ {
   margin-right: 4px;
   vertical-align: -2px;
 }
+
+/* ---------- Cadre du navigateur : pas de flou d'arrière-plan ----------
+ * Derrière ces surfaces il n'y a que le fond ambiant (des dégradés très doux) : le flou ne s'y voyait pas,
+ * mais à côté d'une page web (vue native posée par-dessus) le GPU laissait des traits de lumière
+ * dans le flou (la « bande claire » du panneau IA). Le verre reste : transparence, liseré, reflets.
+ * Le flou est gardé là où il se voit : les écrans qui passent au-dessus de la page figée. */
+.onglets-haut,
+.barre-laterale-contenu,
+.barre-titre .bouton-icone,
+.barre-outils .bouton-icone,
+.barre-adresse,
+.volet,
+.panneau-ia-contenu,
+.bandeau-phishing,
+.bandeau-traduction,
+.bandeau-plantage,
+.bandeau-ensemble,
+.barre-info {
+  backdrop-filter: none;
+}
+
+/* ---------- Menu principal : verre accroché au bouton, qui se déroule ---------- */
+.ancre-menu {
+  position: relative;
+  display: flex;
+}
+.menu-verre {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 40;
+  width: 280px;
+  padding: 6px;
+  border-radius: 22px;
+  background: var(--verre-fort);
+  box-shadow: var(--reflet), var(--ombre-flottante), inset 0 0 0 1px var(--verre-bord);
+  backdrop-filter: saturate(170%) blur(28px);
+  outline: none;
+  transform-origin: top right;
+  /* il se déroule depuis le bouton : la découpe descend, le verre grandit légèrement */
+  animation: menu-deroule 300ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
+}
+.menu-verre::before {
+  /* petite pointe sous le bouton : le menu sort de lui */
+  content: '';
+  position: absolute;
+  top: -5px;
+  right: 14px;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: inherit;
+  transform: rotate(45deg);
+  box-shadow: -1px -1px 0 0 var(--verre-bord);
+  backdrop-filter: inherit;
+}
+.menu-verre.sortie {
+  animation: menu-enroule 160ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+@keyframes menu-deroule {
+  from {
+    clip-path: inset(0 0 100% 0 round 22px);
+    transform: scale(0.94) translateY(-6px);
+    opacity: 0.4;
+  }
+  to {
+    clip-path: inset(-12px -12px -40px -12px round 22px);
+  }
+}
+@keyframes menu-enroule {
+  from {
+    clip-path: inset(-12px -12px -40px -12px round 22px);
+  }
+  to {
+    clip-path: inset(0 0 100% 0 round 22px);
+    transform: scale(0.96) translateY(-4px);
+    opacity: 0;
+  }
+}
+.entree-menu {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--texte);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  animation: entree-deroule 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  transition: background var(--anim);
+}
+.entree-menu.choisie {
+  background: var(--survol);
+}
+.entree-menu:disabled {
+  color: var(--texte-discret);
+  cursor: default;
+}
+.entree-menu kbd {
+  font-size: 11px;
+  color: var(--texte-discret);
+  background: none;
+  border: none;
+  padding: 0;
+}
+@keyframes entree-deroule {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+.separateur-menu {
+  height: 1px;
+  margin: 5px 10px;
+  background: var(--verre-bord);
+  opacity: 0.6;
+}
