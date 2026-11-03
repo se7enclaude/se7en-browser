@@ -1,4 +1,4 @@
-/* Fenêtre principale : sans cadre, avec l'effet de verre natif de Windows 11 quand il existe. */
+/* Fenêtre principale : sans cadre, fond opaque (le verre est dessiné par l'interface, sans matière native de Windows). */
 import { app, BrowserWindow, nativeTheme, systemPreferences } from 'electron'
 import { release } from 'node:os'
 import { join } from 'node:path'
@@ -13,7 +13,7 @@ export function effetNatifDisponible(): boolean {
   return build >= 22621
 }
 
-/** Le thème de Windows suit le choix de l'utilisateur : la teinte du verre natif change avec lui. */
+/** Le thème de Windows suit le choix de l'utilisateur (barre de titre, menus natifs, fond de la fenêtre). */
 export function appliquerTheme(theme: Theme): void {
   nativeTheme.themeSource = theme === 'clair' ? 'light' : theme === 'sombre' ? 'dark' : 'system'
 }
@@ -32,7 +32,10 @@ function apparaitreEnFondu(fenetre: BrowserWindow): void {
 }
 
 export function creerFenetrePrincipale(): BrowserWindow {
-  const natif = effetNatifDisponible()
+  // Fond opaque, de la couleur du fond ambiant : l'interface peint déjà son propre « verre » partout.
+  // Pas de matière native de Windows (acrylique ou Mica) : elle ne se voyait pas, mais laissait passer
+  // des traits clairs (bords des fenêtres derrière) sous le flou du panneau IA.
+  const couleurFond = (): string => (nativeTheme.shouldUseDarkColors ? '#2a2928' : '#e8e5de')
   const fenetre = new BrowserWindow({
     width: 1360,
     height: 860,
@@ -40,10 +43,7 @@ export function creerFenetrePrincipale(): BrowserWindow {
     minHeight: 480,
     show: false,
     frame: false,
-    // Avec l'effet natif, le fond doit être transparent pour laisser voir l'acrylique ;
-    // sur Windows 10, fond opaque et le verre est simulé en CSS.
-    backgroundColor: natif ? '#00000000' : nativeTheme.shouldUseDarkColors ? '#1b1d22' : '#eef0f4',
-    ...(natif ? { backgroundMaterial: 'acrylic' as const } : {}),
+    backgroundColor: couleurFond(),
     title: 'se7en Browser',
     icon: join(app.getAppPath(), 'build', 'icon.png'),
     webPreferences: preferencesInterface(join(__dirname, '../preload/ui.js'))
@@ -56,6 +56,11 @@ export function creerFenetrePrincipale(): BrowserWindow {
     const etat: EtatFenetre = { agrandie: fenetre.isMaximized(), focus: fenetre.isFocused() }
     fenetre.webContents.send(CANAUX.fenetreEtat, etat)
   }
+  const majFond = (): void => {
+    if (!fenetre.isDestroyed()) fenetre.setBackgroundColor(couleurFond())
+  }
+  nativeTheme.on('updated', majFond)
+  fenetre.once('closed', () => nativeTheme.off('updated', majFond))
   fenetre.on('maximize', envoyerEtat)
   fenetre.on('unmaximize', envoyerEtat)
   fenetre.on('restore', envoyerEtat)
