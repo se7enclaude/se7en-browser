@@ -41,7 +41,8 @@ const api: ApiSe7en = {
     menu: envoyer(CANAUX.appMenu),
     ouvrirFichier: envoyer(CANAUX.appOuvrirFichier),
     choixMenu: envoyer(CANAUX.menuChoix),
-    captureRaccourci: envoyer(CANAUX.raccourciCapture)
+    captureRaccourci: envoyer(CANAUX.raccourciCapture),
+    redemarrer: envoyer(CANAUX.appRedemarrer)
   },
   reglages: {
     lire: demander(CANAUX.reglagesLire),

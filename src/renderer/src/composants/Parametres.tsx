@@ -76,6 +76,23 @@ export function Parametres({ reglages, modifier, infos }: Props): React.JSX.Elem
             <option value="legers">Allégés (plus fluide)</option>
           </select>
         </div>
+        <div className="ligne-reglage">
+          <span>
+            Accélération graphique <kbd>carte graphique</kbd>
+          </span>
+          <Interrupteur label="Accélération graphique" actif={reglages.accelerationGraphique} changer={(v) => modifier({ accelerationGraphique: v })} />
+        </div>
+        <p className="discret petit">
+          Désactive-la si tu streames une vidéo (Crunchyroll, Netflix…) sur Discord et qu’elle apparaît en noir chez tes amis.
+        </p>
+        {infos && infos.acceleration !== reglages.accelerationGraphique && (
+          <div className="ligne-reglage">
+            <span className="petit">Le changement s’appliquera au redémarrage du navigateur.</span>
+            <button className="bouton-principal petit" onClick={() => window.se7en.app.redemarrer()}>
+              Redémarrer maintenant
+            </button>
+          </div>
+        )}
       </section>
 
       <section className="bloc verre-fort">

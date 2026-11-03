@@ -86,10 +86,28 @@ function installeur(tor) {
   let tailleTor = 0
   for (const f of UTILES) tailleTor += copy(path.join(tor, f), path.join(APP, 'resources', 'tor', f))
   console.log('Tor ' + VERSION_TOR + ' : ' + mb(tailleTor))
+  signerVmp()
 
   if (!fs.existsSync(ISCC)) stop('Inno Setup absent : ' + ISCC)
   const iss = cp.spawnSync(ISCC, ['/Q', '/DAppVersion=' + VERSION, '/DStage=' + B, '/O' + path.join(OUT, 'release'), path.join(ROOT, 'installer.iss')], { stdio: 'inherit' })
   if (iss.status !== 0) stop("Échec d'Inno Setup")
   const exe = path.join(OUT, 'release', 'se7en-Browser-Setup-' + VERSION + '.exe')
   console.log('Installeur : ' + exe + ' (' + mb(fs.statSync(exe).size) + ')')
+}
+
+/** Signature VMP de castLabs (service EVS, compte gratuit) : sans elle, Netflix et d'autres refusent de lire leurs
+ * vidéos protégées. Faite en dernier, après toute modification des fichiers de l'appli (icône comprise).
+ * Seulement avec l'Electron de castLabs (version « +wvcus ») ; SE7EN_SANS_VMP=1 permet un essai sans signature. */
+function signerVmp() {
+  const version = JSON.parse(fs.readFileSync(path.join(ROOT, 'node_modules', 'electron', 'package.json'), 'utf8')).version
+  if (!version.includes('wvcus')) return console.log('Electron ' + version + ' : pas de Widevine, pas de signature VMP.')
+  const r = cp.spawnSync('python', ['-m', 'castlabs_evs.vmp', 'sign-pkg', APP], { stdio: 'inherit' })
+  if (r.status === 0) return console.log('Signature VMP (castLabs EVS) : faite.')
+  if (process.env.SE7EN_SANS_VMP === '1') return console.log('Signature VMP absente (SE7EN_SANS_VMP=1) : certains sites refuseront de lire.')
+  stop(
+    'Signature VMP impossible. Une seule fois sur ce PC :\n' +
+      '  python -m pip install --upgrade castlabs-evs\n' +
+      '  python -m castlabs_evs.account signup   (compte gratuit castLabs, à ton nom)\n' +
+      'puis relance la construction.'
+  )
 }

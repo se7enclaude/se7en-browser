@@ -134,8 +134,14 @@ export function enregistrerIpc(s: Services): void {
   })
   ipcMain.on(CANAUX.fenetreFermer, (e) => fenetreDe(e)?.close())
   ipcMain.handle(CANAUX.appInfos, (e): InfosApp | null =>
-    fenetreDe(e) ? { version: app.getVersion(), effetNatif: effetNatifDisponible(), modeste: pcModeste() } : null
+    fenetreDe(e) ? { version: app.getVersion(), effetNatif: effetNatifDisponible(), modeste: pcModeste(), acceleration: app.isHardwareAccelerationEnabled() } : null
   )
+  // relance le navigateur (après un réglage qui ne s'applique qu'au démarrage), seulement sur clic de l'utilisateur
+  ipcMain.on(CANAUX.appRedemarrer, (e) => {
+    if (!fenetreDe(e)) return
+    app.relaunch()
+    app.quit()
+  })
 
   // ---------- réglages ----------
   ipcMain.handle(CANAUX.reglagesLire, (e) => (fenetreDe(e) ? reglages.get() : null))

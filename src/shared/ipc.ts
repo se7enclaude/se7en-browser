@@ -28,6 +28,7 @@ export const CANAUX = {
   fenetreEtat: 'fenetre:etat', // main → interface
   // application
   appInfos: 'app:infos',
+  appRedemarrer: 'app:redemarrer',
   uiCommande: 'ui:commande', // main → interface
   // notification de message (vue à part, en bas à droite)
   notifMessage: 'notif:message', // main → notification
@@ -208,6 +209,8 @@ export interface InfosApp {
   effetNatif: boolean
   /** PC modeste (peu de cœurs, peu de mémoire ou pas d'accélération graphique) : effets de verre allégés en « auto ». */
   modeste: boolean
+  /** Accélération graphique active pour cette session (elle ne change qu'au redémarrage). */
+  acceleration: boolean
 }
 
 /** API exposée à l'interface par le preload, sous window.se7en. */
@@ -229,6 +232,8 @@ export interface ApiSe7en {
     choixMenu(id: number, entree: string | null): void
     /** Les Paramètres attendent une combinaison : les raccourcis du navigateur sont suspendus. */
     captureRaccourci(active: boolean): void
+    /** Relance le navigateur (réglage appliqué au démarrage). */
+    redemarrer(): void
   }
   reglages: {
     lire(): Promise<Reglages>

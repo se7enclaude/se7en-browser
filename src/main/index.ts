@@ -13,6 +13,7 @@ import { NotifMessages } from './social/notifMessages'
 import { LARGEUR_DISCUSSION, MiniDiscussion } from './social/miniDiscussion'
 import { Ensemble } from './social/ensemble'
 import { Vpn } from './vpn'
+import { preparerWidevine } from './widevine'
 import { creerFenetrePrincipale, appliquerTheme } from './fenetre/fenetrePrincipale'
 import { ServiceChat } from './ia/chat'
 import { Conversations, Skills } from './ia/conversations'
@@ -38,6 +39,7 @@ import { ClientSocial } from './social/client'
 import { AssistantEcriture } from './ia/ecriture'
 import { MemoireNavigation } from './ia/memoireNavigation'
 import { MiseAJour } from './miseAJour'
+import { fusionnerReglages, migrerReglages, REGLAGES_DEFAUT } from '../shared/reglages'
 import { liensDesArguments } from './navigateurDefaut'
 import { ecrireJson, lireJson } from './stockage/fichierJson'
 import { join } from 'node:path'
@@ -48,6 +50,9 @@ import { SERVEUR_SOCIAL_OFFICIEL, type CibleSocial, type MessageSocial } from '.
 
 app.setAppUserModelId('se7en.browser')
 
+// Les sites voient un Chrome ordinaire : certains services de streaming refusent les navigateurs « Electron » inconnus.
+app.userAgentFallback = app.userAgentFallback.replace(/ (se7en\S*|Electron)\/\S+/gi, '')
+
 // Défilement doux dans les pages, à la molette comme au pavé tactile (le même que Microsoft Edge :
 // glissement animé, et une distance proportionnelle à la hauteur de la page).
 app.commandLine.appendSwitch('enable-smooth-scrolling')
@@ -55,6 +60,10 @@ app.commandLine.appendSwitch('enable-features', 'WindowsScrollingPersonality,Per
 
 // Mode test (développement) : profil à part, pour ne jamais toucher aux réglages ni aux onglets de l'utilisateur.
 if (process.env.SE7EN_PROFIL_TEST) app.setPath('userData', process.env.SE7EN_PROFIL_TEST)
+
+// Accélération graphique : désactivable dans les Paramètres (stream Discord d'une vidéo protégée qui sort en noir).
+// Elle se décide avant le démarrage, d'où la lecture directe du fichier de réglages ; changer demande un redémarrage.
+if (!fusionnerReglages(REGLAGES_DEFAUT, migrerReglages(lireJson(join(app.getPath('userData'), 'reglages.json')))).accelerationGraphique) app.disableHardwareAcceleration()
 
 // Une seule instance : relancer l'appli remet la fenêtre existante au premier plan.
 if (!app.requestSingleInstanceLock()) {
@@ -80,6 +89,8 @@ if (!app.requestSingleInstanceLock()) {
   })
 
   app.whenReady().then(() => {
+    // vidéos protégées (Crunchyroll, Netflix…) : Widevine, préparé en arrière-plan
+    preparerWidevine()
     const dossier = app.getPath('userData')
     const reglages = new MagasinReglages(dossier)
     appliquerTheme(reglages.get().theme)
