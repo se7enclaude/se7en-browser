@@ -1,5 +1,5 @@
 /* Widget « Amis » du Nouvel onglet : messages non lus (amis et groupes), qui est en ligne et à quoi il joue.
- * Mis à jour en direct ; un clic ouvre la conversation. Rien ne s'affiche dans un onglet privé ni sans profil. */
+ * Mis à jour en direct ; un clic ouvre la conversation dans la petite fenêtre de discussion. */
 import { useEffect, useState } from 'react'
 import { RE_CODE_AMI } from '../../../shared/social'
 import { texteStatut, type Ami, type CibleSocial, type EtatSocial, type GroupeSocial } from '../../../shared/social'
@@ -43,7 +43,16 @@ export function WidgetAmis(): React.JSX.Element | null {
     }
   }, [])
 
-  if (!etat || etat.connexion === 'desactive') return null
+  if (!etat) return null
+  if (etat.connexion === 'desactive')
+    return (
+      <div className="corps-widget">
+        <div className="entete-widget">
+          <strong>Amis</strong>
+        </div>
+        <p className="discret petit">Les fonctions sociales sont désactivées dans les Paramètres.</p>
+      </div>
+    )
   /** Une conversation s'ouvre dans la petite fenêtre de discussion ; sans conversation, la page Amis. */
   const ouvrir = (cible?: CibleSocial): void => {
     if (cible) return window.se7en.social.discussion(cible)
@@ -60,7 +69,7 @@ export function WidgetAmis(): React.JSX.Element | null {
 
   if (!etat.profil)
     return (
-      <aside className="widget widget-amis verre-fort">
+      <div className="corps-widget">
         <div className="entete-widget">
           <strong>Amis</strong>
         </div>
@@ -68,7 +77,7 @@ export function WidgetAmis(): React.JSX.Element | null {
         <button className="bouton-verre petit" onClick={() => ouvrir()}>
           Créer mon profil
         </button>
-      </aside>
+      </div>
     )
 
   const liste = amis.filter((a) => a.statut === 'ami')
@@ -83,7 +92,7 @@ export function WidgetAmis(): React.JSX.Element | null {
     .sort((a, b) => Number(b.humeur?.type === 'jeu') - Number(a.humeur?.type === 'jeu') || Number(a.humeur?.type === 'occupe') - Number(b.humeur?.type === 'occupe') || a.pseudo.localeCompare(b.pseudo))
 
   return (
-    <aside className="widget widget-amis verre-fort">
+    <div className="corps-widget">
       <div className="entete-widget">
         <strong>Amis</strong>
         {total > 0 && <span className="pastille-non-lus">{total}</span>}
@@ -160,6 +169,6 @@ export function WidgetAmis(): React.JSX.Element | null {
         </button>
       </form>
       {info && <p className={`petit ${info.erreur ? 'message-erreur' : 'message-ok'}`}>{info.texte}</p>}
-    </aside>
+    </div>
   )
 }

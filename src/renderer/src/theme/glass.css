@@ -4056,30 +4056,383 @@ textarea.champ {
   cursor: pointer;
 }
 
-/* ---------- Widgets du Nouvel onglet ---------- */
+/* ---------- Widgets du Nouvel onglet (posés et redimensionnés par l'utilisateur) ---------- */
+.zone-widgets {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+.zone-widgets > * {
+  pointer-events: auto;
+}
+.zone-widgets.edition {
+  pointer-events: auto;
+  background-image: radial-gradient(circle, var(--verre-bord) 1px, transparent 1.2px);
+  background-size: 16px 16px;
+  animation: fondu 240ms ease both;
+}
 .widget {
   position: absolute;
-  top: 50%;
-  width: 290px;
-  max-height: 80%;
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 10px;
   padding: 14px;
   border-radius: 24px;
   box-shadow: var(--reflet), var(--ombre);
-  transform: translateY(-50%);
+  container-type: size;
+  overflow: hidden;
+  /* plus dense que le verre des panneaux : un widget posé sur un autre reste lisible */
+  background: color-mix(in srgb, var(--fond-uni) 72%, var(--verre-fort));
+  backdrop-filter: blur(28px) saturate(1.4);
   animation: widget-entre 420ms cubic-bezier(0.2, 0.8, 0.2, 1) 120ms both;
 }
-.widget-amis {
-  left: 28px;
+.corps-widget {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 @keyframes widget-entre {
   from {
     opacity: 0;
-    transform: translate(-12px, -50%);
+    transform: translateY(8px) scale(0.98);
   }
+}
+.zone-widgets.edition .widget {
+  cursor: grab;
+  outline: 1.5px dashed var(--accent);
+  outline-offset: 3px;
+  transition: box-shadow 200ms ease, scale 200ms var(--ressort);
+}
+.zone-widgets.edition .widget .corps-widget {
+  pointer-events: none;
+  user-select: none;
+}
+.zone-widgets.edition .widget.saisi {
+  cursor: grabbing;
+  scale: 1.015;
+  box-shadow: var(--reflet), 0 24px 60px rgb(0 0 0 / 0.35);
+}
+.retirer-widget {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--danger, #d9534f);
+  color: #fff;
+  cursor: pointer;
+  animation: fondu 200ms ease both;
+}
+.poignee-widget {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 22px;
+  height: 22px;
+  cursor: nwse-resize;
+  border-right: 3px solid var(--accent);
+  border-bottom: 3px solid var(--accent);
+  border-bottom-right-radius: 14px;
+}
+.bouton-widgets {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: none;
+  border-radius: var(--pilule);
+  color: var(--texte);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  box-shadow: var(--reflet), var(--ombre);
+  opacity: 0.75;
+  transition: opacity var(--anim), transform 240ms var(--ressort);
+}
+.bouton-widgets:hover {
+  opacity: 1;
+  transform: translateY(-1px);
+}
+.catalogue-widgets {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  translate: -50% 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100% - 36px);
+  padding: 12px 16px;
+  border-radius: 22px;
+  box-shadow: var(--reflet), var(--ombre);
+  background: color-mix(in srgb, var(--fond-uni) 80%, var(--verre-fort));
+  backdrop-filter: blur(28px) saturate(1.4);
+  animation: menu-deroule 280ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
+  z-index: 3;
+}
+.liste-catalogue {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+.ajout-widget {
+  padding: 6px 12px;
+  border: 1px solid var(--verre-bord);
+  border-radius: var(--pilule);
+  background: var(--verre-fort);
+  color: var(--texte);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: background var(--anim);
+}
+.ajout-widget:hover:not(:disabled) {
+  background: var(--survol);
+}
+.ajout-widget:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.choix-widget {
+  max-width: 150px;
+  padding: 3px 8px;
+  border: 1px solid var(--verre-bord);
+  border-radius: var(--pilule);
+  background: var(--verre-fort);
+  color: var(--texte);
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+  cursor: pointer;
+}
+.choix-widget option {
+  background: var(--fond-uni);
+  color: var(--texte);
+}
+.notes-widget {
+  flex: 1;
+  min-height: 60px;
+  resize: none;
+  padding: 10px;
+  border: 1px solid var(--verre-bord);
+  border-radius: 14px;
+  background: transparent;
+  color: var(--texte);
+  font: inherit;
+  font-size: 13.5px;
+  line-height: 1.5;
+  outline: none;
+}
+.notes-widget:focus {
+  border-color: var(--accent);
+}
+.traduction-widget {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--survol);
+  font-size: 13.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  user-select: text;
+}
+/* météo */
+.meteo-maintenant {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.meteo-emoji {
+  font-size: clamp(30px, 14cqmin, 56px);
+  line-height: 1;
+}
+.meteo-temperature {
+  font-family: var(--police-titre);
+  font-size: clamp(32px, 15cqmin, 64px);
+  font-weight: 600;
+  line-height: 1;
+}
+.meteo-detail {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 13px;
+}
+.meteo-detail .discret {
+  font-size: 12px;
+}
+.meteo-heures {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex: none;
+}
+.meteo-heure {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 44px;
+  padding: 6px 2px;
+  border-radius: 12px;
+  background: var(--survol);
+  font-size: 12px;
+}
+.meteo-heure > span:nth-child(2),
+.meteo-jour > span:nth-child(2) {
+  font-size: 17px;
+  line-height: 1.2;
+}
+.meteo-pluie {
+  color: #4a90d9;
+  font-size: 11px;
+}
+.meteo-jours {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.meteo-jour {
+  display: grid;
+  grid-template-columns: 1fr 26px 38px 30px 30px;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 4px;
+  font-size: 13px;
+  text-align: right;
+}
+.meteo-nom-jour {
+  text-align: left;
+}
+.meteo-nom-jour::first-letter {
+  text-transform: uppercase;
+}
+/* petit widget météo : seulement le temps actuel et les heures */
+@container (max-height: 260px) {
+  .meteo-jours {
+    display: none;
+  }
+}
+@container (max-height: 150px) {
+  .meteo-heures {
+    display: none;
+  }
+}
+/* actualités, jeux */
+.ligne-widget.actu {
+  align-items: flex-start;
+}
+.titre-actu {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 13.5px;
+  line-height: 1.35;
+}
+.jaquette {
+  flex: none;
+  width: 92px;
+  height: 43px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--survol);
+}
+.plateforme {
+  padding: 1px 6px;
+  border-radius: var(--pilule);
+  background: var(--survol);
+  font-size: 11px;
+}
+/* sport */
+.bloc-equipe {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: var(--survol);
+}
+.entete-equipe {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ecusson {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+.bloc-equipe:hover .retirer-tache {
+  display: grid;
+}
+.match {
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+}
+.match .discret {
+  font-size: 11.5px;
+}
+.score {
+  font-variant-numeric: tabular-nums;
+}
+.equipe-suivie {
+  font-weight: 600;
+}
+.en-direct {
+  color: #e0463c;
+  font-size: 11.5px;
+  font-weight: 600;
+  animation: clignote-direct 1.6s ease-in-out infinite;
+}
+@keyframes clignote-direct {
+  50% {
+    opacity: 0.55;
+  }
+}
+/* colis */
+.ligne-widget.colis:hover .retirer-tache {
+  display: grid;
+}
+.formulaire-colis {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: auto;
+}
+.formulaire-colis .choix-widget {
+  flex: 1;
+  max-width: none;
+}
+.formulaire-colis .champ {
+  font-size: 12.5px;
+}
+.retirer-tache {
+  display: none;
+  padding: 2px;
+  border: none;
+  background: none;
+  color: var(--texte-discret);
+  cursor: pointer;
+}
+.ligne-widget.active {
+  background: var(--survol);
 }
 .entete-widget {
   display: flex;
@@ -4135,27 +4488,6 @@ textarea.champ {
 }
 .texte-ligne-widget .joue {
   color: var(--ia);
-}
-/* fenêtre étroite : les widgets passent sous la recherche au lieu de la serrer */
-@media (max-width: 1250px) {
-  .widget {
-    position: static;
-    transform: none;
-    width: min(420px, 100%);
-    max-height: none;
-    animation-name: fondu;
-  }
-}
-@media (max-width: 1250px) {
-  /* dans le volet (grille centrée), le widget passe sous la page d'accueil */
-  .volet:has(> .widget) {
-    grid-auto-flow: row;
-    align-content: center;
-    gap: 18px;
-  }
-  .volet > .widget {
-    order: 2;
-  }
 }
 .ligne-widget.statique {
   cursor: default;

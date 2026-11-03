@@ -76,6 +76,16 @@ const api: ApiSe7en = {
     quitterSplit: envoyer(CANAUX.ongletsQuitterSplit),
     ratio: envoyer(CANAUX.ongletsRatio)
   },
+  widgets: {
+    villes: demander(CANAUX.widgetsVilles),
+    meteo: demander(CANAUX.widgetsMeteo),
+    actualites: demander(CANAUX.widgetsActualites),
+    jeux: demander(CANAUX.widgetsJeux),
+    sorties: demander(CANAUX.widgetsSorties),
+    equipes: demander(CANAUX.widgetsEquipes),
+    resultats: demander(CANAUX.widgetsResultats),
+    traduire: demander(CANAUX.widgetsTraduire)
+  },
   historique: {
     chercher: demander(CANAUX.historiqueChercher),
     plusVisites: demander(CANAUX.historiquePlusVisites),

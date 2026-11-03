@@ -8,6 +8,7 @@ import type { AnalyseFormulaire, AnalyseFormulaireWeb, ResultatRemplissage, Vale
 import type { EtatOllama } from './ia'
 import type { CommandeUi, EtatOnglets, PageFigee, ZoneOnglet } from './onglets'
 import type { Reglages } from './reglages'
+import type { Actualite, Equipe, JeuGratuit, MeteoActuelle, ResultatsEquipe, SortieJeu, Ville } from './widgets'
 import type { Ami, CibleSocial, StatutSocial, EtatEnsemble, EtatSocial, EvenementSocial, GroupeSocial, MessageSocial } from './social'
 import type { EtatEcriture } from './ecriture'
 import type { EtatMiseAJour } from './miseAJour'
@@ -39,6 +40,15 @@ export const CANAUX = {
   formulaireWebRemplir: 'formulaire-web:remplir',
   sauvegardeImporter: 'sauvegarde:importer',
   raccourciCapture: 'raccourci:capture',
+  // widgets du Nouvel onglet
+  widgetsVilles: 'widgets:villes',
+  widgetsMeteo: 'widgets:meteo',
+  widgetsActualites: 'widgets:actualites',
+  widgetsJeux: 'widgets:jeux',
+  widgetsSorties: 'widgets:sorties',
+  widgetsEquipes: 'widgets:equipes',
+  widgetsResultats: 'widgets:resultats',
+  widgetsTraduire: 'widgets:traduire',
   // réglages
   reglagesLire: 'reglages:lire',
   reglagesModifier: 'reglages:modifier',
@@ -258,6 +268,18 @@ export interface ApiSe7en {
     deplacerVersSession(idOnglet: number, session: string): void
     quitterSplit(): void
     ratio(r: number): void
+  }
+  /** Données des widgets du Nouvel onglet (récupérées par le main ; null si le service ne répond pas). */
+  widgets: {
+    villes(nom: string): Promise<Ville[] | null>
+    meteo(ville: Ville): Promise<MeteoActuelle | null>
+    actualites(source: string): Promise<Actualite[] | null>
+    jeux(): Promise<JeuGratuit[] | null>
+    sorties(): Promise<SortieJeu[] | null>
+    equipes(nom: string): Promise<(Equipe & { sport: string })[] | null>
+    resultats(equipe: Equipe): Promise<ResultatsEquipe | null>
+    /** Traduit avec l'IA locale ; une erreur si elle n'est pas prête. */
+    traduire(texte: string, langue: string): Promise<{ texte: string } | { erreur: string }>
   }
   historique: {
     chercher(texte: string): Promise<EntreeHistorique[]>

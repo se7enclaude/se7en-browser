@@ -27,7 +27,9 @@ import type { ClientSocial } from '../social/client'
 import type { AssistantEcriture } from '../ia/ecriture'
 import type { MemoireNavigation } from '../ia/memoireNavigation'
 import { lirePage } from '../ia/lecturePage'
-import { resumerPourEnvoi } from '../ia/eclair'
+import { resumerPourEnvoi, traduireTexte } from '../ia/eclair'
+import * as donneesWidgets from '../widgets'
+import { LANGUES, villeValide } from '../../shared/widgets'
 import type { MiseAJour } from '../miseAJour'
 import type { Plantages } from '../plantages'
 import { vuesInterface } from '../social/miniDiscussion'
@@ -197,6 +199,35 @@ export function enregistrerIpc(s: Services): void {
   ipcMain.handle(CANAUX.historiquePlusVisites, (e, n: unknown) =>
     fenetreDe(e) ? historique.plusVisites(estId(n) ? Math.min(24, Math.max(1, n)) : 8) : []
   )
+  // ---------- widgets du Nouvel onglet ----------
+  /** Appel d'un service public pour un widget : null s'il ne répond pas (le widget affiche « indisponible »). */
+  const widget$ = <T>(e: IpcMainInvokeEvent, f: () => Promise<T>): Promise<T | null> => (fenetreDe(e) ? f().catch(() => null) : Promise.resolve(null))
+  const estEquipe = (v: unknown): v is { id: string; nom: string; ligue: string } =>
+    !!v && typeof v === 'object' && typeof (v as { id?: unknown }).id === 'string' && /^\d{1,10}$/.test((v as { id: string }).id) && estTexte((v as { nom?: unknown }).nom)
+  ipcMain.handle(CANAUX.widgetsVilles, (e, nom: unknown) => widget$(e, () => donneesWidgets.chercherVilles(estTexte(nom) ? nom : '')))
+  ipcMain.handle(CANAUX.widgetsMeteo, (e, v: unknown) => (villeValide(v) ? widget$(e, () => donneesWidgets.meteo(v.lat, v.lon)) : null))
+  ipcMain.handle(CANAUX.widgetsActualites, (e, source: unknown) => widget$(e, () => donneesWidgets.actualites(estTexte(source) ? source : '')))
+  ipcMain.handle(CANAUX.widgetsJeux, (e) => widget$(e, () => donneesWidgets.jeuxGratuits()))
+  ipcMain.handle(CANAUX.widgetsSorties, (e) => widget$(e, () => donneesWidgets.sortiesJeux()))
+  ipcMain.handle(CANAUX.widgetsEquipes, (e, nom: unknown) => widget$(e, () => donneesWidgets.chercherEquipes(estTexte(nom) ? nom : '')))
+  ipcMain.handle(CANAUX.widgetsResultats, (e, eq: unknown) =>
+    estEquipe(eq) ? widget$(e, () => donneesWidgets.resultatsEquipe({ id: eq.id, nom: eq.nom.slice(0, 100), ligue: String(eq.ligue ?? '').slice(0, 100) })) : null
+  )
+  ipcMain.handle(CANAUX.widgetsTraduire, async (e, texte: unknown, code: unknown) => {
+    const langue = LANGUES.find((l) => l.code === code)
+    if (!fenetreDe(e) || !estTexte(texte) || !texte.trim() || !langue) return { erreur: 'Rien à traduire.' }
+    const r = reglages.get()
+    const etat = ollama.etat()
+    if (etat.phase !== 'pret') return { erreur: 'Active l’IA locale pour traduire (bouton ✦ en haut à droite).' }
+    // le modèle texte traduit bien mieux que le petit modèle rapide
+    const modele = modelePresent(r.modeleTexte, etat.modeles) ? r.modeleTexte : modeleEclair(r, etat.modeles)
+    try {
+      return { texte: await traduireTexte(modele, texte.slice(0, 4000), langue.nom.toLowerCase()) }
+    } catch {
+      return { erreur: 'La traduction n’a pas abouti.' }
+    }
+  })
+
   ipcMain.handle(CANAUX.historiqueSupprimer, (e, ids: unknown) => {
     if (fenetreDe(e) && Array.isArray(ids)) historique.supprimer(ids.filter((x): x is string => typeof x === 'string'))
   })

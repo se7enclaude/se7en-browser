@@ -1,6 +1,7 @@
 /* Réglages de l'utilisateur : types et valeurs par défaut, partagés entre le main et l'interface. */
 import { combinaisonValide, RACCOURCIS_CONFIGURABLES } from './raccourcis'
 import { adresseServeur } from './social'
+import { validerWidgets, WIDGETS_DEFAUT, type WidgetPlace } from './widgets'
 
 export type Theme = 'clair' | 'sombre' | 'auto'
 export type Disposition = 'haut' | 'gauche' | 'les-deux'
@@ -47,6 +48,8 @@ export interface Reglages {
   effetsVerre: 'auto' | 'complets' | 'legers'
   /** Raccourcis personnalisés : identifiant d'action → combinaison (« Ctrl+Maj+N »). Absent : raccourci par défaut. */
   raccourcis: Record<string, string>
+  /** Widgets du Nouvel onglet, posés et redimensionnés par l'utilisateur. */
+  widgets: WidgetPlace[]
 }
 
 export const REGLAGES_DEFAUT: Reglages = {
@@ -69,6 +72,7 @@ export const REGLAGES_DEFAUT: Reglages = {
   veilleOnglets: 30,
   effetsVerre: 'auto',
   raccourcis: {},
+  widgets: WIDGETS_DEFAUT,
   phishingExceptions: [],
   modelesAuto: true,
   serveurSocial: ''
@@ -139,6 +143,8 @@ export function fusionnerReglages(base: Reglages, brut: unknown): Reglages {
   if (Array.isArray(o.bloqueurExceptions))
     r.bloqueurExceptions = [...new Set(o.bloqueurExceptions.filter((h): h is string => typeof h === 'string' && /^[a-z0-9.-]{1,253}$/.test(h)))].slice(0, 500)
   if (['demander', 'toujours', 'jamais'].includes(o.iaDemarrage as string)) r.iaDemarrage = o.iaDemarrage as DemarrageIA
+  const widgets = validerWidgets(o.widgets)
+  if (widgets) r.widgets = widgets
   if (typeof o.modeleVision === 'string' && /^[\w.:\-/]{1,100}$/.test(o.modeleVision)) r.modeleVision = o.modeleVision
   return r
 }
