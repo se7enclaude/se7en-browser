@@ -45,7 +45,7 @@ interface PropsAvatar {
   version?: number
 }
 
-function Avatar({ profil, taille = 36, enLigne, version = 0 }: PropsAvatar): React.JSX.Element {
+export function Avatar({ profil, taille = 36, enLigne, version = 0 }: PropsAvatar): React.JSX.Element {
   const [src, setSrc] = useState<string | null>(null)
   useEffect(() => {
     if (!profil.photo) return setSrc(null)
@@ -65,7 +65,7 @@ function Avatar({ profil, taille = 36, enLigne, version = 0 }: PropsAvatar): Rea
 }
 
 /** Avatar d'un groupe : les deux ou trois premiers membres, un peu superposés. */
-function AvatarGroupe({ groupe, moi, taille = 36 }: { groupe: GroupeSocial; moi: string; taille?: number }): React.JSX.Element {
+export function AvatarGroupe({ groupe, moi, taille = 36 }: { groupe: GroupeSocial; moi: string; taille?: number }): React.JSX.Element {
   const autres = groupe.membres.filter((m) => m.id !== moi).slice(0, 3)
   return (
     <span className="avatar-groupe" style={{ width: taille, height: taille }}>
@@ -595,11 +595,13 @@ interface PropsConversation {
   moi: ProfilSocial
   onglets: EtatOnglets
   retour: () => void
+  /** Petite fenêtre de discussion (au-dessus de la page) : en-tête réduit, « ouvrir en grand » à la place des réglages. */
+  mini?: { agrandir: () => void }
 }
 
 type ChoixOnglet = 'lien' | 'capture' | 'ensemble' | null
 
-function Conversation({ cible, ami, groupe, amis, moi, onglets, retour }: PropsConversation): React.JSX.Element {
+export function Conversation({ cible, ami, groupe, amis, moi, onglets, retour, mini }: PropsConversation): React.JSX.Element {
   const [messages, setMessages] = useState<MessageSocial[]>([])
   const [plusAnciens, setPlusAnciens] = useState(false)
   const [texte, setTexte] = useState('')
@@ -748,11 +750,13 @@ function Conversation({ cible, ami, groupe, amis, moi, onglets, retour }: PropsC
   const amisHorsGroupe = groupe ? amis.filter((a) => !membres.has(a.id)) : []
 
   return (
-    <div className="page-interne page-conversation">
+    <div className={`page-interne page-conversation${mini ? ' mini' : ''}`}>
       <div className="entete-conversation">
-        <button className="bouton-icone" title="Retour" onClick={retour}>
-          <IconePrecedent />
-        </button>
+        {!mini && (
+          <button className="bouton-icone" title="Retour" onClick={retour}>
+            <IconePrecedent />
+          </button>
+        )}
         {ami ? <Avatar profil={ami} taille={40} enLigne={ami.enLigne} /> : groupe && <AvatarGroupe groupe={groupe} moi={moi.id} taille={40} />}
         <div className="infos-profil">
           <strong className="pseudo">{titre}</strong>
@@ -766,15 +770,26 @@ function Conversation({ cible, ami, groupe, amis, moi, onglets, retour }: PropsC
         </div>
         {ami && (
           <button className="bouton-verre" onClick={() => setChoixOnglet((v) => (v === 'ensemble' ? null : 'ensemble'))} title="Partager un onglet en direct">
-            <IconeEnsemble /> Naviguer ensemble
+            <IconeEnsemble /> {mini ? '' : 'Naviguer ensemble'}
           </button>
         )}
-        {groupe && amisHorsGroupe.length > 0 && (
+        {mini && (
+          <>
+            <span className="espace" />
+            <button className="bouton-icone" title="Ouvrir en grand (page Amis)" onClick={mini.agrandir}>
+              ⤢
+            </button>
+            <button className="bouton-icone" title="Fermer" onClick={retour}>
+              <IconeCroix />
+            </button>
+          </>
+        )}
+        {!mini && groupe && amisHorsGroupe.length > 0 && (
           <button className="bouton-verre" onClick={() => setAjoutMembre((v) => !v)}>
             Ajouter
           </button>
         )}
-        {groupe && (
+        {!mini && groupe && (
           <button
             className="bouton-verre"
             onClick={async () => {
@@ -787,7 +802,7 @@ function Conversation({ cible, ami, groupe, amis, moi, onglets, retour }: PropsC
             Renommer
           </button>
         )}
-        <button
+        {!mini && <button
           className="bouton-verre retirer-ami"
           onClick={async () => {
             if (ami) {
@@ -801,7 +816,7 @@ function Conversation({ cible, ami, groupe, amis, moi, onglets, retour }: PropsC
           }}
         >
           {ami ? 'Retirer' : 'Quitter'}
-        </button>
+        </button>}
       </div>
 
       {ajoutMembre && groupe && (

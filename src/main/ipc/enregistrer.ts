@@ -1,7 +1,7 @@
 /* Branche les canaux IPC de l'interface. Chaque message est vérifié : il doit venir de notre fenêtre,
  * et chaque argument est contrôlé avant d'être utilisé. */
 import { cpus, totalmem } from 'node:os'
-import { app, BrowserWindow, dialog, ipcMain, nativeImage, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, nativeImage, webContents, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron'
 import { estAdresseAutorisee, estPageInterne } from '../../shared/adresse'
 import type { ActionTelechargement } from '../../shared/donnees'
 import { CANAUX, type InfosApp } from '../../shared/ipc'
@@ -30,6 +30,7 @@ import { lirePage } from '../ia/lecturePage'
 import { resumerPourEnvoi } from '../ia/eclair'
 import type { MiseAJour } from '../miseAJour'
 import type { Plantages } from '../plantages'
+import { vuesInterface } from '../social/miniDiscussion'
 import { analyserFormulaireWeb, remplirFormulaireWeb } from '../ia/formulaireWeb'
 import { chiffrer, dechiffrer, MOT_DE_PASSE_MIN, type ContenuSauvegarde } from '../sauvegarde'
 import { captureRaccourci } from '../navigateur/commandes'
@@ -57,6 +58,9 @@ export interface Services {
   navigation: MemoireNavigation
   miseAJour: MiseAJour
   plantages: Plantages
+  /** Ouvre (ou ferme, avec null) la petite fenêtre de discussion. */
+  discussion: (f: BrowserWindow, cible: CibleSocial | null) => void
+  agrandirDiscussion: (f: BrowserWindow, cible: CibleSocial) => void
   ensemble: Ensemble
   /** Traduit la page d'un onglet (ou remet l'original). */
   traduire: (f: BrowserWindow, id: number, original: boolean) => void
@@ -72,7 +76,7 @@ export interface Services {
 function fenetreDe(e: IpcMainEvent | IpcMainInvokeEvent): BrowserWindow | null {
   // Une page web (onglet) n'a pas accès à ces canaux : seul le code de l'interface peut les appeler.
   if (!e.senderFrame || !estAdresseInterface(e.senderFrame.url)) return null
-  return BrowserWindow.fromWebContents(e.sender)
+  return BrowserWindow.fromWebContents(e.sender) ?? vuesInterface.get(e.sender.id) ?? null
 }
 
 const estId = (v: unknown): v is number => Number.isInteger(v)
@@ -92,6 +96,8 @@ const ACTIONS_TELECHARGEMENT: readonly ActionTelechargement[] = ['annuler', 'pau
 /** Envoie un message à toutes les fenêtres de l'interface. */
 function diffuser(canal: string, valeur: unknown): void {
   for (const f of BrowserWindow.getAllWindows()) if (!f.isDestroyed()) f.webContents.send(canal, valeur)
+  // petite fenêtre de discussion : elle aussi suit les évènements (messages, amis, réglages…)
+  for (const id of vuesInterface.keys()) webContents.fromId(id)?.send(canal, valeur)
 }
 
 /** Image à envoyer : 1600 px au plus de côté, en JPEG ; plus petite si elle reste trop lourde. Null : impossible. */
@@ -461,6 +467,18 @@ export function enregistrerIpc(s: Services): void {
     const o = s as { type?: unknown; texte?: unknown } | null
     const statut: StatutSocial | null = o && (o.type === 'occupe' || o.type === 'jeu' || o.type === 'absent') ? { type: o.type, texte: typeof o.texte === 'string' ? o.texte.slice(0, 60) : '' } : null
     return social$(e, () => social.changerStatut(statut))
+  })
+  ipcMain.on(CANAUX.discussionOuvrir, (e, cible: unknown) => {
+    const f = fenetreDe(e)
+    if (f && estCible(cible)) s.discussion(f, cible)
+  })
+  ipcMain.on(CANAUX.discussionAgrandir, (e, cible: unknown) => {
+    const f = fenetreDe(e)
+    if (f && estCible(cible)) s.agrandirDiscussion(f, cible)
+  })
+  ipcMain.on(CANAUX.discussionFermer, (e) => {
+    const f = fenetreDe(e)
+    if (f) s.discussion(f, null)
   })
   ipcMain.handle(CANAUX.socialRecuperer, (e, code: unknown) => (typeof code === 'string' ? social$(e, () => social.recuperer(code.slice(0, 200))) : { erreur: 'Code invalide.' }))
 

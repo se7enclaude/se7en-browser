@@ -151,6 +151,9 @@ export const CANAUX = {
   socialRecuperer: 'social:recuperer',
   socialEnvoyerVocal: 'social:envoyer-vocal',
   socialStatut: 'social:statut',
+  discussionOuvrir: 'discussion:ouvrir',
+  discussionFermer: 'discussion:fermer',
+  discussionAgrandir: 'discussion:agrandir',
   ensembleEtat: 'ensemble:etat',
   ensembleChange: 'ensemble:change', // main → interface
   ensembleInviter: 'ensemble:inviter',
@@ -449,6 +452,12 @@ export interface ApiSe7en {
     envoyerVocal(cible: CibleSocial, son: Uint8Array, type: string): Promise<MessageSocial | { erreur: string }>
     /** Change son statut (null : disponible). */
     statut(s: StatutSocial | null): Promise<EtatSocial | { erreur: string }>
+    /** Ouvre la conversation dans la petite fenêtre de discussion, au-dessus de la page. */
+    discussion(cible: CibleSocial): void
+    /** Ferme la petite fenêtre de discussion. */
+    fermerDiscussion(): void
+    /** Ferme la petite fenêtre et ouvre la conversation en grand (page Amis). */
+    agrandirDiscussion(cible: CibleSocial): void
     /** Ouvre un lien reçu dans un nouvel onglet (http/https seulement). */
     ouvrirLien(url: string): void
   }

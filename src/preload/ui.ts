@@ -221,7 +221,10 @@ const api: ApiSe7en = {
     enregistrerCode: demander(CANAUX.socialEnregistrerCode),
     recuperer: demander(CANAUX.socialRecuperer),
     envoyerVocal: demander(CANAUX.socialEnvoyerVocal),
-    statut: demander(CANAUX.socialStatut)
+    statut: demander(CANAUX.socialStatut),
+    discussion: envoyer(CANAUX.discussionOuvrir),
+    fermerDiscussion: envoyer(CANAUX.discussionFermer),
+    agrandirDiscussion: envoyer(CANAUX.discussionAgrandir)
   }
 }
 

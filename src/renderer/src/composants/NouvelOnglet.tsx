@@ -6,6 +6,7 @@ import type { EtatOnglet } from '../../../shared/onglets'
 import { initiale, useFavoris } from '../useDonnees'
 import { ChoixRechercheIA, modeSaisie } from './ChoixRechercheIA'
 import { IconePrive, IconeRecherche } from './Icones'
+import { WidgetAmis } from './WidgetAmis'
 
 function salutation(): string {
   const h = new Date().getHours()
@@ -46,6 +47,8 @@ export function NouvelOnglet({ onglet, demanderIA }: { onglet: EtatOnglet; deman
   }
 
   return (
+    <>
+    {!onglet.prive && <WidgetAmis />}
     <div className="nouvel-onglet-page">
       {onglet.prive ? (
         <>
@@ -104,5 +107,6 @@ export function NouvelOnglet({ onglet, demanderIA }: { onglet: EtatOnglet; deman
         </div>
       )}
     </div>
+    </>
   )
 }

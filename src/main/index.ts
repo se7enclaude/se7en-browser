@@ -10,6 +10,7 @@ import { TraducteurPages } from './ia/traduction'
 import { brancherMenusVerre } from './navigateur/menuVerre'
 import { Plantages } from './plantages'
 import { NotifMessages } from './social/notifMessages'
+import { LARGEUR_DISCUSSION, MiniDiscussion } from './social/miniDiscussion'
 import { Ensemble } from './social/ensemble'
 import { creerFenetrePrincipale, appliquerTheme } from './fenetre/fenetrePrincipale'
 import { ServiceChat } from './ia/chat'
@@ -193,6 +194,19 @@ if (!app.requestSingleInstanceLock()) {
     // nouveau message : petite notification en bas à droite du navigateur (sauf si la page Amis est déjà sous les yeux),
     // et notification Windows si la fenêtre n'est pas au premier plan
     const notifs = new Map<number, NotifMessages>()
+    const discussions = new Map<number, MiniDiscussion>()
+    const discussion = (f: BrowserWindow, cible: CibleSocial | null): void => {
+      let d = discussions.get(f.id)
+      if (!cible) return d?.fermer()
+      if (!d) {
+        d = new MiniDiscussion(f)
+        discussions.set(f.id, d)
+        f.once('closed', () => discussions.delete(f.id))
+      }
+      if (f.isMinimized()) f.restore()
+      f.focus()
+      void d.ouvrir(cible)
+    }
     const ouvrirConversation = (f: BrowserWindow, cible: CibleSocial): void => {
       if (f.isDestroyed()) return
       if (f.isMinimized()) f.restore()
@@ -207,7 +221,8 @@ if (!app.requestSingleInstanceLock()) {
     const notif = (f: BrowserWindow): NotifMessages => {
       let n = notifs.get(f.id)
       if (!n) {
-        n = new NotifMessages(f, (cible) => ouvrirConversation(f, cible))
+        // clic sur une notification : la petite fenêtre de discussion, sans quitter sa page
+        n = new NotifMessages(f, (cible) => discussion(f, cible), () => (discussions.get(f.id)?.estOuverte() ? LARGEUR_DISCUSSION + 12 : 0))
         notifs.set(f.id, n)
         f.once('closed', () => notifs.delete(f.id))
       }
@@ -237,7 +252,7 @@ if (!app.requestSingleInstanceLock()) {
       if (ev.type !== 'message' || !Notification.isSupported() || (f && f.isFocused()) || social.etat().profil?.humeur?.type === 'occupe') return
       const m = ev.message
       const n = new Notification({ title: m.groupe ? `${ev.pseudo} · ${noms.groupes.get(m.groupe) ?? 'Groupe'}` : ev.pseudo, body: apercu(m).slice(0, 200), silent: false })
-      n.on('click', () => f && ouvrirConversation(f, m.groupe ? { type: 'groupe', id: m.groupe } : { type: 'ami', id: m.de }))
+      n.on('click', () => f && discussion(f, m.groupe ? { type: 'groupe', id: m.groupe } : { type: 'ami', id: m.de }))
       n.show()
     })
 
@@ -321,7 +336,11 @@ if (!app.requestSingleInstanceLock()) {
       void ollama.telecharger(noms)
     })
 
-    enregistrerIpc({ ensemble, traduire, plantages, miseAJour, navigation, ecriture, zone: (f) => void zone(f), social, reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, coffre, formulaires, bloqueur, memoire, ranger, ouvrirFichier: (f) => void ouvrirFichier(f), ongletsDe: (f) => onglets.get(f.id) })
+    const agrandirDiscussion = (f: BrowserWindow, cible: CibleSocial): void => {
+      discussion(f, null)
+      ouvrirConversation(f, cible)
+    }
+    enregistrerIpc({ discussion, agrandirDiscussion, ensemble, traduire, plantages, miseAJour, navigation, ecriture, zone: (f) => void zone(f), social, reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, coffre, formulaires, bloqueur, memoire, ranger, ouvrirFichier: (f) => void ouvrirFichier(f), ongletsDe: (f) => onglets.get(f.id) })
 
     const fenetre = creerFenetrePrincipale()
     const idFenetre = fenetre.id

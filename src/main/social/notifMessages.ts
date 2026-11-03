@@ -18,7 +18,9 @@ export class NotifMessages {
   constructor(
     private readonly fenetre: BrowserWindow,
     /** Clic sur une notification : ouvrir la conversation avec cet ami. */
-    private readonly ouvrir: (cible: CibleSocial) => void
+    private readonly ouvrir: (cible: CibleSocial) => void,
+    /** Place prise à droite (la petite fenêtre de discussion ouverte) : les notifications se mettent à sa gauche. */
+    private readonly decalage: () => number = () => 0
   ) {
     ipcMain.on(CANAUX.notifTaille, (e, h: unknown) => {
       if (e.sender !== this.vue?.webContents || typeof h !== 'number' || !Number.isFinite(h)) return
@@ -60,7 +62,7 @@ export class NotifMessages {
     if (!this.vue || this.fenetre.isDestroyed()) return
     if (!this.hauteur) return this.vue.setVisible(false)
     const { width, height } = this.fenetre.getContentBounds()
-    this.vue.setBounds({ x: width - LARGEUR - MARGE, y: height - this.hauteur - MARGE, width: LARGEUR, height: this.hauteur })
+    this.vue.setBounds({ x: width - LARGEUR - MARGE - this.decalage(), y: height - this.hauteur - MARGE, width: LARGEUR, height: this.hauteur })
     this.vue.setVisible(true)
   }
 }

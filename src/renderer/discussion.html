@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- La discussion ne charge que son propre code : aucune ressource externe. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' data:; connect-src 'self'"
+    />
+    <title>Discussion</title>
+  </head>
+  <body>
+    <div id="racine"></div>
+    <script type="module" src="/src/discussion/main.tsx"></script>
+  </body>
+</html>

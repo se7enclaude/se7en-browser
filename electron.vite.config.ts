@@ -29,7 +29,7 @@ export default defineConfig({
     root: resolve('src/renderer'),
     // trois pages : l'interface du navigateur, la visionneuse PDF (servie à part, dans un onglet isolé)
     // et la notification de message (petite vue posée au-dessus des pages)
-    build: { rollupOptions: { input: { index: resolve('src/renderer/index.html'), pdf: resolve('src/renderer/pdf.html'), notif: resolve('src/renderer/notif.html') } } },
+    build: { rollupOptions: { input: { index: resolve('src/renderer/index.html'), pdf: resolve('src/renderer/pdf.html'), notif: resolve('src/renderer/notif.html'), discussion: resolve('src/renderer/discussion.html') } } },
     plugins: [react(), cspDeveloppement()]
   }
 })

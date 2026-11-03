@@ -4055,3 +4055,168 @@ textarea.champ {
   white-space: nowrap;
   cursor: pointer;
 }
+
+/* ---------- Widgets du Nouvel onglet ---------- */
+.widget {
+  position: absolute;
+  top: 50%;
+  width: 290px;
+  max-height: 80%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 24px;
+  box-shadow: var(--reflet), var(--ombre);
+  transform: translateY(-50%);
+  animation: widget-entre 420ms cubic-bezier(0.2, 0.8, 0.2, 1) 120ms both;
+}
+.widget-amis {
+  left: 28px;
+}
+@keyframes widget-entre {
+  from {
+    opacity: 0;
+    transform: translate(-12px, -50%);
+  }
+}
+.entete-widget {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--police-titre);
+  font-size: 15px;
+}
+.section-widget {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.titre-widget {
+  margin: 2px 4px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--texte-discret);
+}
+.ligne-widget {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--texte);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--anim), transform 240ms var(--ressort);
+}
+.ligne-widget:hover {
+  background: var(--survol);
+  transform: translateX(2px);
+}
+.texte-ligne-widget {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.texte-ligne-widget strong,
+.texte-ligne-widget .discret {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.texte-ligne-widget .discret {
+  font-size: 12px;
+}
+.texte-ligne-widget .joue {
+  color: var(--ia);
+}
+/* fenêtre étroite : les widgets passent sous la recherche au lieu de la serrer */
+@media (max-width: 1250px) {
+  .widget {
+    position: static;
+    transform: none;
+    width: min(420px, 100%);
+    max-height: none;
+    animation-name: fondu;
+  }
+}
+@media (max-width: 1250px) {
+  /* dans le volet (grille centrée), le widget passe sous la page d'accueil */
+  .volet:has(> .widget) {
+    grid-auto-flow: row;
+    align-content: center;
+    gap: 18px;
+  }
+  .volet > .widget {
+    order: 2;
+  }
+}
+.ligne-widget.statique {
+  cursor: default;
+}
+.ligne-widget.statique:hover {
+  transform: none;
+}
+.ajout-ami-widget {
+  display: flex;
+  gap: 6px;
+  margin-top: 2px;
+}
+.ajout-ami-widget .champ {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+}
+
+/* ---------- Petite fenêtre de discussion (vue à part, en bas à droite) ---------- */
+.mini-discussion {
+  position: fixed;
+  inset: 0;
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px var(--verre-bord);
+}
+.page-conversation.mini {
+  padding: 12px 12px 12px;
+  gap: 8px;
+  animation: menu-deroule 280ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
+}
+.page-conversation.mini .entete-conversation {
+  gap: 8px;
+}
+.page-conversation.mini .entete-conversation .avatar {
+  width: 32px !important;
+  height: 32px !important;
+}
+.page-conversation.mini .entete-conversation .bouton-verre {
+  padding: 4px 10px;
+}
+.page-conversation.mini .fil-messages {
+  padding: 10px;
+  min-height: 0;
+}
+.page-conversation.mini .bulle-ami {
+  max-width: 85%;
+}
+.page-conversation.mini .saisie-message {
+  padding: 6px;
+  gap: 4px;
+}
+.page-conversation.mini .saisie-message > .bouton-verre {
+  display: none;
+}
+.page-conversation.mini .infos-profil {
+  flex: 1;
+  min-width: 0;
+}
+.page-conversation.mini .infos-profil > * {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

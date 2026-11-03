@@ -124,6 +124,8 @@ export type CommandeUi =
   /** Changement d'onglet : l'ancienne page s'efface en fondu sur la nouvelle (`depart` null : fondu annulé). */
   /** Clic sur la notification d'un message : ouvrir la conversation avec cet ami. */
   | { type: 'ouvrir-conversation'; cible: CibleSocial }
+  /** Petite fenêtre de discussion : la conversation à afficher. */
+  | { type: 'discussion'; cible: CibleSocial }
   /** Remplir le formulaire de cette page avec le coffre (ouvre l'aperçu à confirmer). */
   | { type: 'remplir-formulaire'; idOnglet: number }
   | { type: 'transition-onglet'; depart: string | null; arrivee: string | null; duree: number }
