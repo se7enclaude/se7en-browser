@@ -128,7 +128,8 @@ export const CANAUX = {
   majInstaller: 'maj:installer',
   favorisImporter: 'favoris:importer',
   defautEtat: 'defaut:etat',
-  defautChoisir: 'defaut:choisir'
+  defautChoisir: 'defaut:choisir',
+  phishingIgnorer: 'phishing:ignorer'
 } as const
 
 export interface EtatFenetre {
@@ -206,6 +207,10 @@ export interface ApiSe7en {
     surChangement(rappel: (f: Favori[]) => void): () => void
     /** Choisir le fichier de favoris exporté d'un autre navigateur et l'importer (null : annulé). */
     importer(): Promise<{ ajoutes: number; trouves: number } | { erreur: string } | null>
+  }
+  phishing: {
+    /** « Je fais confiance à ce site » : plus d'alerte pour ce site (l'onglet est rechargé sans alerte). */
+    ignorer(idOnglet: number): void
   }
   navigateurDefaut: {
     /** Vrai si Windows ouvre les liens avec se7en Browser. */
@@ -321,7 +326,7 @@ export interface ApiSe7en {
     messages(ami: string, avant?: number): Promise<MessageSocial[] | { erreur: string }>
     envoyer(ami: string, texte: string): Promise<MessageSocial | { erreur: string }>
     /** Envoie l'adresse et le titre de l'onglet à un ami. */
-    envoyerOnglet(ami: string, idOnglet: number): Promise<MessageSocial | { erreur: string }>
+    envoyerOnglet(ami: string, idOnglet: number, avecResume?: boolean): Promise<MessageSocial | { erreur: string }>
     lu(ami: string): void
     /** Ouvre un lien reçu dans un nouvel onglet (http/https seulement). */
     ouvrirLien(url: string): void

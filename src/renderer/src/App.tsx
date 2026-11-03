@@ -12,6 +12,7 @@ import { PageIA, useOllama } from './composants/PageIA'
 import { PageAmis } from './composants/PageAmis'
 import { SelecteurZone } from './composants/SelecteurZone'
 import { BandeauEcriture } from './composants/BandeauEcriture'
+import { RechercheOnglets } from './composants/RechercheOnglets'
 import type { ZoneCapture } from '../../shared/chat'
 import { PanneauIA, type DemandeExterne } from './composants/PanneauIA'
 import { QuestionIA } from './composants/QuestionIA'
@@ -31,6 +32,7 @@ export function App(): React.JSX.Element {
   const [iaOuverte, setIaOuverte] = useState(false)
   const [demande, setDemande] = useState<DemandeExterne | null>(null)
   const [zone, setZone] = useState<{ idCapture: string; image: string } | null>(null)
+  const [rechercheOnglets, setRechercheOnglets] = useState(false)
   /** « Demande ou cherche », clic droit › IA, zone de l'écran : la question part dans le panneau IA. */
   const demanderIA = (texte: string, avecPage: boolean, z?: ZoneCapture): void => {
     setIaOuverte(true)
@@ -43,6 +45,7 @@ export function App(): React.JSX.Element {
         if (c.type === 'basculer-ia') setIaOuverte((v) => !v)
         else if (c.type === 'demander-ia') demanderIA(c.texte, c.avecPage)
         else if (c.type === 'zone') setZone({ idCapture: c.idCapture, image: c.image })
+        else if (c.type === 'rechercher-onglets') setRechercheOnglets((v) => !v)
       }),
     []
   )
@@ -93,12 +96,26 @@ export function App(): React.JSX.Element {
           />
           {reglages && <QuestionIA reglages={reglages} modifier={modifier} ia={ia} />}
           <BandeauEcriture />
+          {actif?.phishing && (
+            <div className="bandeau-phishing" role="alert">
+              <strong>⚠ Attention : page peut-être frauduleuse</strong>
+              <span>{actif.phishing}</span>
+              <span className="espace" />
+              <button className="bouton-principal" onClick={() => (actif.peutReculer ? window.se7en.onglets.precedent(actif.id) : window.se7en.onglets.fermer(actif.id))}>
+                {actif.peutReculer ? 'Revenir en arrière' : 'Fermer la page'}
+              </button>
+              <button className="bouton-verre" onClick={() => window.se7en.phishing.ignorer(actif.id)}>
+                Je fais confiance à ce site
+              </button>
+            </div>
+          )}
           <ZonePage etat={etat} contenu={contenu} />
         </div>
         {reglages && (
           <PanneauIA etat={etat} actif={actif} ia={ia} reglages={reglages} ouvert={iaOuverte} fermer={() => setIaOuverte(false)} demande={demande} />
         )}
       </div>
+      {rechercheOnglets && <RechercheOnglets etat={etat} fermer={() => setRechercheOnglets(false)} />}
       {zone && (
         <SelecteurZone
           key={zone.idCapture}

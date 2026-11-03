@@ -339,6 +339,8 @@ function Conversation({ ami, moi, onglets, retour }: { ami: Ami; moi: ProfilSoci
   const [texte, setTexte] = useState('')
   const [erreur, setErreur] = useState<string | null>(null)
   const [choixOnglet, setChoixOnglet] = useState(false)
+  const [avecResume, setAvecResume] = useState(true)
+  const [envoiOnglet, setEnvoiOnglet] = useState(false)
   const fil = useRef<HTMLDivElement>(null)
   const enBas = useRef(true)
 
@@ -441,8 +443,13 @@ function Conversation({ ami, moi, onglets, retour }: { ami: Ami; moi: ProfilSoci
       </div>
 
       {erreur && <p className="message-erreur">{erreur}</p>}
+      {envoiOnglet && <p className="discret attente">{avecResume ? 'L’IA résume la page…' : 'Envoi…'}</p>}
       {choixOnglet && (
         <div className="choix-onglet verre-fort">
+          <label className="option-resume">
+            <input type="checkbox" checked={avecResume} onChange={(e) => setAvecResume(e.target.checked)} />
+            Ajouter un résumé de la page par l’IA (2 phrases)
+          </label>
           {pagesWeb.length === 0 && <p className="discret">Aucune page web ouverte.</p>}
           {pagesWeb.map((o) => (
             <button
@@ -450,7 +457,9 @@ function Conversation({ ami, moi, onglets, retour }: { ami: Ami; moi: ProfilSoci
               className="ligne-liste"
               onClick={async () => {
                 setChoixOnglet(false)
-                ajouter(await window.se7en.social.envoyerOnglet(ami.id, o.id))
+                setEnvoiOnglet(true)
+                ajouter(await window.se7en.social.envoyerOnglet(ami.id, o.id, avecResume))
+                setEnvoiOnglet(false)
               }}
             >
               {o.favicon ? <img className="favicon" src={o.favicon} alt="" /> : <IconeGlobe />}

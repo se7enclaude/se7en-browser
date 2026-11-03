@@ -32,6 +32,7 @@ export type ActionRaccourci =
   | { type: 'favori' }
   | { type: 'basculer-ia' }
   | { type: 'ouvrir-fichier' }
+  | { type: 'rechercher-onglets' }
 
 export function actionDuRaccourci(t: Touche): ActionRaccourci | null {
   if (t.type !== 'keyDown' || t.meta) return null
@@ -40,6 +41,7 @@ export function actionDuRaccourci(t: Touche): ActionRaccourci | null {
 
   if (ctrl && !t.shift && k === 't') return { type: 'nouvel-onglet' }
   if (ctrl && t.shift && k === 't') return { type: 'rouvrir-onglet' }
+  if (ctrl && t.shift && k === 'a') return { type: 'rechercher-onglets' }
   if (ctrl && !t.shift && (k === 'w' || k === 'F4')) return { type: 'fermer-onglet' }
   if (ctrl && k === 'Tab') return { type: t.shift ? 'onglet-precedent' : 'onglet-suivant' }
   if (ctrl && !t.shift && k === 'b') return { type: 'basculer-barre' }

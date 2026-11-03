@@ -115,6 +115,24 @@ http/https et PDF ; les liens ouverts depuis d'autres applis arrivent dans un no
 recherche. Le navigateur ne lit jamais les mots de passe, cookies ou historiques des autres navigateurs : on se connecte
 une fois par site, et la session est gardée.
 
+**Recherche dans les onglets** : Ctrl+Maj+A ouvre une palette qui cherche dans le titre et l'adresse de tous les
+onglets (prioritaires et en veille compris).
+
+**Mise en veille des onglets** : un onglet inactif depuis 30 minutes (réglable : 10 min à 2 h, ou jamais) libère sa
+page et garde son adresse ; il se recharge quand on l'ouvre. Jamais l'onglet affiché, la vue partagée, une page qui joue
+du son, en chargement ou un PDF.
+
+**Modèle rapide** : `qwen3:1.7b` (facultatif, ≈ 1,4 Go, page IA locale) pour les tâches éclair (rangement des onglets,
+résumé joint à un lien envoyé) ; sans lui, le modèle texte prend le relais.
+
+**Envoyer un onglet avec un résumé** : dans une conversation (Amis), « Envoyer un onglet » peut joindre un résumé de la
+page en deux phrases écrit par l'IA locale.
+
+**Alerte anti-phishing** (`src/main/securite/antiPhishing.ts`) : sur une page qui demande un mot de passe, des règles
+locales repèrent une marque connue (Google, PayPal, banques…) sur une adresse qui ne lui appartient pas, les adresses
+piégées (caractères trompeurs, adresse IP, faux « @ ») et les pages sans chiffrement ; les cas douteux sont confirmés par
+l'IA locale. Un bandeau rouge propose de revenir en arrière, ou « Je fais confiance à ce site ». Rien n'est envoyé sur Internet.
+
 **Clic droit IA** (`src/main/navigateur/menuPage.ts`) : sur une sélection, « Expliquer », « Résumer », « Traduire »,
 « Demander à l'IA… » ; sur une page, « Résumer la page ». Le menu garde aussi copier/coller, liens et images.
 

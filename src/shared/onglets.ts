@@ -22,6 +22,8 @@ export interface EtatOnglet {
   bloques: number
   /** Groupe d'onglets (rangement par l'IA), ou null. */
   groupe: string | null
+  /** Alerte anti-phishing sur la page actuelle (texte à montrer), ou null. */
+  phishing: string | null
 }
 
 export const COULEURS_GROUPES = ['bleu', 'vert', 'orange', 'rose', 'violet', 'cyan', 'jaune', 'rouge'] as const
@@ -75,6 +77,8 @@ export interface ZoneOnglet {
 export type CommandeUi =
   | { type: 'focus-adresse' }
   | { type: 'basculer-ia' }
+  /** Ctrl+Maj+A : chercher parmi les onglets ouverts. */
+  | { type: 'rechercher-onglets' }
   /** Clic droit › IA sur une sélection : la question part dans le panneau, avec la page (et sa sélection) jointe. */
   | { type: 'demander-ia'; texte: string; avecPage: boolean }
   /** « Demander sur une zone de l'écran » : capture de l'onglet actif, à recadrer par l'utilisateur. */

@@ -14,6 +14,8 @@ interface Onglet {
   vue: WebContentsView | null
   /** Adresse d'origine d'un onglet prioritaire : il y revient quand on le met en veille. */
   urlEpinglee: string | null
+  /** Dernière fois que l'onglet a été actif (mise en veille des onglets oubliés). */
+  vuLe: number
 }
 
 export interface OptionsGestionnaire {
@@ -97,10 +99,12 @@ export class GestionnaireOnglets {
         endormi: !!sauve,
         pdf: null,
         bloques: 0,
-        groupe: null
+        groupe: null,
+        phishing: null
       },
       vue: null,
-      urlEpinglee: sauve?.url ?? null
+      urlEpinglee: sauve?.url ?? null,
+      vuLe: Date.now()
     }
   }
 
@@ -235,9 +239,42 @@ export class GestionnaireOnglets {
     // ouvrir un onglet d'un groupe replié déplie le groupe
     const groupe = this.groupes.find((g) => g.id === o.etat.groupe)
     if (groupe?.replie) groupe.replie = false
+    o.vuLe = Date.now()
     if (this.actifId === id && !reveil) return
+    // l'onglet qu'on quitte compte comme vu jusqu'à maintenant
+    const ancien = this.actifId !== null ? this.trouver(this.actifId) : undefined
+    if (ancien) ancien.vuLe = Date.now()
     this.actifId = id
     this.afficher()
+    this.signaler()
+  }
+
+  /** Met en veille les onglets restés inactifs plus de `minutes` (leur page est libérée, l'adresse est gardée).
+   * Jamais l'onglet affiché, ceux de la vue partagée, une page qui joue du son, en chargement ou un PDF. */
+  mettreEnVeille(minutes: number): number {
+    if (minutes <= 0) return 0
+    const limite = Date.now() - minutes * 60_000
+    let n = 0
+    for (const o of this.onglets) {
+      const wc = o.vue?.webContents
+      if (!wc || o.etat.endormi || o.etat.id === this.actifId || o.etat.pdf || o.etat.chargement || o.vuLe > limite) continue
+      if (this.split && (this.split.gauche === o.etat.id || this.split.droite === o.etat.id)) continue
+      if (wc.isCurrentlyAudible() || !estAdresseAutorisee(o.etat.url)) continue
+      const url = o.etat.url
+      this.endormir(o)
+      // un onglet normal se réveille sur sa page actuelle (un prioritaire, lui, revient à son adresse épinglée)
+      if (!o.etat.prioritaire) o.etat.url = url
+      n++
+    }
+    if (n) this.signaler()
+    return n
+  }
+
+  /** Alerte anti-phishing pour la page de cet onglet (null : aucune). */
+  definirPhishing(wc: WebContents, message: string | null): void {
+    const o = this.onglets.find((x) => x.vue?.webContents === wc)
+    if (!o || o.etat.phishing === message) return
+    o.etat.phishing = message
     this.signaler()
   }
 
@@ -550,6 +587,7 @@ export class GestionnaireOnglets {
     wc.on('did-navigate', (_e, url) => {
       o.etat.favicon = null
       o.etat.bloques = 0
+      o.etat.phishing = null
       o.etat.url = url
       maj()
       // l'adresse a pu passer d'un Nouvel onglet (sans page) à une page ou un PDF : la vue doit apparaître

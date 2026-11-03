@@ -69,6 +69,9 @@ export function creerGestionRaccourcis(
       case 'basculer-ia':
         versUi({ type: 'basculer-ia' })
         break
+      case 'rechercher-onglets':
+        versUi({ type: 'rechercher-onglets' })
+        break
       case 'page':
         g.ouvrirInterne(action.page)
         break

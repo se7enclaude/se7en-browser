@@ -78,6 +78,21 @@ export function Parametres({ reglages, modifier, infos }: Props): React.JSX.Elem
             changer={(v) => modifier({ barreLaterale: v, ...(v && reglages.disposition === 'haut' ? { disposition: 'les-deux' } : {}) })}
           />
         </div>
+        <div className="ligne-reglage">
+          <span>
+            Mettre en veille les onglets inactifs <kbd>libère la mémoire</kbd>
+          </span>
+          <select className="champ" value={reglages.veilleOnglets} onChange={(e) => modifier({ veilleOnglets: Number(e.target.value) })}>
+            <option value={10}>Après 10 minutes</option>
+            <option value={30}>Après 30 minutes</option>
+            <option value={60}>Après 1 heure</option>
+            <option value={120}>Après 2 heures</option>
+            <option value={0}>Jamais</option>
+          </select>
+        </div>
+        <p className="discret petit">
+          Chercher parmi tes onglets : <kbd>Ctrl+Maj+A</kbd>. Un onglet en veille se recharge quand tu l’ouvres (jamais celui qui joue du son).
+        </p>
       </section>
 
       <section className="bloc verre-fort">
@@ -104,6 +119,10 @@ export function Parametres({ reglages, modifier, infos }: Props): React.JSX.Elem
         <div className="ligne-reglage">
           <span>Modèle vision</span>
           <ChampModele valeur={reglages.modeleVision} changer={(v) => modifier({ modeleVision: v })} />
+        </div>
+        <div className="ligne-reglage">
+          <span>Modèle rapide</span>
+          <ChampModele valeur={reglages.modeleRapide} changer={(v) => modifier({ modeleRapide: v })} />
         </div>
         <div className="ligne-reglage">
           <span>À l'ouverture du navigateur</span>

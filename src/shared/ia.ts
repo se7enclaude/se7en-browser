@@ -34,6 +34,7 @@ export interface EtatOllama {
 export const TAILLES_CONNUES: Record<string, number> = {
   'qwen3:8b': 5.2e9,
   'qwen3:4b': 2.5e9,
+  'qwen3:1.7b': 1.4e9,
   'qwen3:14b': 9.3e9,
   'qwen3-vl:8b': 6.1e9,
   'qwen3-vl:4b': 3.3e9,
@@ -48,6 +49,11 @@ export function nomComplet(nom: string): string {
 export function modelePresent(nom: string, installes: string[]): boolean {
   const cible = nomComplet(nom.trim().toLowerCase())
   return installes.some((m) => nomComplet(m.toLowerCase()) === cible)
+}
+
+/** Modèle des tâches éclair : le petit modèle rapide s'il est téléchargé, sinon le modèle texte. */
+export function modeleEclair(r: { modeleRapide: string; modeleTexte: string }, installes: string[]): string {
+  return modelePresent(r.modeleRapide, installes) ? r.modeleRapide : r.modeleTexte
 }
 
 export const RE_NOM_MODELE = /^[\w.:\-/]{1,100}$/

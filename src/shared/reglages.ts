@@ -30,6 +30,12 @@ export interface Reglages {
   memoire: boolean
   /** Mémoire de navigation : le texte des pages visitées, gardé 30 jours sur ce PC pour que l'IA les retrouve. */
   memoireNavigation: boolean
+  /** Petit modèle rapide pour les tâches éclair (rangement, résumé d'un lien envoyé, vérification anti-phishing). */
+  modeleRapide: string
+  /** Onglets inactifs mis en veille après ce nombre de minutes (0 : jamais). */
+  veilleOnglets: number
+  /** Sites où l'alerte anti-phishing a été désactivée par l'utilisateur. */
+  phishingExceptions: string[]
   /** Le navigateur se met à jour tout seul (téléchargé en arrière-plan, installé à la fermeture). */
   miseAJourAuto: boolean
   /** Les modèles Qwen de l'IA locale sont remis à jour une fois par semaine. */
@@ -54,6 +60,9 @@ export const REGLAGES_DEFAUT: Reglages = {
   memoire: true,
   memoireNavigation: true,
   miseAJourAuto: true,
+  modeleRapide: 'qwen3:1.7b',
+  veilleOnglets: 30,
+  phishingExceptions: [],
   modelesAuto: true,
   serveurSocial: ''
 }
@@ -103,6 +112,10 @@ export function fusionnerReglages(base: Reglages, brut: unknown): Reglages {
   if (typeof o.memoire === 'boolean') r.memoire = o.memoire
   if (typeof o.memoireNavigation === 'boolean') r.memoireNavigation = o.memoireNavigation
   if (typeof o.miseAJourAuto === 'boolean') r.miseAJourAuto = o.miseAJourAuto
+  if (typeof o.modeleRapide === 'string' && /^[\w.:\-/]{1,100}$/.test(o.modeleRapide)) r.modeleRapide = o.modeleRapide
+  if (typeof o.veilleOnglets === 'number' && [0, 10, 30, 60, 120].includes(o.veilleOnglets)) r.veilleOnglets = o.veilleOnglets
+  if (Array.isArray(o.phishingExceptions))
+    r.phishingExceptions = [...new Set(o.phishingExceptions.filter((h): h is string => typeof h === 'string' && /^[a-z0-9.-]{1,253}$/.test(h)))].slice(0, 500)
   if (typeof o.modelesAuto === 'boolean') r.modelesAuto = o.modelesAuto
   if (typeof o.serveurSocial === 'string') {
     const s = o.serveurSocial.trim()

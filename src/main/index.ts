@@ -13,7 +13,10 @@ import { Ollama } from './ia/ollama'
 import { Memoire } from './ia/memoire'
 import { proposerGroupes } from './ia/rangement'
 import { Bloqueur } from './bloqueur/bloqueur'
-import { modelePresent } from '../shared/ia'
+import { modeleEclair, modelePresent } from '../shared/ia'
+import { analyserPage } from './securite/antiPhishing'
+import { avisPhishing } from './ia/eclair'
+import { hoteDe } from './bloqueur/bloqueur'
 import { enregistrerIpc } from './ipc/enregistrer'
 import { creerGestionRaccourcis } from './navigateur/commandes'
 import { GestionnaireOnglets } from './navigateur/onglets'
@@ -134,7 +137,7 @@ if (!app.requestSingleInstanceLock()) {
       const liste = g.ongletsARanger()
       if (liste.length < 3) return { erreur: 'Il faut au moins 3 onglets ouverts pour les ranger.' }
       try {
-        const groupes = await proposerGroupes(liste, r.modeleTexte)
+        const groupes = await proposerGroupes(liste, modeleEclair(r, e.modeles))
         if (!groupes.length) return { erreur: "L'IA n'a pas trouvé de sujets communs entre ces onglets." }
         g.appliquerGroupes(groupes)
         return { groupes: g.etat().groupes.length }
@@ -221,13 +224,28 @@ if (!app.requestSingleInstanceLock()) {
       journal: { visite: (url, titre) => historique.ajouter(url, titre), titre: (url, titre) => historique.majTitre(url, titre) },
       documentPdf: (id) => documents.lire(id),
       // une page chargée est lue un peu plus tard (le temps qu'elle s'affiche), puis gardée dans la mémoire de navigation
+      // une page chargée est lue un peu plus tard (le temps qu'elle s'affiche) : vérification anti-phishing,
+      // puis mémoire de navigation
       pageChargee: (wc, etat) => {
-        if (!reglages.get().memoireNavigation) return
         const url = etat.url
         setTimeout(async () => {
           if (wc.isDestroyed() || wc.getURL() !== url || !estAdresseAutorisee(url)) return
           const p = await lirePage(wc, url)
-          if (p.motDePasse) return // page de connexion ou de paiement : jamais gardée
+          const r = reglages.get()
+          if (p.motDePasse && !r.phishingExceptions.includes(hoteDe(url))) {
+            const v = analyserPage({ url, titre: p.titre, texte: p.texte, motDePasse: true })
+            let alerte = v.niveau === 'fort' ? v.message! : null
+            if (v.niveau === 'douteux') {
+              // cas douteux : l'IA locale donne son avis ; sans IA, on prévient par prudence
+              const e = ollama.etat()
+              const pret = e.phase === 'pret' && modelePresent(r.modeleTexte, e.modeles)
+              // vérification de sécurité : le modèle principal, plus fiable que le petit modèle rapide
+              const frauduleux = pret ? await avisPhishing(r.modeleTexte, p, v.marque!).catch(() => true) : true
+              if (frauduleux) alerte = v.message!
+            }
+            if (alerte && !wc.isDestroyed() && wc.getURL() === url) gestionnaire.definirPhishing(wc, alerte)
+          }
+          if (p.motDePasse || !r.memoireNavigation) return // page de connexion ou de paiement : jamais gardée
           await navigation.enregistrer({ url, titre: p.titre, date: Date.now(), texte: p.texte }).catch(() => false)
         }, 2500)
       },
@@ -264,6 +282,8 @@ if (!app.requestSingleInstanceLock()) {
     }
     // lancé par un lien (autre appli) ou un PDF : on l'ouvre ; sinon, un Nouvel onglet
     if (!ouvrirArguments(process.argv)) gestionnaire.nouveau()
+    // onglets oubliés mis en veille (réglage en minutes, 0 : jamais)
+    setInterval(() => gestionnaire.mettreEnVeille(reglages.get().veilleOnglets), 60_000).unref()
   })
 
   app.on('window-all-closed', () => app.quit())

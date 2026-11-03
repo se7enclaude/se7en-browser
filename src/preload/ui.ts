@@ -134,6 +134,9 @@ const api: ApiSe7en = {
     supprimer: demander(CANAUX.memoireSupprimer),
     effacer: demander(CANAUX.memoireEffacer)
   },
+  phishing: {
+    ignorer: envoyer(CANAUX.phishingIgnorer)
+  },
   navigateurDefaut: {
     etat: demander(CANAUX.defautEtat),
     choisir: envoyer(CANAUX.defautChoisir)

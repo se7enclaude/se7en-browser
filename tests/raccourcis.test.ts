@@ -16,6 +16,7 @@ describe('actionDuRaccourci', () => {
   it('gère les onglets', () => {
     expect(actionDuRaccourci(t('t', { control: true }))).toEqual({ type: 'nouvel-onglet' })
     expect(actionDuRaccourci(t('T', { control: true, shift: true }))).toEqual({ type: 'rouvrir-onglet' })
+    expect(actionDuRaccourci(t('A', { control: true, shift: true }))).toEqual({ type: 'rechercher-onglets' })
     expect(actionDuRaccourci(t('w', { control: true }))).toEqual({ type: 'fermer-onglet' })
     expect(actionDuRaccourci(t('Tab', { control: true }))).toEqual({ type: 'onglet-suivant' })
     expect(actionDuRaccourci(t('Tab', { control: true, shift: true }))).toEqual({ type: 'onglet-precedent' })

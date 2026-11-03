@@ -52,7 +52,8 @@ export function PageIA({ reglages }: { reglages: Reglages }): React.JSX.Element 
   const pret = etat.phase === 'pret'
   const modeles = [
     { nom: reglages.modeleTexte, role: 'Texte', detail: 'Chat, résumés, questions sur la page', obligatoire: true },
-    { nom: reglages.modeleVision, role: 'Vision', detail: 'Comprendre les images et les pages peu lisibles', obligatoire: false }
+    { nom: reglages.modeleVision, role: 'Vision', detail: 'Comprendre les images et les pages peu lisibles', obligatoire: false },
+    { nom: reglages.modeleRapide, role: 'Rapide', detail: 'Petit modèle pour les tâches éclair (rangement, résumés envoyés, anti-phishing)', obligatoire: false }
   ]
   const manquants = modeles.filter((m) => !modelePresent(m.nom, etat.modeles))
   const toutPret = pret && modelePresent(reglages.modeleTexte, etat.modeles)

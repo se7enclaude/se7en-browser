@@ -19,12 +19,14 @@ import type { ServiceChat } from '../ia/chat'
 import type { Conversations, Skills } from '../ia/conversations'
 import type { CoffreChiffre } from '../coffre/coffre'
 import type { ServiceFormulaire } from '../pdf/serviceFormulaire'
-import type { Bloqueur } from '../bloqueur/bloqueur'
+import { hoteDe, type Bloqueur } from '../bloqueur/bloqueur'
 import type { Memoire } from '../ia/memoire'
-import { RE_NOM_MODELE } from '../../shared/ia'
+import { modeleEclair, modelePresent, RE_NOM_MODELE } from '../../shared/ia'
 import type { ClientSocial } from '../social/client'
 import type { AssistantEcriture } from '../ia/ecriture'
 import type { MemoireNavigation } from '../ia/memoireNavigation'
+import { lirePage } from '../ia/lecturePage'
+import { resumerPourEnvoi } from '../ia/eclair'
 import type { MiseAJour } from '../miseAJour'
 import { estNavigateurParDefaut, ouvrirChoixNavigateur } from '../navigateurDefaut'
 import { lireFavorisExportes } from '../../shared/importFavoris'
@@ -315,11 +317,20 @@ export function enregistrerIpc(s: Services): void {
   ipcMain.handle(CANAUX.socialEnvoyer, (e, ami: unknown, texte: unknown) =>
     estIdSocial(ami) && typeof texte === 'string' ? social$(e, () => social.envoyer(ami, { texte: texte.slice(0, MAX_MESSAGE) })) : { erreur: 'Message invalide.' }
   )
-  ipcMain.handle(CANAUX.socialEnvoyerOnglet, (e, ami: unknown, idOnglet: unknown) => {
-    const o = estId(idOnglet) ? g(e)?.etat().onglets.find((x) => x.id === idOnglet) : undefined
+  ipcMain.handle(CANAUX.socialEnvoyerOnglet, async (e, ami: unknown, idOnglet: unknown, avecResume: unknown) => {
+    const p = estId(idOnglet) ? g(e)?.pageDe(idOnglet) : null
+    const o = p?.etat
     // seules les pages web s'envoient (pas un PDF du PC ni une page interne)
-    if (!estIdSocial(ami) || !o || !estAdresseAutorisee(o.url)) return { erreur: 'Cet onglet ne peut pas être envoyé.' }
-    return social$(e, () => social.envoyer(ami, { texte: '', url: o.url, titre: o.titre }))
+    if (!estIdSocial(ami) || !p || !o || !estAdresseAutorisee(o.url)) return { erreur: 'Cet onglet ne peut pas être envoyé.' }
+    // résumé en deux phrases par l'IA locale (si elle est prête) : il part avec le lien, comme un message
+    let texte = ''
+    const r = reglages.get()
+    const etat = ollama.etat()
+    if (avecResume === true && etat.phase === 'pret' && modelePresent(r.modeleTexte, etat.modeles)) {
+      const lue = await lirePage(p.wc, o.url)
+      if (lue.texte.length > 200 && !lue.motDePasse) texte = await resumerPourEnvoi(modeleEclair(r, etat.modeles), lue).catch(() => '')
+    }
+    return social$(e, () => social.envoyer(ami, { texte, url: o.url, titre: o.titre }))
   })
   ipcMain.on(CANAUX.socialLu, (e, ami: unknown) => fenetreDe(e) && estIdSocial(ami) && void social.marquerLu(ami).catch(() => undefined))
   ipcMain.on(CANAUX.socialOuvrirLien, (e, url: unknown) => typeof url === 'string' && estAdresseAutorisee(url) && g(e)?.nouveau(url, { aCote: true }))
@@ -344,6 +355,13 @@ export function enregistrerIpc(s: Services): void {
     } catch {
       return { erreur: 'Impossible de lire ce fichier.' }
     }
+  })
+  ipcMain.on(CANAUX.phishingIgnorer, (e, id: unknown) => {
+    const p = estId(id) ? g(e)?.pageDe(id) : null
+    if (!p) return
+    const hote = hoteDe(p.etat.url)
+    if (hote) void reglages.modifier({ phishingExceptions: [...reglages.get().phishingExceptions, hote] })
+    g(e)?.definirPhishing(p.wc, null)
   })
   ipcMain.handle(CANAUX.defautEtat, (e) => (fenetreDe(e) ? estNavigateurParDefaut() : false))
   ipcMain.on(CANAUX.defautChoisir, (e) => fenetreDe(e) && ouvrirChoixNavigateur())
