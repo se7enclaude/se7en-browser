@@ -2998,3 +2998,54 @@ textarea.champ {
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.5), 0 6px 18px rgb(0 0 0 / 0.22);
   animation: apparition 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
+
+/* ---------- Venir d'un autre navigateur ---------- */
+
+.migration {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+}
+.etape-migration {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: var(--verre-creux);
+  box-shadow: var(--ombre-creux);
+}
+.texte-migration {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.texte-migration .discret {
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.liste-exports {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--texte-2);
+}
+.migration.compacte .liste-exports {
+  columns: 2;
+  column-gap: 18px;
+}
+.etape-migration .champ {
+  min-width: 140px;
+}
+.texte-erreur {
+  color: #e5554b;
+  font-weight: 500;
+}
+.accueil-carte:has(.migration) {
+  width: min(720px, 100%);
+}

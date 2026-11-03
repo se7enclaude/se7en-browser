@@ -44,6 +44,16 @@ export class Favoris extends EventEmitter<{ change: [Favori[]] }> {
     return !existant
   }
 
+  /** Ajoute des favoris importés d'un autre navigateur (sans doublon). Renvoie le nombre ajouté. */
+  importer(liste: { url: string; titre: string; favicon: string | null; date: number }[]): number {
+    const deja = new Set(this.liste.map((f) => f.url))
+    const nouveaux = liste.filter((f) => !deja.has(f.url)).map((f) => ({ id: randomUUID(), ...f }))
+    if (!nouveaux.length) return 0
+    this.liste = [...this.liste, ...nouveaux].slice(0, MAX)
+    this.changer()
+    return nouveaux.length
+  }
+
   supprimer(id: string): void {
     this.liste = this.liste.filter((f) => f.id !== id)
     this.changer()

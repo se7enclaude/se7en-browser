@@ -27,6 +27,7 @@ import { ClientSocial } from './social/client'
 import { AssistantEcriture } from './ia/ecriture'
 import { MemoireNavigation } from './ia/memoireNavigation'
 import { MiseAJour } from './miseAJour'
+import { liensDesArguments } from './navigateurDefaut'
 import { ecrireJson, lireJson } from './stockage/fichierJson'
 import { join } from 'node:path'
 import { lirePage } from './ia/lecturePage'
@@ -46,12 +47,15 @@ if (!app.requestSingleInstanceLock()) {
   durcirApplication()
   declarerProtocolePdf()
   const onglets = new Map<number, GestionnaireOnglets>()
+  /** Ouvre les liens et PDF passés en argument (navigateur par défaut) ; prêt une fois la fenêtre créée. */
+  let ouvrirArguments: ((argv: string[]) => boolean) | null = null
 
-  app.on('second-instance', () => {
+  app.on('second-instance', (_e, argv) => {
     const f = BrowserWindow.getAllWindows()[0]
     if (!f) return
     if (f.isMinimized()) f.restore()
     f.focus()
+    ouvrirArguments?.(argv)
   })
 
   app.whenReady().then(() => {
@@ -252,7 +256,14 @@ if (!app.requestSingleInstanceLock()) {
     fenetre.webContents.on('before-input-event', (e, input) => {
       if (surTouche(input)) e.preventDefault()
     })
-    gestionnaire.nouveau()
+    ouvrirArguments = (argv) => {
+      const { urls, pdfs } = liensDesArguments(argv)
+      for (const url of urls) gestionnaire.nouveau(url)
+      for (const chemin of pdfs) gestionnaire.ouvrirPdf(documents.ajouterLocal(chemin).id)
+      return urls.length + pdfs.length > 0
+    }
+    // lancé par un lien (autre appli) ou un PDF : on l'ouvre ; sinon, un Nouvel onglet
+    if (!ouvrirArguments(process.argv)) gestionnaire.nouveau()
   })
 
   app.on('window-all-closed', () => app.quit())

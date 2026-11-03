@@ -125,7 +125,10 @@ export const CANAUX = {
   majEtat: 'maj:etat',
   majChange: 'maj:change', // main → interface
   majVerifier: 'maj:verifier',
-  majInstaller: 'maj:installer'
+  majInstaller: 'maj:installer',
+  favorisImporter: 'favoris:importer',
+  defautEtat: 'defaut:etat',
+  defautChoisir: 'defaut:choisir'
 } as const
 
 export interface EtatFenetre {
@@ -201,6 +204,14 @@ export interface ApiSe7en {
     basculer(idOnglet: number): void
     supprimer(id: string): void
     surChangement(rappel: (f: Favori[]) => void): () => void
+    /** Choisir le fichier de favoris exporté d'un autre navigateur et l'importer (null : annulé). */
+    importer(): Promise<{ ajoutes: number; trouves: number } | { erreur: string } | null>
+  }
+  navigateurDefaut: {
+    /** Vrai si Windows ouvre les liens avec se7en Browser. */
+    etat(): Promise<boolean>
+    /** Ouvre la page de Windows pour choisir le navigateur par défaut. */
+    choisir(): void
   }
   telechargements: {
     lire(): Promise<Telechargement[]>

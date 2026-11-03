@@ -76,7 +76,8 @@ const api: ApiSe7en = {
     lire: demander(CANAUX.favorisLire),
     basculer: envoyer(CANAUX.favorisBasculer),
     supprimer: envoyer(CANAUX.favorisSupprimer),
-    surChangement: (rappel) => ecouter<Favori[]>(CANAUX.favorisChange, rappel)
+    surChangement: (rappel) => ecouter<Favori[]>(CANAUX.favorisChange, rappel),
+    importer: demander(CANAUX.favorisImporter)
   },
   telechargements: {
     lire: demander(CANAUX.telechargementsLire),
@@ -132,6 +133,10 @@ const api: ApiSe7en = {
     ajouter: demander(CANAUX.memoireAjouter),
     supprimer: demander(CANAUX.memoireSupprimer),
     effacer: demander(CANAUX.memoireEffacer)
+  },
+  navigateurDefaut: {
+    etat: demander(CANAUX.defautEtat),
+    choisir: envoyer(CANAUX.defautChoisir)
   },
   miseAJour: {
     etat: demander(CANAUX.majEtat),

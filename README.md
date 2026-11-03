@@ -108,6 +108,13 @@ nombre de blocages de la page et permet de désactiver le bloqueur sur un site ;
 sujet, à partir de leurs titres et de leurs sites seulement. Chaque groupe a une étiquette de couleur : clic pour le
 replier, clic droit pour le dégrouper ou fermer ses onglets. Un lien ouvert depuis un onglet rangé rejoint son groupe.
 
+**Venir d'un autre navigateur** (premier lancement et Paramètres) : import des favoris depuis le fichier que
+l'utilisateur exporte lui-même de Chrome, Edge, Firefox, Opera ou Brave (format HTML, http/https seulement, sans
+doublon) ; bouton pour choisir se7en Browser comme navigateur par défaut dans Windows (l'installeur le déclare, liens
+http/https et PDF ; les liens ouverts depuis d'autres applis arrivent dans un nouvel onglet) ; choix du moteur de
+recherche. Le navigateur ne lit jamais les mots de passe, cookies ou historiques des autres navigateurs : on se connecte
+une fois par site, et la session est gardée.
+
 **Clic droit IA** (`src/main/navigateur/menuPage.ts`) : sur une sélection, « Expliquer », « Résumer », « Traduire »,
 « Demander à l'IA… » ; sur une page, « Résumer la page ». Le menu garde aussi copier/coller, liens et images.
 

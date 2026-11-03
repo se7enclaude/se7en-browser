@@ -1,7 +1,9 @@
-/* Écran du premier lancement : disposition des onglets, puis thème et teinte. Tout reste modifiable dans les paramètres. */
+/* Écran du premier lancement : venir d'un autre navigateur, disposition des onglets, puis thème et teinte.
+ * Tout reste modifiable dans les paramètres. */
 import { useEffect, useState } from 'react'
 import type { Reglages } from '../../../shared/reglages'
 import { ChoixDisposition, ChoixTeinte, ChoixTheme } from './ChoixApparence'
+import { Migration } from './Migration'
 
 export function Accueil({ reglages, modifier }: { reglages: Reglages; modifier: (p: Partial<Reglages>) => void }): React.JSX.Element {
   const [etape, setEtape] = useState(0)
@@ -21,7 +23,7 @@ export function Accueil({ reglages, modifier }: { reglages: Reglages; modifier: 
               <span className="logo-7">7</span>
             </div>
             <h1>Bienvenue dans se7en Browser</h1>
-            <p className="discret">Un navigateur léger, en verre, avec une IA qui reste sur ton PC. Deux choix et c'est parti.</p>
+            <p className="discret">Un navigateur léger, en verre, avec une IA qui reste sur ton PC. Quelques choix et c'est parti.</p>
             <button className="bouton-principal" onClick={() => setEtape(1)}>
               Commencer
             </button>
@@ -29,9 +31,9 @@ export function Accueil({ reglages, modifier }: { reglages: Reglages; modifier: 
         )}
         {etape === 1 && (
           <>
-            <h2>Où veux-tu tes onglets ?</h2>
-            <p className="discret">Les onglets prioritaires restent épinglés à gauche d'une session à l'autre. Ctrl+B les cache ou les montre.</p>
-            <ChoixDisposition reglages={reglages} modifier={modifier} />
+            <h2>Tu viens d’un autre navigateur ?</h2>
+            <p className="discret">Retrouve tes habitudes en deux minutes. Tout est facultatif, et reste faisable plus tard dans les paramètres.</p>
+            <Migration reglages={reglages} modifier={modifier} compact />
             <div className="accueil-actions">
               <button className="bouton-verre" onClick={() => setEtape(0)}>
                 Retour
@@ -44,6 +46,21 @@ export function Accueil({ reglages, modifier }: { reglages: Reglages; modifier: 
         )}
         {etape === 2 && (
           <>
+            <h2>Où veux-tu tes onglets ?</h2>
+            <p className="discret">Les onglets prioritaires restent épinglés à gauche d'une session à l'autre. Ctrl+B les cache ou les montre.</p>
+            <ChoixDisposition reglages={reglages} modifier={modifier} />
+            <div className="accueil-actions">
+              <button className="bouton-verre" onClick={() => setEtape(1)}>
+                Retour
+              </button>
+              <button className="bouton-principal" onClick={() => setEtape(3)}>
+                Suivant
+              </button>
+            </div>
+          </>
+        )}
+        {etape === 3 && (
+          <>
             <h2>Ton style</h2>
             <p className="discret">Auto suit le thème de Windows.</p>
             <div className="ligne-reglage">
@@ -55,7 +72,7 @@ export function Accueil({ reglages, modifier }: { reglages: Reglages; modifier: 
               <ChoixTeinte reglages={reglages} modifier={modifier} />
             </div>
             <div className="accueil-actions">
-              <button className="bouton-verre" onClick={() => setEtape(1)}>
+              <button className="bouton-verre" onClick={() => setEtape(2)}>
                 Retour
               </button>
               <button
@@ -72,7 +89,7 @@ export function Accueil({ reglages, modifier }: { reglages: Reglages; modifier: 
           </>
         )}
         <div className="points-etapes" aria-hidden>
-          {[0, 1, 2].map((i) => (
+          {[0, 1, 2, 3].map((i) => (
             <span key={i} className={i === etape ? 'actif' : ''} />
           ))}
         </div>

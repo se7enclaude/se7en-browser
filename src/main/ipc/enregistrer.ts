@@ -26,6 +26,9 @@ import type { ClientSocial } from '../social/client'
 import type { AssistantEcriture } from '../ia/ecriture'
 import type { MemoireNavigation } from '../ia/memoireNavigation'
 import type { MiseAJour } from '../miseAJour'
+import { estNavigateurParDefaut, ouvrirChoixNavigateur } from '../navigateurDefaut'
+import { lireFavorisExportes } from '../../shared/importFavoris'
+import { promises as fsp } from 'node:fs'
 import { MAX_MESSAGE } from '../../shared/social'
 
 export interface Services {
@@ -320,6 +323,30 @@ export function enregistrerIpc(s: Services): void {
   })
   ipcMain.on(CANAUX.socialLu, (e, ami: unknown) => fenetreDe(e) && estIdSocial(ami) && void social.marquerLu(ami).catch(() => undefined))
   ipcMain.on(CANAUX.socialOuvrirLien, (e, url: unknown) => typeof url === 'string' && estAdresseAutorisee(url) && g(e)?.nouveau(url, { aCote: true }))
+
+  // ---------- venir d'un autre navigateur ----------
+  // les favoris viennent uniquement du fichier que l'utilisateur a exporté lui-même et choisit ici
+  ipcMain.handle(CANAUX.favorisImporter, async (e) => {
+    const f = fenetreDe(e)
+    if (!f) return null
+    const r = await dialog.showOpenDialog(f, {
+      title: 'Importer des favoris',
+      filters: [{ name: 'Favoris exportés (HTML)', extensions: ['html', 'htm'] }],
+      properties: ['openFile']
+    })
+    if (!r.filePaths[0]) return null
+    try {
+      const st = await fsp.stat(r.filePaths[0])
+      if (st.size > 30 * 1024 * 1024) return { erreur: 'Fichier trop gros pour un export de favoris.' }
+      const liste = lireFavorisExportes(await fsp.readFile(r.filePaths[0], 'utf8'))
+      if (!liste.length) return { erreur: 'Aucun favori trouvé dans ce fichier. Choisis le fichier exporté par ton ancien navigateur.' }
+      return { ajoutes: favoris.importer(liste), trouves: liste.length }
+    } catch {
+      return { erreur: 'Impossible de lire ce fichier.' }
+    }
+  })
+  ipcMain.handle(CANAUX.defautEtat, (e) => (fenetreDe(e) ? estNavigateurParDefaut() : false))
+  ipcMain.on(CANAUX.defautChoisir, (e) => fenetreDe(e) && ouvrirChoixNavigateur())
 
   // ---------- mise à jour du navigateur ----------
   s.miseAJour.on('etat', (e) => diffuser(CANAUX.majChange, e))

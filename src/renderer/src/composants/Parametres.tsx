@@ -10,6 +10,7 @@ import { ReglagesBloqueur, ReglagesMemoire, ReglagesNavigation } from './Reglage
 import { EditeurSkills } from './EditeurSkills'
 import { useOllama } from './PageIA'
 import { ReglagesMiseAJour } from './MiseAJour'
+import { Migration } from './Migration'
 
 interface Props {
   reglages: Reglages
@@ -125,6 +126,11 @@ export function Parametres({ reglages, modifier, infos }: Props): React.JSX.Elem
       <ReglagesMemoire reglages={reglages} modifier={modifier} />
 
       <ReglagesNavigation reglages={reglages} modifier={modifier} />
+
+      <section className="bloc verre-fort">
+        <h2>Venir d’un autre navigateur</h2>
+        <Migration reglages={reglages} modifier={modifier} />
+      </section>
 
       <ReglagesSocial reglages={reglages} modifier={modifier} />
 

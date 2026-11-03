@@ -64,6 +64,26 @@ Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExe}"; IconFilename: "{app}\re
 Name: "{group}\{cm:UninstallProgram,{#AppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; IconFilename: "{app}\resources\app\build\icon.ico"; Tasks: desktopicon
 
+[Registry]
+; Déclare se7en Browser à Windows comme navigateur possible (liens http/https et PDF). Il n'est PAS mis par défaut :
+; c'est l'utilisateur qui le choisit dans Paramètres › Applications par défaut (bouton dans le navigateur).
+Root: HKCU; Subkey: "Software\Classes\se7enBrowserHTML"; ValueType: string; ValueName: ""; ValueData: "Page web se7en Browser"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\se7enBrowserHTML\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#AppExe},0"
+Root: HKCU; Subkey: "Software\Classes\se7enBrowserHTML\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExe}"" ""%1"""
+Root: HKCU; Subkey: "Software\Classes\se7enBrowserPDF"; ValueType: string; ValueName: ""; ValueData: "Document PDF (se7en Browser)"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\se7enBrowserPDF\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#AppExe},0"
+Root: HKCU; Subkey: "Software\Classes\se7enBrowserPDF\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExe}"" ""%1"""
+Root: HKCU; Subkey: "Software\Clients\StartMenuInternet\{#AppName}"; ValueType: string; ValueName: ""; ValueData: "{#AppName}"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Clients\StartMenuInternet\{#AppName}\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#AppExe},0"
+Root: HKCU; Subkey: "Software\Clients\StartMenuInternet\{#AppName}\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExe}"""
+Root: HKCU; Subkey: "Software\Clients\StartMenuInternet\{#AppName}\Capabilities"; ValueType: string; ValueName: "ApplicationName"; ValueData: "{#AppName}"
+Root: HKCU; Subkey: "Software\Clients\StartMenuInternet\{#AppName}\Capabilities"; ValueType: string; ValueName: "ApplicationDescription"; ValueData: "Navigateur Liquid Glass avec IA locale"
+Root: HKCU; Subkey: "Software\Clients\StartMenuInternet\{#AppName}\Capabilities"; ValueType: string; ValueName: "ApplicationIcon"; ValueData: "{app}\{#AppExe},0"
+Root: HKCU; Subkey: "Software\Clients\StartMenuInternet\{#AppName}\Capabilities\URLAssociations"; ValueType: string; ValueName: "http"; ValueData: "se7enBrowserHTML"
+Root: HKCU; Subkey: "Software\Clients\StartMenuInternet\{#AppName}\Capabilities\URLAssociations"; ValueType: string; ValueName: "https"; ValueData: "se7enBrowserHTML"
+Root: HKCU; Subkey: "Software\Clients\StartMenuInternet\{#AppName}\Capabilities\FileAssociations"; ValueType: string; ValueName: ".pdf"; ValueData: "se7enBrowserPDF"
+Root: HKCU; Subkey: "Software\RegisteredApplications"; ValueType: string; ValueName: "{#AppName}"; ValueData: "Software\Clients\StartMenuInternet\{#AppName}\Capabilities"; Flags: uninsdeletevalue
+
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "{cm:Launch}"; Flags: nowait postinstall skipifsilent
 Filename: "{app}\{#AppExe}"; Flags: nowait; Check: ShouldRelaunch
