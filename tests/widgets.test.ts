@@ -1,6 +1,27 @@
 import { describe, expect, it } from 'vitest'
 import { fusionnerReglages, REGLAGES_DEFAUT } from '../src/shared/reglages'
-import { devinerTransporteur, lienSuivi, lireFlux, nouveauWidget, numeroColis, placement, validerWidgets, WIDGETS_DEFAUT } from '../src/shared/widgets'
+import { devinerTransporteur, fixerRef, grossir, lienSuivi, lireFlux, nouveauWidget, numeroColis, placement, validerWidgets, WIDGETS_DEFAUT } from '../src/shared/widgets'
+
+describe('grossir ou étirer un widget', () => {
+  it('grossir agrandit le contenu et le cadre ensemble, rapetisser revient en arrière', () => {
+    const w = nouveauWidget('meteo', [], 'm')
+    const gros = grossir(w, 1)
+    expect(gros.zoom).toBe(1.15)
+    expect(gros.l).toBe(Math.round(w.l * 1.15))
+    expect(gros.h).toBe(Math.round(w.h * 1.15))
+    const retour = grossir(gros, -1)
+    expect(retour.zoom).toBeUndefined()
+    expect(retour.l).toBe(w.l)
+  })
+
+  it('garde le grossissement entre ×0,6 et ×3', () => {
+    let w = nouveauWidget('meteo', [], 'm')
+    for (let i = 0; i < 30; i++) w = grossir(w, 1)
+    expect(w.zoom).toBe(3)
+    expect(validerWidgets([{ ...w, zoom: 99 }])![0].zoom).toBe(3)
+    expect(validerWidgets([{ ...w, zoom: 1 }])![0].zoom).toBeUndefined()
+  })
+})
 
 describe('widgets du Nouvel onglet', () => {
   it('pose Amis et Météo par défaut', () => {
@@ -84,26 +105,22 @@ describe('widgets du Nouvel onglet', () => {
     expect(fusionnerReglages(REGLAGES_DEFAUT, { widgets: [] }).widgets).toEqual([])
   })
 
-  it('garde un widget entièrement visible quand la fenêtre rétrécit', () => {
-    const w = {
-      ...nouveauWidget('meteo', [], 'n'),
-      x: 0.9,
-      y: 0.9,
-      l: 400,
-      h: 300
-    }
-    expect(placement(w, 1000, 800)).toEqual({
-      left: 600,
-      top: 500,
-      width: 400,
-      height: 300
-    })
-    expect(placement(w, 300, 200)).toEqual({
-      left: 16,
-      top: 16,
-      width: 284,
-      height: 184
-    })
+  it('suit la taille de la fenêtre en proportion, et reste entièrement visible', () => {
+    const w = { ...nouveauWidget('meteo', [], 'n'), x: 0.9, y: 0.9, l: 400, h: 300, ref: [1000, 800] as [number, number] }
+    expect(placement(w, 1000, 800)).toEqual({ left: 600, top: 500, width: 400, height: 300, echelle: 1 })
+    // fenêtre deux fois plus petite : widget et contenu deux fois plus petits, collés au bord
+    expect(placement(w, 500, 400)).toEqual({ left: 300, top: 250, width: 200, height: 150, echelle: 0.5 })
+    // grossi avec + : le contenu garde son grossissement en plus
+    expect(placement({ ...w, zoom: 1.5 }, 500, 400).echelle).toBe(0.75)
+  })
+
+  it('donne une taille de référence sans changer l’apparence', () => {
+    const w = { ...nouveauWidget('meteo', [], 'n'), l: 300, h: 300 }
+    // sans référence, pensé pour ~1500 × 850 : dans une page de 750 × 850, moitié moins grand
+    expect(placement(w, 750, 850).width).toBe(150)
+    const fixe = fixerRef(w, 750, 850)
+    expect(fixe).toMatchObject({ l: 150, h: 150, zoom: 0.6, ref: [750, 850] })
+    expect(placement(fixe, 750, 850).width).toBe(150)
   })
 })
 

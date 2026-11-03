@@ -17,9 +17,14 @@ export interface WidgetPlace {
   /** Coin haut gauche, en fraction de la largeur et de la hauteur de la page (0 à 1). */
   x: number
   y: number
-  /** Largeur et hauteur en pixels. */
+  /** Largeur et hauteur en pixels, pour une page de la taille `ref`. */
   l: number
   h: number
+  /** Taille de la page quand le widget a été posé [largeur, hauteur] : si la fenêtre change de taille,
+   * le widget (cadre et contenu) suit en proportion. Absent : taille de la page actuelle. */
+  ref?: [number, number]
+  /** Grossissement du contenu (boutons − / +) ; absent : taille normale. Étirer le cadre ne le change pas. */
+  zoom?: number
   /** Météo : la ville choisie. */
   ville?: Ville
   /** Actualités : le journal choisi. */
@@ -397,6 +402,9 @@ export function validerWidgets(brut: unknown): WidgetPlace[] | null {
           transporteur: c.transporteur as string
         }))
     if (w.type === 'traducteur') w.langue = LANGUES.some((x) => x.code === o.langue) ? (o.langue as string) : 'fr'
+    if (typeof o.zoom === 'number' && Number.isFinite(o.zoom) && o.zoom !== 1) w.zoom = Math.round(borne(o.zoom, ZOOM_MIN, ZOOM_MAX) * 100) / 100
+    if (Array.isArray(o.ref) && o.ref.length === 2 && o.ref.every((n) => typeof n === 'number' && Number.isFinite(n) && n >= 200 && n <= 10000))
+      w.ref = [Math.round(o.ref[0]), Math.round(o.ref[1])]
     res.push(w)
   }
   return res
@@ -421,21 +429,56 @@ export function nouveauWidget(type: TypeWidget, existants: WidgetPlace[], id: st
   return w
 }
 
-/** Grossissement du contenu : suit la largeur du widget par rapport à sa largeur d'origine (de ×0,8 à ×3). */
-export function echelle(type: TypeWidget, largeur: number): number {
-  const base = CATALOGUE_WIDGETS.find((w) => w.type === type)?.l ?? largeur
-  return Math.round(borne(largeur / base, 0.8, 3) * 100) / 100
+export const ZOOM_MIN = 0.6
+export const ZOOM_MAX = 3
+
+/** Grossit (pas > 0) ou rapetisse (pas < 0) tout le widget d'un cran : son contenu et son cadre, ensemble. */
+export function grossir(w: WidgetPlace, pas: 1 | -1): WidgetPlace {
+  const avant = w.zoom ?? 1
+  const zoom = Math.round(borne(avant * (pas > 0 ? 1.15 : 1 / 1.15), ZOOM_MIN, ZOOM_MAX) * 100) / 100
+  const r = zoom / avant
+  const res: WidgetPlace = {
+    ...w,
+    l: Math.round(borne(w.l * r, TAILLE_MIN.l, TAILLE_MAX.l)),
+    h: Math.round(borne(w.h * r, TAILLE_MIN.h, TAILLE_MAX.h))
+  }
+  if (Math.abs(zoom - 1) < 0.02) delete res.zoom
+  else res.zoom = zoom
+  return res
 }
 
 /** Où dessiner le widget dans une page de `largeur` × `hauteur` : toujours entièrement visible. */
-export function placement(w: WidgetPlace, largeur: number, hauteur: number): { left: number; top: number; width: number; height: number } {
-  const width = Math.min(w.l, Math.max(TAILLE_MIN.l, largeur - 16))
-  const height = Math.min(w.h, Math.max(TAILLE_MIN.h, hauteur - 16))
+/** Donne au widget sa taille de page de référence (s'il n'en a pas), sans changer son apparence actuelle. */
+export function fixerRef(w: WidgetPlace, largeur: number, hauteur: number): WidgetPlace {
+  if (w.ref || !largeur || !hauteur) return w
+  const f = facteurPage(w, largeur, hauteur)
+  const res: WidgetPlace = { ...w, l: Math.round(w.l * f), h: Math.round(w.h * f), ref: [Math.round(largeur), Math.round(hauteur)] }
+  const zoom = Math.round((w.zoom ?? 1) * f * 100) / 100
+  if (Math.abs(zoom - 1) < 0.02) delete res.zoom
+  else res.zoom = borne(zoom, ZOOM_MIN, ZOOM_MAX)
+  return res
+}
+
+/** Combien le widget suit la taille de la page : < 1 quand la fenêtre est plus petite qu'à la pose, > 1 plus grande. */
+export function facteurPage(w: WidgetPlace, largeur: number, hauteur: number): number {
+  if (!largeur || !hauteur) return 1
+  // widget jamais déplacé (disposition par défaut) : pensé pour une page d'environ 1500 × 850, il ne fait que rapetisser
+  if (!w.ref) return Math.round(borne(Math.min(largeur / 1500, hauteur / 850, 1), 0.4, 1) * 1000) / 1000
+  return Math.round(borne(Math.min(largeur / w.ref[0], hauteur / w.ref[1]), 0.4, 1.6) * 1000) / 1000
+}
+
+/** Où dessiner le widget dans une page de `largeur` × `hauteur` : en proportion de la page, toujours entièrement visible.
+ * `echelle` est le grossissement total du contenu (choisi avec − / +, et suivant la taille de la fenêtre). */
+export function placement(w: WidgetPlace, largeur: number, hauteur: number): { left: number; top: number; width: number; height: number; echelle: number } {
+  const f = facteurPage(w, largeur, hauteur)
+  const width = Math.round(Math.min(w.l * f, Math.max(TAILLE_MIN.l * Math.min(f, 1), largeur - 16)))
+  const height = Math.round(Math.min(w.h * f, Math.max(TAILLE_MIN.h * Math.min(f, 1), hauteur - 16)))
   return {
     left: Math.round(borne(w.x * largeur, 0, Math.max(0, largeur - width))),
     top: Math.round(borne(w.y * hauteur, 0, Math.max(0, hauteur - height))),
     width,
-    height
+    height,
+    echelle: Math.round((w.zoom ?? 1) * f * 1000) / 1000
   }
 }
 

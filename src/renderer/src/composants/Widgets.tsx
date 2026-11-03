@@ -1,6 +1,6 @@
 /* Widgets du Nouvel onglet : on les ajoute soi-même (bouton « Widgets »), on les pose où on veut et on les
  * redimensionne en tirant leur coin. La disposition est gardée dans les réglages. */
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { EtatOnglet } from '../../../shared/onglets'
 import {
   CATALOGUE_WIDGETS,
@@ -12,7 +12,11 @@ import {
   nouveauWidget,
   numeroColis,
   placement,
-  echelle,
+  grossir,
+  facteurPage,
+  fixerRef,
+  ZOOM_MAX,
+  ZOOM_MIN,
   RE_NUMERO_COLIS,
   SOURCES_ACTUALITES,
   TAILLE_MIN,
@@ -58,10 +62,13 @@ export function ZoneWidgets({ onglet }: { onglet: EtatOnglet }): React.JSX.Eleme
     return window.se7en.reglages.surChangement((r) => !geste.current && setWidgets(r.widgets))
   }, [])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = zone.current
     if (!el) return
-    const obs = new ResizeObserver(() => setTaille({ l: el.clientWidth, h: el.clientHeight }))
+    const mesurer = (): void => setTaille({ l: el.clientWidth, h: el.clientHeight })
+    // mesure tout de suite (l'observateur n'est appelé qu'à la prochaine image, jamais si la fenêtre est cachée)
+    mesurer()
+    const obs = new ResizeObserver(mesurer)
     obs.observe(el)
     return () => obs.disconnect()
   }, [])
@@ -75,7 +82,9 @@ export function ZoneWidgets({ onglet }: { onglet: EtatOnglet }): React.JSX.Eleme
     return () => window.removeEventListener('keydown', touche)
   }, [edition])
 
-  const enregistrer = (liste: WidgetPlace[]): void => {
+  const enregistrer = (brute: WidgetPlace[]): void => {
+    // chaque widget retient la taille de page où il a été posé, pour suivre ensuite la taille de la fenêtre
+    const liste = taille.l ? brute.map((w) => fixerRef(w, taille.l, taille.h)) : brute
     setWidgets(liste)
     void window.se7en.reglages.modifier({ widgets: liste })
   }
@@ -117,10 +126,12 @@ export function ZoneWidgets({ onglet }: { onglet: EtatOnglet }): React.JSX.Eleme
               const top = borne(aimanter(d.top + dy), 0, H - d.height)
               return { ...w, x: L ? left / L : 0, y: H ? top / H : 0 }
             }
+            // étirer : la taille à l'écran, ramenée à la taille de page de référence du widget
+            const f = facteurPage(w, L, H)
             return {
               ...w,
-              l: borne(aimanter(d.width + dx), TAILLE_MIN.l, L - d.left),
-              h: borne(aimanter(d.height + dy), TAILLE_MIN.h, H - d.top)
+              l: Math.round(borne(aimanter(d.width + dx), TAILLE_MIN.l, L - d.left) / f),
+              h: Math.round(borne(aimanter(d.height + dy), TAILLE_MIN.h, H - d.top) / f)
             }
           })
         : liste
@@ -153,8 +164,8 @@ export function ZoneWidgets({ onglet }: { onglet: EtatOnglet }): React.JSX.Eleme
                 top: p.top,
                 width: p.width,
                 height: p.height,
-                // agrandir un widget grossit aussi son contenu (texte, icônes, images)
-                ['--echelle' as string]: echelle(w.type, p.width)
+                // grossissement choisi avec − / +, et qui suit la taille de la fenêtre (étirer le cadre ne le change pas)
+                ['--echelle' as string]: p.echelle
               }}
               onPointerDown={(e) => commencer(e, w, 'deplacer')}
             >
@@ -164,7 +175,16 @@ export function ZoneWidgets({ onglet }: { onglet: EtatOnglet }): React.JSX.Eleme
                   <button className="retirer-widget" title="Retirer ce widget" onPointerDown={(e) => e.stopPropagation()} onClick={() => retirer(w.id)}>
                     <IconeCroix />
                   </button>
-                  <span className="poignee-widget" title="Tirer pour redimensionner" onPointerDown={(e) => commencer(e, w, 'taille')} />
+                  <div className="taille-widget" onPointerDown={(e) => e.stopPropagation()}>
+                    <button title="Rapetisser le widget" disabled={(w.zoom ?? 1) <= ZOOM_MIN} onClick={() => changer(w.id, grossir(w, -1))}>
+                      −
+                    </button>
+                    <span>{Math.round((w.zoom ?? 1) * 100)} %</span>
+                    <button title="Grossir le widget" disabled={(w.zoom ?? 1) >= ZOOM_MAX} onClick={() => changer(w.id, grossir(w, 1))}>
+                      +
+                    </button>
+                  </div>
+                  <span className="poignee-widget" title="Tirer pour étirer (le texte garde sa taille)" onPointerDown={(e) => commencer(e, w, 'taille')} />
                 </>
               )}
             </section>
@@ -179,7 +199,7 @@ export function ZoneWidgets({ onglet }: { onglet: EtatOnglet }): React.JSX.Eleme
       )}
       {visible && edition && (
         <div className="catalogue-widgets verre-fort">
-          <span className="titre-widget">Glisse les widgets pour les placer, tire leur coin pour changer leur taille</span>
+          <span className="titre-widget">Glisse un widget pour le placer · tire son coin pour l’étirer · − / + pour le grossir · « Terminé » pour t’en servir</span>
           <div className="liste-catalogue">
             {CATALOGUE_WIDGETS.map((c) => (
               <button
