@@ -27,9 +27,47 @@ export interface MessageSocial {
   /** Toujours http(s) (vérifié par le serveur et par le navigateur). */
   url: string | null
   titre: string | null
+  /** Message de groupe : identifiant du groupe (et `a` vide). */
+  groupe: string | null
+  /** Image ou capture jointe : son identifiant (à charger à part). */
+  image: string | null
   date: number
   lu: number
 }
+
+export interface GroupeSocial {
+  id: string
+  nom: string
+  createur: string
+  membres: ProfilSocial[]
+  nonLus: number
+}
+
+/** Une conversation : avec un ami, ou dans un groupe. */
+export type CibleSocial = { type: 'ami'; id: string } | { type: 'groupe'; id: string }
+
+export const MAX_MEMBRES_GROUPE = 20
+
+/** « Naviguer ensemble » : un onglet partagé avec un ami ; celui qui guide envoie l'adresse et la position. */
+export type ActionEnsemble = 'invite' | 'accepte' | 'refuse' | 'url' | 'defile' | 'main' | 'fin'
+export interface SignalEnsemble {
+  de: string
+  action: ActionEnsemble
+  url?: string
+  titre?: string
+  pseudo?: string
+  y?: number
+}
+export type EtatEnsemble = {
+  ami: string
+  pseudo: string
+  /** Onglet partagé (null tant que l'invitation n'est pas acceptée, côté invité). */
+  ongletId: number | null
+  role: 'guide' | 'suit'
+  etat: 'invitation-envoyee' | 'invitation-recue' | 'actif'
+  titre?: string
+  url?: string
+} | null
 
 export type ConnexionSocial = 'desactive' | 'hors-ligne' | 'connexion' | 'connecte'
 
@@ -42,10 +80,29 @@ export interface EtatSocial {
 }
 
 /** Évènements poussés en direct par le serveur. */
+/** Petite notification en bas à droite du navigateur (vue à part, au-dessus des pages). */
+export interface NotifMessage {
+  /** Les notifications de même clé (un ami, un groupe) se regroupent. */
+  cle: string
+  /** Conversation ouverte au clic. */
+  cible: CibleSocial
+  pseudo: string
+  texte: string
+  photo: string | null
+  sombre: boolean
+}
+
 export type EvenementSocial =
   | { type: 'message'; message: MessageSocial; pseudo: string }
   | { type: 'amis' }
   | { type: 'presence'; id: string; enLigne: boolean }
+  /** L'ami a lu nos messages (« Vu »). */
+  | { type: 'lu'; id: string }
+  /** Un ami (ou un membre du groupe) est en train d'écrire. */
+  | { type: 'ecrit'; id: string; groupe?: string }
+  /** La liste des groupes a changé (création, membre ajouté, départ…). */
+  | { type: 'groupes' }
+  | ({ type: 'ensemble' } & SignalEnsemble)
 
 /** Serveur officiel (Cloudflare) ; le réglage « Serveur » des paramètres peut le remplacer. */
 export const SERVEUR_SOCIAL_OFFICIEL = 'https://se7en-social.outil-frontiere.workers.dev'

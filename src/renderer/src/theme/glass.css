@@ -3162,3 +3162,400 @@ textarea.champ {
   padding: 6px 2px 8px;
   font-size: 12.5px;
 }
+
+/* ---------- Pages figées : image de la page pendant une animation ou sous un écran de verre ---------- */
+
+.page-figee {
+  position: absolute;
+  inset: 1px;
+  width: calc(100% - 2px);
+  height: calc(100% - 2px);
+  object-fit: cover;
+  object-position: left top;
+  border-radius: calc(var(--rayon-fenetre) - 1px);
+  pointer-events: none;
+  user-select: none;
+  z-index: 1;
+}
+.fondu-onglet {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+.fondu-onglet .page-figee {
+  animation: fondu-arrivee var(--duree-fondu) cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.fondu-onglet .page-figee.depart {
+  animation: fondu-depart var(--duree-fondu) cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+@keyframes fondu-depart {
+  to {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+}
+@keyframes fondu-arrivee {
+  from {
+    transform: scale(1.012);
+  }
+}
+/* le verre des écrans qui passent devant floute vraiment la page figée dessous */
+.fond-recherche-onglets,
+.accueil {
+  backdrop-filter: blur(14px) saturate(1.15);
+}
+
+/* étiquette de groupe : enveloppe animée quand les onglets bougent */
+.flip-groupe {
+  display: flex;
+  flex: none;
+}
+
+/* ---------- Effets de verre allégés (PC modestes, ou choisi dans les paramètres) ---------- */
+:root[data-verre='leger'] {
+  --flou: saturate(140%) blur(8px);
+  --flou-fort: saturate(140%) blur(12px);
+}
+:root[data-verre='leger'] .fond-recherche-onglets,
+:root[data-verre='leger'] .accueil,
+:root[data-verre='leger'] .selecteur-zone {
+  backdrop-filter: blur(4px);
+}
+:root[data-verre='leger'] .orbe,
+:root[data-verre='leger'] [class*='pulsation'] {
+  animation: none;
+}
+
+/* réponse de l'IA : chaque nouveau paragraphe apparaît en fondu */
+.message-ia.assistant .markdown > * {
+  animation: fondu 260ms ease both;
+}
+
+/* ---------- Rapports de plantage ---------- */
+.bandeau-plantage {
+  flex: none;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin: 0 0 12px;
+  padding: 10px 16px;
+  border-radius: var(--rayon);
+  background: var(--verre-fort);
+  box-shadow: inset 0 0 0 1px var(--verre-bord), var(--ombre);
+  backdrop-filter: var(--flou);
+  animation: apparition 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.rapport-plantage {
+  border-radius: var(--rayon-petit);
+  background: var(--verre-creux);
+  margin: 8px 0;
+}
+.ligne-rapport {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.detail-rapport {
+  padding: 0 14px 12px;
+}
+.detail-rapport pre {
+  margin: 0 0 10px;
+  max-height: 220px;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-size: 11.5px;
+  color: var(--texte-2);
+}
+.actions-rapport {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ---------- Traduction de la page ---------- */
+.bouton-traduire.actif {
+  color: var(--ia);
+}
+.bandeau-traduction {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 12px;
+  padding: 10px 16px;
+  border-radius: var(--rayon);
+  background: var(--verre-fort);
+  box-shadow: inset 0 0 0 1px var(--verre-bord), var(--ombre);
+  backdrop-filter: var(--flou);
+  animation: apparition 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.bandeau-traduction.erreur {
+  box-shadow: inset 0 0 0 1px rgb(242 125 112 / 0.55), var(--ombre);
+}
+.jauge-traduction {
+  width: 140px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--verre-creux);
+  overflow: hidden;
+}
+.jauge-traduction > div {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ia);
+  transition: width 300ms ease;
+}
+.bouton-traduire.en-cours {
+  animation: pulsation 1.2s ease-in-out infinite;
+}
+
+/* ---------- Amis : groupes, images, « écrit… », « Vu », code de secours, naviguer ensemble ---------- */
+.lien-discret {
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--texte-2);
+  font: inherit;
+  font-size: 12.5px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.lien-discret:hover {
+  color: var(--texte);
+}
+.entete-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.entete-section h2 {
+  margin: 0;
+}
+.code-secours-texte {
+  display: block;
+  padding: 12px 14px;
+  border-radius: var(--rayon-petit);
+  background: var(--verre-creux);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 15px;
+  letter-spacing: 0.06em;
+  word-break: break-all;
+  user-select: all;
+}
+.code-secours-champ {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  letter-spacing: 0.04em;
+}
+.avatar-groupe {
+  position: relative;
+  flex: none;
+  display: block;
+}
+.avatar-groupe > .avatar {
+  position: absolute;
+  box-shadow: 0 0 0 2px var(--fond-uni);
+}
+.avatar-groupe > .avatar:nth-child(1) {
+  left: 0;
+  top: 0;
+}
+.avatar-groupe > .avatar:nth-child(2) {
+  right: 0;
+  bottom: 0;
+}
+.avatar-groupe > .avatar:nth-child(3) {
+  right: 0;
+  top: 0;
+  transform: scale(0.8);
+}
+.nouveau-groupe {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 4px 0 8px;
+}
+.choix-membres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.membre-a-cocher {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 4px;
+  border-radius: var(--pilule);
+  background: var(--verre-creux);
+  cursor: pointer;
+  transition: background var(--anim), box-shadow var(--anim);
+}
+.membre-a-cocher input {
+  display: none;
+}
+.membre-a-cocher.coche {
+  background: var(--verre-fort);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+.ligne-bulle {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+.ligne-bulle.de-moi {
+  align-items: flex-end;
+}
+.ligne-bulle > .bulle-ami {
+  align-self: auto;
+}
+.auteur-bulle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 4px 0 0 4px;
+  font-size: 11.5px;
+  color: var(--texte-2);
+}
+.vu {
+  margin-right: 6px;
+  font-size: 10.5px;
+  color: var(--texte-discret);
+  animation: fondu 300ms ease;
+}
+.bulle-ami.avec-image {
+  padding: 4px 4px 6px;
+}
+.bulle-ami.avec-image time {
+  margin-right: 8px;
+}
+.image-message {
+  display: block;
+  padding: 0;
+  border: none;
+  background: none;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: zoom-in;
+}
+.image-message img {
+  display: block;
+  /* pas de pourcentage : sinon la bulle prend la largeur d'origine de l'image */
+  max-width: min(320px, 55vw);
+  max-height: 260px;
+  object-fit: cover;
+  border-radius: 12px;
+}
+.image-message.chargement {
+  width: 220px;
+  height: 140px;
+  background: var(--verre-creux);
+  animation: pulsation 1.2s ease-in-out infinite;
+}
+.ecrit-en-cours {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--texte-2);
+  animation: fondu 200ms ease;
+}
+.points-ecrit {
+  display: inline-flex;
+  gap: 3px;
+  padding: 7px 10px;
+  border-radius: 14px;
+  background: var(--survol);
+}
+.points-ecrit i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--texte-discret);
+  animation: point-ecrit 1.2s ease-in-out infinite;
+}
+.points-ecrit i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.points-ecrit i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes point-ecrit {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  30% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+}
+.menu-image {
+  padding: 6px 12px;
+  border-radius: var(--rayon);
+  border: 1px solid var(--verre-bord);
+  animation: apparition 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.visionneuse-image {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 40px;
+  background: rgb(0 0 0 / 0.72);
+  backdrop-filter: blur(6px);
+  cursor: zoom-out;
+  animation: fondu 180ms ease;
+}
+.visionneuse-image img {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgb(0 0 0 / 0.5);
+  animation: apparition 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.visionneuse-image .bouton-icone {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  color: white;
+}
+.bandeau-ensemble {
+  flex: none;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin: 0 0 12px;
+  padding: 10px 16px;
+  border-radius: var(--rayon);
+  background: var(--verre-fort);
+  box-shadow: inset 0 0 0 1px var(--verre-bord), var(--ombre);
+  backdrop-filter: var(--flou);
+  animation: apparition 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.bandeau-ensemble.actif {
+  box-shadow: inset 0 0 0 1.5px var(--ia), var(--ombre);
+}
+.bandeau-ensemble > .icone {
+  color: var(--ia);
+}
+.entete-conversation .bouton-verre .icone {
+  margin-right: 4px;
+  vertical-align: -2px;
+}

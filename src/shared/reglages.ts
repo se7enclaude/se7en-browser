@@ -42,6 +42,8 @@ export interface Reglages {
   modelesAuto: boolean
   /** Adresse du serveur se7en social (profils et amis) ; vide = le serveur officiel. */
   serveurSocial: string
+  /** Effets de verre : complets, allégés (flou plus léger, pour les PC modestes), ou choisis selon le PC. */
+  effetsVerre: 'auto' | 'complets' | 'legers'
 }
 
 export const REGLAGES_DEFAUT: Reglages = {
@@ -62,6 +64,7 @@ export const REGLAGES_DEFAUT: Reglages = {
   miseAJourAuto: true,
   modeleRapide: 'qwen3:1.7b',
   veilleOnglets: 30,
+  effetsVerre: 'auto',
   phishingExceptions: [],
   modelesAuto: true,
   serveurSocial: ''
@@ -113,6 +116,7 @@ export function fusionnerReglages(base: Reglages, brut: unknown): Reglages {
   if (typeof o.memoireNavigation === 'boolean') r.memoireNavigation = o.memoireNavigation
   if (typeof o.miseAJourAuto === 'boolean') r.miseAJourAuto = o.miseAJourAuto
   if (typeof o.modeleRapide === 'string' && /^[\w.:\-/]{1,100}$/.test(o.modeleRapide)) r.modeleRapide = o.modeleRapide
+  if (o.effetsVerre === 'auto' || o.effetsVerre === 'complets' || o.effetsVerre === 'legers') r.effetsVerre = o.effetsVerre
   if (typeof o.veilleOnglets === 'number' && [0, 10, 30, 60, 120].includes(o.veilleOnglets)) r.veilleOnglets = o.veilleOnglets
   if (Array.isArray(o.phishingExceptions))
     r.phishingExceptions = [...new Set(o.phishingExceptions.filter((h): h is string => typeof h === 'string' && /^[a-z0-9.-]{1,253}$/.test(h)))].slice(0, 500)

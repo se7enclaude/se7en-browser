@@ -4,6 +4,7 @@ import type { InfosApp } from '../../../shared/ipc'
 import { MOTEURS, type Reglages } from '../../../shared/reglages'
 import { modelePresent } from '../../../shared/ia'
 import { adresseServeur, SERVEUR_SOCIAL_OFFICIEL } from '../../../shared/social'
+import { SectionPlantages } from './Plantages'
 import { ChoixDisposition, ChoixTeinte, ChoixTheme } from './ChoixApparence'
 import { EditeurCoffre } from './EditeurCoffre'
 import { ReglagesBloqueur, ReglagesMemoire, ReglagesNavigation } from './ReglagesViePrivee'
@@ -62,6 +63,16 @@ export function Parametres({ reglages, modifier, infos }: Props): React.JSX.Elem
         <div className="ligne-reglage">
           <span>Couleur de l’ambiance</span>
           <ChoixTeinte reglages={reglages} modifier={modifier} />
+        </div>
+        <div className="ligne-reglage">
+          <span>
+            Effets de verre <kbd>{infos?.modeste ? 'PC modeste détecté' : 'PC à l’aise'}</kbd>
+          </span>
+          <select className="champ" value={reglages.effetsVerre} onChange={(e) => modifier({ effetsVerre: e.target.value as Reglages['effetsVerre'] })}>
+            <option value="auto">Automatique</option>
+            <option value="complets">Complets</option>
+            <option value="legers">Allégés (plus fluide)</option>
+          </select>
         </div>
       </section>
 
@@ -156,6 +167,8 @@ export function Parametres({ reglages, modifier, infos }: Props): React.JSX.Elem
       <EditeurCoffre />
 
       <EditeurSkills />
+
+      <SectionPlantages />
 
       <section className="bloc verre-fort">
         <h2>À propos</h2>

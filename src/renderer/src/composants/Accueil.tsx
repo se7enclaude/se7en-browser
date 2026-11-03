@@ -1,6 +1,7 @@
 /* Écran du premier lancement : venir d'un autre navigateur, disposition des onglets, puis thème et teinte.
  * Tout reste modifiable dans les paramètres. */
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { useFigerPages } from '../pagesFigees'
 import type { Reglages } from '../../../shared/reglages'
 import { ChoixDisposition, ChoixTeinte, ChoixTheme } from './ChoixApparence'
 import { Migration } from './Migration'
@@ -8,11 +9,8 @@ import { Migration } from './Migration'
 export function Accueil({ reglages, modifier }: { reglages: Reglages; modifier: (p: Partial<Reglages>) => void }): React.JSX.Element {
   const [etape, setEtape] = useState(0)
 
-  // l'écran passe par-dessus les pages déjà ouvertes
-  useEffect(() => {
-    window.se7en.onglets.masquer(true)
-    return () => window.se7en.onglets.masquer(false)
-  }, [])
+  // l'écran passe par-dessus les pages déjà ouvertes (figées, floutées derrière)
+  useFigerPages()
 
   return (
     <div className="accueil">

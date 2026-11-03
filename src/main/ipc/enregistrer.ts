@@ -1,5 +1,6 @@
 /* Branche les canaux IPC de l'interface. Chaque message est vérifié : il doit venir de notre fenêtre,
  * et chaque argument est contrôlé avant d'être utilisé. */
+import { cpus, totalmem } from 'node:os'
 import { app, BrowserWindow, dialog, ipcMain, nativeImage, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron'
 import { estAdresseAutorisee, estPageInterne } from '../../shared/adresse'
 import type { ActionTelechargement } from '../../shared/donnees'
@@ -28,10 +29,12 @@ import type { MemoireNavigation } from '../ia/memoireNavigation'
 import { lirePage } from '../ia/lecturePage'
 import { resumerPourEnvoi } from '../ia/eclair'
 import type { MiseAJour } from '../miseAJour'
+import type { Plantages } from '../plantages'
+import type { Ensemble } from '../social/ensemble'
 import { estNavigateurParDefaut, ouvrirChoixNavigateur } from '../navigateurDefaut'
 import { lireFavorisExportes } from '../../shared/importFavoris'
 import { promises as fsp } from 'node:fs'
-import { MAX_MESSAGE } from '../../shared/social'
+import { MAX_MEMBRES_GROUPE, MAX_MESSAGE, type CibleSocial } from '../../shared/social'
 
 export interface Services {
   reglages: MagasinReglages
@@ -50,6 +53,10 @@ export interface Services {
   ecriture: AssistantEcriture
   navigation: MemoireNavigation
   miseAJour: MiseAJour
+  plantages: Plantages
+  ensemble: Ensemble
+  /** Traduit la page d'un onglet (ou remet l'original). */
+  traduire: (f: BrowserWindow, id: number, original: boolean) => void
   /** Capture l'onglet actif et l'envoie à l'interface pour choisir une zone. */
   zone: (f: BrowserWindow) => void
   /** Range les onglets de la fenêtre en groupes (IA). */
@@ -84,6 +91,24 @@ function diffuser(canal: string, valeur: unknown): void {
   for (const f of BrowserWindow.getAllWindows()) if (!f.isDestroyed()) f.webContents.send(canal, valeur)
 }
 
+/** Image à envoyer : 1600 px au plus de côté, en JPEG ; plus petite si elle reste trop lourde. Null : impossible. */
+function reduireImage(img: Electron.NativeImage): Buffer | null {
+  for (const [cote, qualite] of [[1600, 82], [1280, 75], [960, 70]] as const) {
+    const { width, height } = img.getSize()
+    const r = Math.min(1, cote / Math.max(width, height))
+    const petite = r < 1 ? img.resize({ width: Math.round(width * r), height: Math.round(height * r), quality: 'best' }) : img
+    const jpeg = petite.toJPEG(qualite)
+    if (jpeg.length <= 1400 * 1024) return jpeg
+  }
+  return null
+}
+
+/** Peu de cœurs, peu de mémoire, ou rendu sans carte graphique : le flou du verre coûte cher, on l'allège. */
+function pcModeste(): boolean {
+  const gpu = app.getGPUFeatureStatus()
+  return cpus().length <= 4 || totalmem() < 8 * 1024 ** 3 || gpu.gpu_compositing !== 'enabled'
+}
+
 export function enregistrerIpc(s: Services): void {
   const { reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, coffre, formulaires, bloqueur, memoire, social, ecriture, ongletsDe } = s
 
@@ -95,7 +120,7 @@ export function enregistrerIpc(s: Services): void {
   })
   ipcMain.on(CANAUX.fenetreFermer, (e) => fenetreDe(e)?.close())
   ipcMain.handle(CANAUX.appInfos, (e): InfosApp | null =>
-    fenetreDe(e) ? { version: app.getVersion(), effetNatif: effetNatifDisponible() } : null
+    fenetreDe(e) ? { version: app.getVersion(), effetNatif: effetNatifDisponible(), modeste: pcModeste() } : null
   )
 
   // ---------- réglages ----------
@@ -135,7 +160,8 @@ export function enregistrerIpc(s: Services): void {
     if (f && go && estId(id)) ouvrirMenuOnglet(f, go, id)
   })
   ipcMain.on(CANAUX.ongletsPrioritaire, (e, id: unknown, oui: unknown) => estId(id) && g(e)?.definirPrioritaire(id, oui === true))
-  ipcMain.on(CANAUX.ongletsMasquer, (e, oui: unknown) => g(e)?.definirMasque(oui === true))
+  ipcMain.handle(CANAUX.ongletsFiger, (e) => g(e)?.figer() ?? [])
+  ipcMain.on(CANAUX.ongletsLiberer, (e) => g(e)?.liberer())
   ipcMain.on(CANAUX.ongletsInterne, (e, page: unknown) => typeof page === 'string' && estPageInterne(page) && g(e)?.ouvrirInterne(page))
   ipcMain.on(CANAUX.ongletsDiviser, (e, id: unknown) => g(e)?.diviser(estId(id) ? id : undefined))
   ipcMain.on(CANAUX.ongletsQuitterSplit, (e) => g(e)?.quitterSplit())
@@ -311,17 +337,21 @@ export function enregistrerIpc(s: Services): void {
   ipcMain.handle(CANAUX.socialRetirer, (e, id: unknown) =>
     estIdSocial(id) ? social$(e, () => social.retirer(id).then(() => ({ ok: true as const }))) : { erreur: 'Ami introuvable.' }
   )
-  ipcMain.handle(CANAUX.socialMessages, (e, ami: unknown, avant: unknown) =>
-    estIdSocial(ami) ? social$(e, () => social.messages(ami, typeof avant === 'number' ? avant : undefined)) : { erreur: 'Ami introuvable.' }
+  const estCible = (v: unknown): v is CibleSocial => {
+    const c = v as CibleSocial | null
+    return !!c && (c.type === 'ami' || c.type === 'groupe') && estIdSocial(c.id)
+  }
+  ipcMain.handle(CANAUX.socialMessages, (e, cible: unknown, avant: unknown) =>
+    estCible(cible) ? social$(e, () => social.messagesDe(cible, typeof avant === 'number' ? avant : undefined)) : { erreur: 'Conversation introuvable.' }
   )
-  ipcMain.handle(CANAUX.socialEnvoyer, (e, ami: unknown, texte: unknown) =>
-    estIdSocial(ami) && typeof texte === 'string' ? social$(e, () => social.envoyer(ami, { texte: texte.slice(0, MAX_MESSAGE) })) : { erreur: 'Message invalide.' }
+  ipcMain.handle(CANAUX.socialEnvoyer, (e, cible: unknown, texte: unknown) =>
+    estCible(cible) && typeof texte === 'string' ? social$(e, () => social.envoyerA(cible, { texte: texte.slice(0, MAX_MESSAGE) })) : { erreur: 'Message invalide.' }
   )
-  ipcMain.handle(CANAUX.socialEnvoyerOnglet, async (e, ami: unknown, idOnglet: unknown, avecResume: unknown) => {
+  ipcMain.handle(CANAUX.socialEnvoyerOnglet, async (e, cible: unknown, idOnglet: unknown, avecResume: unknown) => {
     const p = estId(idOnglet) ? g(e)?.pageDe(idOnglet) : null
     const o = p?.etat
     // seules les pages web s'envoient (pas un PDF du PC ni une page interne)
-    if (!estIdSocial(ami) || !p || !o || !estAdresseAutorisee(o.url)) return { erreur: 'Cet onglet ne peut pas être envoyé.' }
+    if (!estCible(cible) || !p || !o || !estAdresseAutorisee(o.url)) return { erreur: 'Cet onglet ne peut pas être envoyé.' }
     // résumé en deux phrases par l'IA locale (si elle est prête) : il part avec le lien, comme un message
     let texte = ''
     const r = reglages.get()
@@ -330,9 +360,91 @@ export function enregistrerIpc(s: Services): void {
       const lue = await lirePage(p.wc, o.url)
       if (lue.texte.length > 200 && !lue.motDePasse) texte = await resumerPourEnvoi(modeleEclair(r, etat.modeles), lue).catch(() => '')
     }
-    return social$(e, () => social.envoyer(ami, { texte, url: o.url, titre: o.titre }))
+    return social$(e, () => social.envoyerA(cible, { texte, url: o.url, titre: o.titre }))
   })
-  ipcMain.on(CANAUX.socialLu, (e, ami: unknown) => fenetreDe(e) && estIdSocial(ami) && void social.marquerLu(ami).catch(() => undefined))
+  ipcMain.on(CANAUX.socialLu, (e, cible: unknown) => fenetreDe(e) && estCible(cible) && void social.marquerLuDe(cible).catch(() => undefined))
+  ipcMain.handle(CANAUX.socialGroupes, (e) => social$(e, () => social.groupes()))
+  ipcMain.handle(CANAUX.socialCreerGroupe, (e, nom: unknown, membres: unknown) =>
+    typeof nom === 'string' && Array.isArray(membres) && membres.every(estIdSocial)
+      ? social$(e, () => social.creerGroupe(nom.slice(0, 40), membres.slice(0, MAX_MEMBRES_GROUPE)).then((id) => ({ id })))
+      : { erreur: 'Groupe invalide.' }
+  )
+  ipcMain.handle(CANAUX.socialAjouterMembre, (e, groupe: unknown, id: unknown) =>
+    estIdSocial(groupe) && estIdSocial(id) ? social$(e, () => social.ajouterMembre(groupe, id).then(() => ({ ok: true as const }))) : { erreur: 'Membre invalide.' }
+  )
+  ipcMain.handle(CANAUX.socialRenommerGroupe, (e, groupe: unknown, nom: unknown) =>
+    estIdSocial(groupe) && typeof nom === 'string' ? social$(e, () => social.renommerGroupe(groupe, nom.slice(0, 40)).then(() => ({ ok: true as const }))) : { erreur: 'Nom invalide.' }
+  )
+  ipcMain.handle(CANAUX.socialQuitterGroupe, (e, groupe: unknown) =>
+    estIdSocial(groupe) ? social$(e, () => social.quitterGroupe(groupe).then(() => ({ ok: true as const }))) : { erreur: 'Groupe introuvable.' }
+  )
+  ipcMain.handle(CANAUX.socialImage, (e, id: unknown) => (fenetreDe(e) && estIdSocial(id) ? social.image(id).catch(() => null) : null))
+  ipcMain.handle(CANAUX.socialEnvoyerImage, async (e, cible: unknown, source: unknown) => {
+    const f = fenetreDe(e)
+    if (!f || !estCible(cible)) return { erreur: 'Conversation introuvable.' }
+    const src = source as { type?: string; idOnglet?: unknown; donnees?: unknown } | null
+    let img: Electron.NativeImage | null = null
+    if (src?.type === 'fichier') {
+      const r = await dialog.showOpenDialog(f, { title: 'Envoyer une image', filters: [{ name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'] }], properties: ['openFile'] })
+      if (!r.filePaths[0]) return null
+      img = nativeImage.createFromPath(r.filePaths[0])
+    } else if (src?.type === 'capture' && estId(src.idOnglet)) {
+      const go = g(e)
+      const p = go?.pageDe(src.idOnglet)
+      if (!go || !p) return { erreur: 'Cet onglet ne peut pas être capturé.' }
+      // une page cachée ne se capture pas : on prend l'image gardée quand on l'a quittée ; sinon on l'affiche
+      // le temps de la capture (un tiers de seconde), puis on revient à l'onglet de départ
+      const capturer = (): Promise<Electron.NativeImage | null> => p.wc.capturePage().then((i) => (i.isEmpty() ? null : i), () => null)
+      img = await capturer()
+      const memo = img ? undefined : go.imageMemorisee(src.idOnglet)
+      if (memo) img = nativeImage.createFromDataURL(memo)
+      if (!img) {
+        const depart = go.idActif()
+        go.activer(src.idOnglet)
+        await new Promise((r) => setTimeout(r, 450))
+        img = await capturer()
+        if (depart !== null) go.activer(depart)
+      }
+    } else if (src?.type === 'collee' && typeof src.donnees === 'string' && /^data:image\/(png|jpeg|webp|gif|bmp);base64,/.test(src.donnees) && src.donnees.length < 30_000_000) {
+      img = nativeImage.createFromDataURL(src.donnees)
+    }
+    if (!img || img.isEmpty()) return { erreur: 'Image illisible.' }
+    const jpeg = reduireImage(img)
+    if (!jpeg) return { erreur: 'Image trop lourde, même réduite.' }
+    return social$(e, () => social.envoyerImage(cible, jpeg))
+  })
+  ipcMain.on(CANAUX.socialEcrit, (e, cible: unknown) => {
+    if (!fenetreDe(e) || !estCible(cible)) return
+    social.signal(cible.type === 'ami' ? { type: 'ecrit', a: cible.id } : { type: 'ecrit', groupe: cible.id })
+  })
+  ipcMain.handle(CANAUX.socialCodeSecours, (e) => (fenetreDe(e) ? social.codeSecours() : null))
+  ipcMain.handle(CANAUX.socialEnregistrerCode, async (e) => {
+    const f = fenetreDe(e)
+    const code = social.codeSecours()
+    if (!f || !code) return false
+    const r = await dialog.showSaveDialog(f, { title: 'Enregistrer le code de secours', defaultPath: 'se7en - code de secours.txt', filters: [{ name: 'Texte', extensions: ['txt'] }] })
+    if (!r.filePath) return false
+    await fsp.writeFile(
+      r.filePath,
+      `Code de secours se7en Browser (profil ${social.etat().profil?.pseudo ?? ''})\r\n\r\n${code}\r\n\r\n` +
+        'Il permet de retrouver ton profil, tes amis et tes messages sur un autre PC (page Amis › « J’ai déjà un profil »).\r\n' +
+        'Garde-le pour toi : quiconque l’a peut utiliser ton profil.\r\n'
+    )
+    return true
+  })
+  ipcMain.handle(CANAUX.socialRecuperer, (e, code: unknown) => (typeof code === 'string' ? social$(e, () => social.recuperer(code.slice(0, 200))) : { erreur: 'Code invalide.' }))
+
+  // ---------- naviguer ensemble ----------
+  s.ensemble.on('etat', (etat) => diffuser(CANAUX.ensembleChange, etat))
+  ipcMain.handle(CANAUX.ensembleEtat, (e) => (fenetreDe(e) ? s.ensemble.etat() : null))
+  ipcMain.handle(CANAUX.ensembleInviter, (e, ami: unknown, idOnglet: unknown) => {
+    if (!fenetreDe(e) || !estIdSocial(ami) || !estId(idOnglet)) return { erreur: 'Invitation invalide.' }
+    const erreurInvitation = s.ensemble.inviter(ami, idOnglet)
+    return erreurInvitation ? { erreur: erreurInvitation } : { ok: true as const }
+  })
+  ipcMain.on(CANAUX.ensembleRepondre, (e, oui: unknown) => fenetreDe(e) && s.ensemble.repondre(oui === true))
+  ipcMain.on(CANAUX.ensembleMain, (e) => fenetreDe(e) && s.ensemble.prendreLaMain())
+  ipcMain.on(CANAUX.ensembleArreter, (e) => fenetreDe(e) && s.ensemble.arreter())
   ipcMain.on(CANAUX.socialOuvrirLien, (e, url: unknown) => typeof url === 'string' && estAdresseAutorisee(url) && g(e)?.nouveau(url, { aCote: true }))
 
   // ---------- venir d'un autre navigateur ----------
@@ -365,6 +477,25 @@ export function enregistrerIpc(s: Services): void {
   })
   ipcMain.handle(CANAUX.defautEtat, (e) => (fenetreDe(e) ? estNavigateurParDefaut() : false))
   ipcMain.on(CANAUX.defautChoisir, (e) => fenetreDe(e) && ouvrirChoixNavigateur())
+
+  ipcMain.on(CANAUX.traductionTraduire, (e, id: unknown) => {
+    const f = fenetreDe(e)
+    if (f && estId(id)) s.traduire(f, id, false)
+  })
+  ipcMain.on(CANAUX.traductionOriginal, (e, id: unknown) => {
+    const f = fenetreDe(e)
+    if (f && estId(id)) s.traduire(f, id, true)
+  })
+
+  // ---------- rapports de plantage ----------
+  ipcMain.handle(CANAUX.plantagesLister, (e) => (fenetreDe(e) ? s.plantages.lister() : null))
+  ipcMain.on(CANAUX.plantagesVus, (e) => fenetreDe(e) && s.plantages.marquerVus())
+  ipcMain.handle(CANAUX.plantagesEffacer, (e, id: unknown) => {
+    if (!fenetreDe(e)) return null
+    s.plantages.effacer(typeof id === 'string' ? id : undefined)
+    return s.plantages.lister()
+  })
+  ipcMain.on(CANAUX.plantagesSignaler, (e, m: unknown, p: unknown) => fenetreDe(e) && typeof m === 'string' && s.plantages.signalerInterface(m, typeof p === 'string' ? p : ''))
 
   // ---------- mise à jour du navigateur ----------
   s.miseAJour.on('etat', (e) => diffuser(CANAUX.majChange, e))

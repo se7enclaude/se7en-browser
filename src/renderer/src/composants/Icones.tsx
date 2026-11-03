@@ -73,3 +73,12 @@ export const IconeAmis = () => (
 export const IconeZone = () => (
   <svg {...base}><path d="M2.5 5.5v-2a1 1 0 0 1 1-1h2M10.5 2.5h2a1 1 0 0 1 1 1v2M13.5 10.5v2a1 1 0 0 1-1 1h-2M5.5 13.5h-2a1 1 0 0 1-1-1v-2" /><circle cx="8" cy="8" r="1.6" /></svg>
 )
+export const IconeTraduire = () => (
+  <svg {...base}><path d="M2 3.6h6.2M5.1 2v1.6M3.4 3.6c.6 2.3 2.1 4 4.2 5M6.8 3.6C6.2 5.9 4.7 7.6 2.6 8.6M8.6 14l2.6-6.4 2.6 6.4M9.4 12.1h3.6" /></svg>
+)
+export const IconeImage = () => (
+  <svg {...base}><rect x="2.2" y="3" width="11.6" height="10" rx="2" /><circle cx="5.8" cy="6.4" r="1.1" /><path d="m2.6 11.6 3.4-3.2 2.4 2.2 2-1.7 3.2 2.9" /></svg>
+)
+export const IconeEnsemble = () => (
+  <svg {...base}><circle cx="5.4" cy="5.6" r="2" /><circle cx="10.8" cy="5.6" r="2" /><path d="M1.8 12.6c.5-2 1.9-3 3.6-3s3.1 1 3.6 3M7.6 9.9c.8-.8 1.9-1.3 3.2-1.3 1.7 0 3.1 1 3.6 3" /></svg>
+)

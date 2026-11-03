@@ -6,7 +6,7 @@ import { modelePresent, type EtatOllama } from '../../../shared/ia'
 import type { EtatOnglet, EtatOnglets } from '../../../shared/onglets'
 import type { Reglages } from '../../../shared/reglages'
 import { IconeCroix, IconeHistorique, IconeIA, IconePlus, IconeZone } from './Icones'
-import { Markdown } from './Markdown'
+import { ReponseFluide } from './Markdown'
 import { RemplissagePdf } from './RemplissagePdf'
 import { IconeOnglet } from './OngletItem'
 
@@ -83,6 +83,7 @@ export function PanneauIA({ etat, actif, ia, reglages, ouvert, fermer, demande }
   const champ = useRef<HTMLTextAreaElement>(null)
   const fil = useRef<HTMLDivElement>(null)
   const enCoursRef = useRef(enCours)
+  const demandeTraitee = useRef<number | null>(null)
   enCoursRef.current = enCours
 
   const pret = ia?.phase === 'pret' && modelePresent(reglages.modeleTexte, ia.modeles)
@@ -128,11 +129,12 @@ export function PanneauIA({ etat, actif, ia, reglages, ouvert, fermer, demande }
     []
   )
 
-  // défilement automatique tant qu'on est en bas du fil
-  useEffect(() => {
+  // défilement automatique tant qu'on est en bas du fil (aussi pendant que la réponse se dévoile)
+  const suivreFil = (): void => {
     const el = fil.current
     if (el && el.scrollHeight - el.scrollTop - el.clientHeight < 120) el.scrollTop = el.scrollHeight
-  }, [messages, enCours])
+  }
+  useEffect(suivreFil, [messages, enCours])
 
   const nouvelleConversation = (): void => {
     if (enCours) window.se7en.chat.arreter()
@@ -175,9 +177,12 @@ export function PanneauIA({ etat, actif, ia, reglages, ouvert, fermer, demande }
 
   // question posée depuis la barre « Demande ou cherche »
   useEffect(() => {
-    if (demande && ouvert) void envoyer(demande.texte, { avecPage: demande.avecPage, nouvelle: true, zone: demande.zone })
-    // seulement quand une nouvelle demande arrive (pas à chaque changement de envoyer)
-  }, [demande?.n])
+    // le panneau s'ouvre un instant après la demande (animation) : elle part dès qu'il est ouvert, une seule fois
+    if (!demande || !ouvert || demandeTraitee.current === demande.n) return
+    demandeTraitee.current = demande.n
+    void envoyer(demande.texte, { avecPage: demande.avecPage, nouvelle: true, zone: demande.zone })
+    // seulement quand une nouvelle demande arrive ou que le panneau s'ouvre (pas à chaque changement de envoyer)
+  }, [demande?.n, ouvert])
 
   // ---------- suggestions : /skill et @onglet ----------
   const suggestion = useMemo(() => {
@@ -329,7 +334,7 @@ export function PanneauIA({ etat, actif, ia, reglages, ouvert, fermer, demande }
                 </div>
               ) : (
                 <div key={m.id} className={`message-ia assistant${m.erreur ? ' erreur' : ''}`}>
-                  {m.texte ? <Markdown texte={m.texte} /> : enCours?.idReponse === m.id && <p className="discret attente">{TEXTES_ETAPE[enCours.etape] ?? '…'}</p>}
+                  {m.texte ? <ReponseFluide texte={m.texte} enCours={enCours?.idReponse === m.id} surAvance={suivreFil} /> : enCours?.idReponse === m.id && <p className="discret attente">{TEXTES_ETAPE[enCours.etape] ?? '…'}</p>}
                   {enCours?.idReponse === m.id && m.texte && <span className="curseur" />}
                   {!enCours && m.texte && !m.erreur && (
                     <div className="actions-message">

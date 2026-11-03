@@ -2,10 +2,10 @@
  * Un « Nouvel onglet » ou une page interne (se7en://…) n'a pas de vue : c'est l'interface (React) qui dessine derrière.
  * Les onglets prioritaires (barre latérale) sont des onglets comme les autres, marqués et sauvegardés ;
  * au démarrage ils sont « endormis » et ne se chargent qu'à l'ouverture. */
-import { WebContentsView, type BrowserWindow, type ContextMenuParams, type Input, type WebContents } from 'electron'
+import { systemPreferences, WebContentsView, type BrowserWindow, type ContextMenuParams, type Input, type WebContents } from 'electron'
 import { estAdresseAutorisee, estPageInterne, PAGES_INTERNES, resoudreSaisie } from '../../shared/adresse'
 import { idDocDeVisionneuse, urlVisionneuse } from '../../shared/pdf'
-import { COULEURS_GROUPES, type EtatOnglet, type EtatOnglets, type GroupeOnglets, type OngletPrioritaireSauve, type Split, type Zone, type ZoneOnglet } from '../../shared/onglets'
+import { COULEURS_GROUPES, type CommandeUi, type EtatTraduction, type EtatOnglet, type EtatOnglets, type GroupeOnglets, type OngletPrioritaireSauve, type PageFigee, type Split, type Zone, type ZoneOnglet } from '../../shared/onglets'
 import { preferencesPage, preparerSessionWeb } from '../securite/politiques'
 import { chargerFavicon } from './favicons'
 
@@ -35,10 +35,36 @@ export interface OptionsGestionnaire {
   menuPage?: (idOnglet: number, wc: WebContents, params: ContextMenuParams) => void
   /** Une page a fini de charger (mémoire de navigation). */
   pageChargee?: (wc: WebContents, etat: EtatOnglet) => void
+  /** Changement d'onglet animé : l'interface dessine le fondu entre les deux images. */
+  transition?: (t: Extract<CommandeUi, { type: 'transition-onglet' }>) => void
 }
 
 const RAYON_PAGE = 27 // rayon du cadre de page (28) moins le liseré
 const MAX_FERMES = 25
+/** Fondu entre deux onglets (plus court quand on n'a pas d'image de l'onglet d'arrivée). */
+const DUREE_FONDU = 190
+const DUREE_FONDU_SANS_IMAGE = 130
+/** Images gardées des derniers onglets quittés (pour le fondu au retour). */
+const MAX_IMAGES = 24
+
+/** Image d'une page en JPEG (rapide à encoder, léger à envoyer à l'interface). Une capture qui traîne
+ * (fenêtre réduite, machine chargée) est abandonnée : l'animation se fait sans image plutôt que d'attendre. */
+async function capturer(wc: WebContents): Promise<string | null> {
+  const delai = new Promise<null>((r) => setTimeout(() => r(null), 120))
+  const capture = wc.capturePage().then(
+    (img) => (img.isEmpty() ? null : `data:image/jpeg;base64,${img.toJPEG(82).toString('base64')}`),
+    () => null
+  )
+  return Promise.race([capture, delai])
+}
+
+const animationsActives = (): boolean => {
+  try {
+    return systemPreferences.getAnimationSettings().shouldRenderRichAnimation
+  } catch {
+    return true
+  }
+}
 
 export class GestionnaireOnglets {
   private readonly onglets: Onglet[] = []
@@ -48,8 +74,14 @@ export class GestionnaireOnglets {
   private zones = new Map<number, Zone>()
   private split: Split | null = null
   private groupes: GroupeOnglets[] = []
-  /** Vrai quand un écran de l'interface (accueil…) doit passer par-dessus les pages. */
-  private masque = false
+  /** Nombre d'écrans ou d'animations de l'interface qui passent par-dessus les pages (elles sont cachées tant qu'il y en a). */
+  private figeage = 0
+  /** Pendant le fondu d'un changement d'onglet, la nouvelle page attend sous l'image de l'ancienne. */
+  private enFondu = false
+  private minuteurFondu: NodeJS.Timeout | null = null
+  /** Numéro du dernier changement d'onglet : une capture arrivée trop tard est ignorée. */
+  private generationActivation = 0
+  private readonly images = new Map<number, string>()
   private readonly fermes: string[] = []
   private notification: NodeJS.Immediate | null = null
 
@@ -100,7 +132,8 @@ export class GestionnaireOnglets {
         pdf: null,
         bloques: 0,
         groupe: null,
-        phishing: null
+        phishing: null,
+        traduction: null
       },
       vue: null,
       urlEpinglee: sauve?.url ?? null,
@@ -244,9 +277,72 @@ export class GestionnaireOnglets {
     // l'onglet qu'on quitte compte comme vu jusqu'à maintenant
     const ancien = this.actifId !== null ? this.trouver(this.actifId) : undefined
     if (ancien) ancien.vuLe = Date.now()
+    const generation = ++this.generationActivation
+    if (ancien?.vue && this.peutFondre(ancien, o)) {
+      // l'image de la page qu'on quitte est prise avant de la cacher (quelques ms), puis le fondu commence
+      void capturer(ancien.vue.webContents).then((image) => {
+        if (generation !== this.generationActivation || !this.trouver(id)) return
+        if (image) this.memoriserImage(ancien.etat.id, image)
+        this.basculer(id, image)
+      })
+      return
+    }
+    this.basculer(id, null)
+  }
+
+  /** Fondu seulement d'une page web affichée seule vers un autre onglet seul, sans écran par-dessus. */
+  private peutFondre(ancien: Onglet, nouveau: Onglet): boolean {
+    const enSplit = (x: Onglet): boolean => !!this.split && (this.split.gauche === x.etat.id || this.split.droite === x.etat.id)
+    return (
+      !!this.options.transition &&
+      this.figeage === 0 &&
+      !this.enFondu &&
+      this.estVisible(ancien) &&
+      !enSplit(ancien) &&
+      !enSplit(nouveau) &&
+      !nouveau.etat.plantee &&
+      this.fenetre.isVisible() &&
+      !this.fenetre.isMinimized() &&
+      animationsActives()
+    )
+  }
+
+  private basculer(id: number, depart: string | null): void {
     this.actifId = id
+    if (this.minuteurFondu) clearTimeout(this.minuteurFondu)
+    this.minuteurFondu = null
+    if (depart) {
+      const arrivee = this.images.get(id) ?? null
+      const duree = arrivee || !this.trouver(id)?.vue ? DUREE_FONDU : DUREE_FONDU_SANS_IMAGE
+      this.enFondu = true
+      this.options.transition?.({ type: 'transition-onglet', depart, arrivee: this.trouver(id)?.vue ? arrivee : null, duree })
+      this.minuteurFondu = setTimeout(() => {
+        this.minuteurFondu = null
+        this.enFondu = false
+        this.afficher()
+      }, duree)
+    } else if (this.enFondu) {
+      this.enFondu = false
+      this.options.transition?.({ type: 'transition-onglet', depart: null, arrivee: null, duree: 0 })
+    }
     this.afficher()
     this.signaler()
+  }
+
+  /** Image de la page d'un onglet prise quand on l'a quitté (JPEG en data: URL), s'il y en a une. */
+  imageMemorisee(id: number): string | undefined {
+    return this.images.get(id)
+  }
+
+  /** L'onglet actif (pour y revenir après une capture). */
+  idActif(): number | null {
+    return this.actifId
+  }
+
+  private memoriserImage(id: number, image: string): void {
+    this.images.delete(id)
+    this.images.set(id, image)
+    while (this.images.size > MAX_IMAGES) this.images.delete(this.images.keys().next().value!)
   }
 
   /** Met en veille les onglets restés inactifs plus de `minutes` (leur page est libérée, l'adresse est gardée).
@@ -268,6 +364,14 @@ export class GestionnaireOnglets {
     }
     if (n) this.signaler()
     return n
+  }
+
+  /** Traduction de la page de cet onglet (progression, fin, erreur). */
+  definirTraduction(id: number, t: EtatTraduction): void {
+    const o = this.trouver(id)
+    if (!o) return
+    o.etat.traduction = t
+    this.signaler()
   }
 
   /** Alerte anti-phishing pour la page de cet onglet (null : aucune). */
@@ -506,8 +610,24 @@ export class GestionnaireOnglets {
     this.signaler()
   }
 
-  definirMasque(masque: boolean): void {
-    this.masque = masque
+  /** Un écran ou une animation de l'interface passe devant les pages : on renvoie l'image des pages visibles
+   * (l'interface l'affiche à leur place, elle peut la flouter ou l'étirer), puis on les cache. */
+  async figer(): Promise<PageFigee[]> {
+    const liste: PageFigee[] = []
+    if (this.figeage === 0 && !this.enFondu && this.fenetre.isVisible() && !this.fenetre.isMinimized()) {
+      const visibles = this.onglets.filter((o) => this.estVisible(o))
+      for (const o of visibles) {
+        const image = await capturer(o.vue!.webContents)
+        if (image) liste.push({ id: o.etat.id, image })
+      }
+    }
+    this.figeage++
+    this.afficher()
+    return liste
+  }
+
+  liberer(): void {
+    this.figeage = Math.max(0, this.figeage - 1)
     this.afficher()
   }
 
@@ -523,13 +643,21 @@ export class GestionnaireOnglets {
 
   /** Seule la vue de l'onglet actif est visible, à la place exacte que l'interface lui réserve. */
   private afficher(): void {
+    const cache = this.figeage > 0 || this.enFondu
     for (const o of this.onglets) {
       if (!o.vue) continue
       const zone = this.zones.get(o.etat.id)
-      const visible = !!zone && zone.width > 0 && (estAdresseAutorisee(o.etat.url) || !!o.etat.pdf) && !o.etat.plantee && !this.masque
+      const visible = !!zone && zone.width > 0 && (estAdresseAutorisee(o.etat.url) || !!o.etat.pdf) && !o.etat.plantee && !cache
       if (visible) o.vue.setBounds(zone)
       o.vue.setVisible(visible)
     }
+  }
+
+  /** La page de cet onglet est à l'écran en ce moment. */
+  private estVisible(o: Onglet): boolean {
+    if (!o.vue || o.vue.webContents.isDestroyed() || this.figeage > 0 || this.enFondu) return false
+    const zone = this.zones.get(o.etat.id)
+    return !!zone && zone.width > 0 && (estAdresseAutorisee(o.etat.url) || !!o.etat.pdf) && !o.etat.plantee
   }
 
   /** Regroupe les notifications d'un même tour (un chargement en déclenche plusieurs d'affilée). */
@@ -553,6 +681,7 @@ export class GestionnaireOnglets {
   }
 
   private detruireVue(o: Onglet): void {
+    this.images.delete(o.etat.id)
     if (!o.vue) return
     this.fenetre.contentView.removeChildView(o.vue)
     o.vue.webContents.close()
@@ -588,6 +717,7 @@ export class GestionnaireOnglets {
       o.etat.favicon = null
       o.etat.bloques = 0
       o.etat.phishing = null
+      o.etat.traduction = null
       o.etat.url = url
       maj()
       // l'adresse a pu passer d'un Nouvel onglet (sans page) à une page ou un PDF : la vue doit apparaître

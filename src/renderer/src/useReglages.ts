@@ -32,5 +32,6 @@ export function useAttributsTheme(reglages: Reglages | null, infos: InfosApp | n
       html.dataset.teinte = reglages.teinte
     }
     if (infos) html.dataset.natif = infos.effetNatif ? 'oui' : 'non'
+    if (reglages && infos) html.dataset.verre = reglages.effetsVerre === 'legers' || (reglages.effetsVerre === 'auto' && infos.modeste) ? 'leger' : 'complet'
   }, [reglages, infos])
 }

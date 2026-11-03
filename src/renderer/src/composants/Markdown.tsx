@@ -1,7 +1,7 @@
 /* Affichage des réponses de l'IA : un Markdown simple, transformé en éléments React.
  * Aucun HTML n'est jamais injecté tel quel : une réponse (qui peut répéter du texte venu d'une page) ne peut pas
  * insérer de script ni d'élément dans l'interface. Les liens s'ouvrent dans un nouvel onglet, au clic de l'utilisateur. */
-import type { ReactNode } from 'react'
+import { memo, useEffect, useRef, useState, type ReactNode } from 'react'
 
 function lienSur(url: string): string | null {
   try {
@@ -100,3 +100,29 @@ export function Markdown({ texte }: { texte: string }): React.JSX.Element {
   }
   return <div className="markdown">{blocs}</div>
 }
+
+/** Réponse de l'IA en cours d'écriture : le texte arrive par paquets irréguliers ; on le dévoile à un rythme régulier
+ * (plus vite quand il y a du retard), une fois par image, pour qu'il coule au lieu de sauter. */
+export function ReponseFluide({ texte, enCours, surAvance }: { texte: string; enCours: boolean; surAvance?: () => void }): React.JSX.Element {
+  const [montre, setMontre] = useState(() => (enCours ? 0 : texte.length))
+  const montreRef = useRef(montre)
+  useEffect(() => {
+    if (montreRef.current >= texte.length) return
+    let id = 0
+    const pas = (): void => {
+      const reste = texte.length - montreRef.current
+      if (reste <= 0) return
+      // environ 90 caractères par seconde, et le retard se rattrape en quelques images (vite à la fin du flux)
+      const avance = Math.max(enCours ? 1.5 : 6, reste / (enCours ? 12 : 4))
+      montreRef.current = Math.min(texte.length, montreRef.current + Math.ceil(avance))
+      setMontre(montreRef.current)
+      surAvance?.()
+      id = requestAnimationFrame(pas)
+    }
+    id = requestAnimationFrame(pas)
+    return () => cancelAnimationFrame(id)
+  }, [texte, enCours])
+  return <MarkdownMemo texte={texte.slice(0, montre)} />
+}
+
+const MarkdownMemo = memo(Markdown)

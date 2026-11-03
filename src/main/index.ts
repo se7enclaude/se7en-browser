@@ -1,11 +1,15 @@
 /* Point d'entrée du processus principal de se7en Browser. */
-import { app, BrowserWindow, dialog, Notification, session } from 'electron'
+import { app, BrowserWindow, dialog, nativeTheme, Notification, session } from 'electron'
 import { CANAUX } from '../shared/ipc'
 import { idDocDeVisionneuse } from '../shared/pdf'
 import { DocumentsPdf } from './pdf/documents'
 import { ServiceFormulaire } from './pdf/serviceFormulaire'
 import { CoffreChiffre } from './coffre/coffre'
 import { brancherProtocolePdf, declarerProtocolePdf, redirigerPdfVersVisionneuse } from './pdf/protocole'
+import { TraducteurPages } from './ia/traduction'
+import { Plantages } from './plantages'
+import { NotifMessages } from './social/notifMessages'
+import { Ensemble } from './social/ensemble'
 import { creerFenetrePrincipale, appliquerTheme } from './fenetre/fenetrePrincipale'
 import { ServiceChat } from './ia/chat'
 import { Conversations, Skills } from './ia/conversations'
@@ -36,9 +40,14 @@ import { join } from 'node:path'
 import { lirePage } from './ia/lecturePage'
 import { estAdresseAutorisee } from '../shared/adresse'
 import { ouvrirMenuPage } from './navigateur/menuPage'
-import { SERVEUR_SOCIAL_OFFICIEL } from '../shared/social'
+import { SERVEUR_SOCIAL_OFFICIEL, type CibleSocial, type MessageSocial } from '../shared/social'
 
 app.setAppUserModelId('se7en.browser')
+
+// Défilement doux dans les pages, à la molette comme au pavé tactile (le même que Microsoft Edge :
+// glissement animé, et une distance proportionnelle à la hauteur de la page).
+app.commandLine.appendSwitch('enable-smooth-scrolling')
+app.commandLine.appendSwitch('enable-features', 'WindowsScrollingPersonality,PercentBasedScrolling')
 
 // Mode test (développement) : profil à part, pour ne jamais toucher aux réglages ni aux onglets de l'utilisateur.
 if (process.env.SE7EN_PROFIL_TEST) app.setPath('userData', process.env.SE7EN_PROFIL_TEST)
@@ -48,6 +57,9 @@ if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
   durcirApplication()
+  // rapports de plantage : gardés sur ce PC, visibles dans les Paramètres
+  const plantages = new Plantages((wc) => BrowserWindow.getAllWindows().some((f) => f.webContents === wc))
+  app.whenReady().then(() => plantages.demarrer())
   declarerProtocolePdf()
   const onglets = new Map<number, GestionnaireOnglets>()
   /** Ouvre les liens et PDF passés en argument (navigateur par défaut) ; prêt une fois la fenêtre créée. */
@@ -160,22 +172,92 @@ if (!app.requestSingleInstanceLock()) {
     })
     void social.demarrer()
     app.on('will-quit', () => social.arreter())
-    // nouveau message : notification Windows si la fenêtre n'est pas au premier plan
+    // noms des amis et des groupes, pour les notifications et « naviguer ensemble »
+    const noms = { amis: new Map<string, string>(), groupes: new Map<string, string>() }
+    const majNoms = (): void => {
+      void social.amis().then((l) => l.forEach((a) => noms.amis.set(a.id, a.pseudo)), () => undefined)
+      void social.groupes().then((l) => l.forEach((g) => noms.groupes.set(g.id, g.nom)), () => undefined)
+    }
+    social.on('etat', (e) => e.connexion === 'connecte' && majNoms())
+    social.on('evenement', (ev) => (ev.type === 'amis' || ev.type === 'groupes') && majNoms())
+
+    // nouveau message : petite notification en bas à droite du navigateur (sauf si la page Amis est déjà sous les yeux),
+    // et notification Windows si la fenêtre n'est pas au premier plan
+    const notifs = new Map<number, NotifMessages>()
+    const ouvrirConversation = (f: BrowserWindow, cible: CibleSocial): void => {
+      if (f.isDestroyed()) return
+      if (f.isMinimized()) f.restore()
+      f.focus()
+      onglets.get(f.id)?.ouvrirInterne('se7en://amis')
+      f.webContents.send(CANAUX.uiCommande, { type: 'ouvrir-conversation', cible })
+    }
+    const sombre = (): boolean => {
+      const r = reglages.get()
+      return r.theme === 'sombre' || (r.theme === 'auto' && nativeTheme.shouldUseDarkColors)
+    }
+    const notif = (f: BrowserWindow): NotifMessages => {
+      let n = notifs.get(f.id)
+      if (!n) {
+        n = new NotifMessages(f, (cible) => ouvrirConversation(f, cible))
+        notifs.set(f.id, n)
+        f.once('closed', () => notifs.delete(f.id))
+      }
+      return n
+    }
+    /** Ce que dit la notification d'un message (texte, lien, image). */
+    const apercu = (m: MessageSocial): string =>
+      m.image ? 'a envoyé une image' : m.type === 'lien' ? `a envoyé un lien : ${m.titre || m.url}` : m.texte.slice(0, 300)
+    social.on('evenement', async (ev) => {
+      const f = BrowserWindow.getAllWindows()[0]
+      if (ev.type !== 'message' || !f || f.isMinimized()) return
+      const surAmis = f.isFocused() && onglets.get(f.id)?.actif()?.etat.url === 'se7en://amis'
+      if (surAmis) return
+      const m = ev.message
+      const groupe = m.groupe ? noms.groupes.get(m.groupe) ?? 'Groupe' : null
+      void notif(f).afficher({
+        cle: m.groupe ?? m.de,
+        cible: m.groupe ? { type: 'groupe', id: m.groupe } : { type: 'ami', id: m.de },
+        pseudo: groupe ? `${ev.pseudo} · ${groupe}` : ev.pseudo,
+        texte: apercu(m),
+        photo: await social.photo(m.de).catch(() => null),
+        sombre: sombre()
+      })
+    })
     social.on('evenement', (ev) => {
       const f = BrowserWindow.getAllWindows()[0]
       if (ev.type !== 'message' || !Notification.isSupported() || (f && f.isFocused())) return
-      const n = new Notification({
-        title: ev.pseudo,
-        body: ev.message.type === 'lien' ? `t'a envoyé un lien : ${ev.message.titre || ev.message.url}` : ev.message.texte.slice(0, 200),
-        silent: false
-      })
-      n.on('click', () => {
-        if (!f) return
-        if (f.isMinimized()) f.restore()
-        f.focus()
-        onglets.get(f.id)?.ouvrirInterne('se7en://amis')
-      })
+      const m = ev.message
+      const n = new Notification({ title: m.groupe ? `${ev.pseudo} · ${noms.groupes.get(m.groupe) ?? 'Groupe'}` : ev.pseudo, body: apercu(m).slice(0, 200), silent: false })
+      n.on('click', () => f && ouvrirConversation(f, m.groupe ? { type: 'groupe', id: m.groupe } : { type: 'ami', id: m.de }))
       n.show()
+    })
+
+    // naviguer ensemble : un onglet partagé en direct avec un ami (sur invitation acceptée)
+    const fenetreActive = (): BrowserWindow | undefined => BrowserWindow.getAllWindows()[0]
+    const ensemble = new Ensemble(social, {
+      page: (id) => {
+        const f = fenetreActive()
+        const p = f && onglets.get(f.id)?.pageDe(id)
+        return p ? { wc: p.wc, titre: p.etat.titre } : null
+      },
+      ouvrir: (url) => {
+        const f = fenetreActive()
+        return (f && onglets.get(f.id)?.nouveau(url)) ?? -1
+      },
+      naviguer: (id, url) => {
+        const f = fenetreActive()
+        if (f) onglets.get(f.id)?.naviguer(id, url)
+      },
+      pseudoAmi: (id) => noms.amis.get(id) ?? 'Un ami',
+      monPseudo: () => social.etat().profil?.pseudo ?? ''
+    })
+    ensemble.on('etat', (e) => {
+      // invitation reçue : la petite notification la montre aussi, même hors de la page Amis
+      const f = fenetreActive()
+      if (e?.etat === 'invitation-recue' && f && !f.isMinimized())
+        void social.photo(e.ami).then((photo) =>
+          notif(f).afficher({ cle: `ensemble-${e.ami}`, cible: { type: 'ami', id: e.ami }, pseudo: e.pseudo, texte: `t'invite à naviguer ensemble : ${e.titre || e.url}`, photo, sombre: sombre() })
+        )
     })
 
     // aide à l'écriture (clic droit dans un champ) et « Demander sur une zone de l'écran »
@@ -187,6 +269,25 @@ if (!app.requestSingleInstanceLock()) {
     const iaPrete = (): boolean => {
       const e = ollama.etat()
       return e.phase === 'pret' && modelePresent(reglages.get().modeleTexte, e.modeles)
+    }
+
+    // traduction de la page entière (IA locale), en gardant sa mise en page
+    const traducteur = new TraducteurPages()
+    const traduire = (f: BrowserWindow, id: number, original: boolean): void => {
+      const go = onglets.get(f.id)
+      const p = go?.pageDe(id)
+      if (!go || !p) return
+      if (original) {
+        void traducteur.original(p.wc)
+        return go.definirTraduction(id, null)
+      }
+      if (!iaPrete()) return go.definirTraduction(id, { etat: 'erreur', message: "L'IA locale n'est pas prête : ouvre la page IA pour l'installer." })
+      const url = p.wc.getURL()
+      void traducteur.traduire(p.wc, reglages.get().modeleTexte, (t) => {
+        // la page a changé entre-temps : la traduction s'arrête
+        if (p.wc.isDestroyed() || p.wc.getURL() !== url) return traducteur.arreter(p.wc)
+        go.definirTraduction(id, t)
+      })
     }
 
     // mise à jour du navigateur : vérifiée 30 s après le lancement puis toutes les 6 heures, installée à la fermeture
@@ -211,7 +312,7 @@ if (!app.requestSingleInstanceLock()) {
       void ollama.telecharger(noms)
     })
 
-    enregistrerIpc({ miseAJour, navigation, ecriture, zone: (f) => void zone(f), social, reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, coffre, formulaires, bloqueur, memoire, ranger, ouvrirFichier: (f) => void ouvrirFichier(f), ongletsDe: (f) => onglets.get(f.id) })
+    enregistrerIpc({ ensemble, traduire, plantages, miseAJour, navigation, ecriture, zone: (f) => void zone(f), social, reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, coffre, formulaires, bloqueur, memoire, ranger, ouvrirFichier: (f) => void ouvrirFichier(f), ongletsDe: (f) => onglets.get(f.id) })
 
     const fenetre = creerFenetrePrincipale()
     const idFenetre = fenetre.id
@@ -223,7 +324,7 @@ if (!app.requestSingleInstanceLock()) {
       sauverPrioritaires: (liste) => prioritaires.sauver(liste),
       journal: { visite: (url, titre) => historique.ajouter(url, titre), titre: (url, titre) => historique.majTitre(url, titre) },
       documentPdf: (id) => documents.lire(id),
-      // une page chargée est lue un peu plus tard (le temps qu'elle s'affiche), puis gardée dans la mémoire de navigation
+      transition: (t) => fenetre.webContents.send(CANAUX.uiCommande, t),
       // une page chargée est lue un peu plus tard (le temps qu'elle s'affiche) : vérification anti-phishing,
       // puis mémoire de navigation
       pageChargee: (wc, etat) => {
@@ -263,7 +364,9 @@ if (!app.requestSingleInstanceLock()) {
             void zone(fenetre)
           },
           nouvelOnglet: (url) => gestionnaire.nouveau(url, { aCote: true, activer: false }),
-          iaPrete
+          iaPrete,
+          traduite: () => !!gestionnaire.pageDe(idOnglet)?.etat.traduction,
+          traduire: () => traduire(fenetre, idOnglet, !!gestionnaire.pageDe(idOnglet)?.etat.traduction)
         })
       }
     })

@@ -1,5 +1,5 @@
 /* Fenêtre principale : sans cadre, avec l'effet de verre natif de Windows 11 quand il existe. */
-import { app, BrowserWindow, nativeTheme } from 'electron'
+import { app, BrowserWindow, nativeTheme, systemPreferences } from 'electron'
 import { release } from 'node:os'
 import { join } from 'node:path'
 import { CANAUX, type EtatFenetre } from '../../shared/ipc'
@@ -16,6 +16,19 @@ export function effetNatifDisponible(): boolean {
 /** Le thème de Windows suit le choix de l'utilisateur : la teinte du verre natif change avec lui. */
 export function appliquerTheme(theme: Theme): void {
   nativeTheme.themeSource = theme === 'clair' ? 'light' : theme === 'sombre' ? 'dark' : 'system'
+}
+
+/** Fondu d'ouverture (200 ms), sauf si Windows demande de réduire les animations. */
+function apparaitreEnFondu(fenetre: BrowserWindow): void {
+  if (!systemPreferences.getAnimationSettings().shouldRenderRichAnimation) return fenetre.setOpacity(1)
+  const debut = Date.now()
+  const pas = (): void => {
+    if (fenetre.isDestroyed()) return
+    const t = Math.min(1, (Date.now() - debut) / 200)
+    fenetre.setOpacity(1 - (1 - t) ** 3)
+    if (t < 1) setTimeout(pas, 12)
+  }
+  pas()
 }
 
 export function creerFenetrePrincipale(): BrowserWindow {
@@ -49,8 +62,14 @@ export function creerFenetrePrincipale(): BrowserWindow {
   fenetre.on('focus', envoyerEtat)
   fenetre.on('blur', envoyerEtat)
   fenetre.webContents.on('did-finish-load', envoyerEtat)
-  // en mode test, la fenêtre s'affiche sans prendre le focus (on ne dérange pas l'utilisateur)
-  fenetre.once('ready-to-show', () => (process.env.SE7EN_PROFIL_TEST ? fenetre.showInactive() : fenetre.show()))
+  // la fenêtre apparaît en fondu, une fois l'interface dessinée (jamais un cadre vide)
+  // en mode test, elle s'affiche sans prendre le focus (on ne dérange pas l'utilisateur)
+  fenetre.once('ready-to-show', () => {
+    fenetre.setOpacity(0)
+    if (process.env.SE7EN_PROFIL_TEST) fenetre.showInactive()
+    else fenetre.show()
+    apparaitreEnFondu(fenetre)
+  })
 
   if (process.env.ELECTRON_RENDERER_URL) fenetre.loadURL(process.env.ELECTRON_RENDERER_URL)
   else fenetre.loadFile(join(__dirname, '../renderer/index.html'))

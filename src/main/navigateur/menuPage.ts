@@ -14,6 +14,9 @@ export interface ActionsMenuPage {
   zone: () => void
   nouvelOnglet: (url: string) => void
   iaPrete: () => boolean
+  /** Traduire la page (ou remettre l'original si elle est déjà traduite). */
+  traduire: () => void
+  traduite: () => boolean
 }
 
 const court = (t: string, n = 28): string => {
@@ -81,7 +84,10 @@ export function ouvrirMenuPage(fenetre: BrowserWindow, wc: WebContents, p: Conte
       { label: 'Suivant', enabled: wc.navigationHistory.canGoForward(), click: () => wc.navigationHistory.goForward() },
       { label: 'Actualiser', click: () => wc.reload() },
       { type: 'separator' },
-      { label: '✦ Résumer la page', enabled: ia, click: () => a.demander('/resume') }
+      { label: '✦ Résumer la page', enabled: ia, click: () => a.demander('/resume') },
+      a.traduite()
+        ? { label: 'Afficher la page d’origine', click: () => a.traduire() }
+        : { label: '✦ Traduire la page en français', enabled: ia, click: () => a.traduire() }
     )
   }
   modele.push({ label: '✦ Demander sur une zone de l’écran', enabled: ia, click: () => a.zone() })

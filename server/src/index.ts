@@ -1,6 +1,6 @@
 /* se7en social : profils, amis, messages et liens entre utilisateurs de se7en Browser.
  * Toutes les routes /api/* demandent une requête signée (voir auth.ts) ; aucun mot de passe n'est stocké.
- * Ce serveur ne voit que : le pseudo, la photo, la liste d'amis et les messages échangés. */
+ * Ce serveur ne voit que : le pseudo, la photo, la liste d'amis, les groupes et les messages (et images) échangés. */
 import { Boite } from './boite'
 import { FENETRE, verifier, type Signature } from './auth'
 
@@ -22,8 +22,12 @@ interface Utilisateur {
 const RE_PSEUDO = /^[\p{L}\p{N}_ .-]{2,24}$/u
 const MAX_MESSAGE = 2000
 const MAX_PHOTO = 256 * 1024
+const MAX_IMAGE = 1536 * 1024
+const MAX_MEMBRES = 20
+const RE_NOM_GROUPE = /^[^\u0000-\u001f]{1,40}$/u
 const MESSAGES_PAR_MINUTE = 30
 const TYPES_PHOTO = ['image/jpeg', 'image/png', 'image/webp']
+const COLONNES_MESSAGE = 'id, de, a, groupe, type, texte, url, titre, image, date, lu'
 
 const json = (donnees: unknown, statut = 200): Response =>
   new Response(JSON.stringify(donnees), { status: statut, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } })
@@ -63,6 +67,94 @@ async function sontAmis(env: Env, x: string, y: string): Promise<boolean> {
   return !!(await env.DB.prepare("SELECT 1 FROM amities WHERE a = ? AND b = ? AND statut = 'acceptee'").bind(a, b).first())
 }
 
+/** Membres d'un groupe (vide si le groupe n'existe pas). */
+async function membresDe(env: Env, groupe: string): Promise<string[]> {
+  return (await env.DB.prepare('SELECT id FROM membres WHERE groupe = ?').bind(groupe).all<{ id: string }>()).results.map((x) => x.id)
+}
+
+async function profils(env: Env, ids: string[]): Promise<Utilisateur[]> {
+  if (!ids.length) return []
+  return (await env.DB.prepare(`SELECT id, cle, pseudo, code, photo FROM utilisateurs WHERE id IN (${ids.map(() => '?').join(',')})`).bind(...ids).all<Utilisateur>())
+    .results
+}
+
+/** Les deux utilisateurs sont dans un même groupe. */
+async function groupeCommun(env: Env, x: string, y: string): Promise<boolean> {
+  return !!(await env.DB.prepare('SELECT 1 FROM membres m1 JOIN membres m2 ON m1.groupe = m2.groupe WHERE m1.id = ? AND m2.id = ? LIMIT 1').bind(x, y).first())
+}
+
+/** Supprime un groupe vide : ses messages et ses images avec. */
+async function supprimerGroupeSiVide(env: Env, groupe: string): Promise<void> {
+  if ((await membresDe(env, groupe)).length) return
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM messages WHERE groupe = ?').bind(groupe),
+    env.DB.prepare('DELETE FROM images WHERE groupe = ?').bind(groupe),
+    env.DB.prepare('DELETE FROM groupes WHERE id = ?').bind(groupe)
+  ])
+}
+
+/** Limite d'envoi : messages et images confondus. */
+async function tropDeMessages(env: Env, moi: string): Promise<boolean> {
+  const recents = await env.DB.prepare('SELECT COUNT(*) AS n FROM messages WHERE de = ? AND date > ?').bind(moi, Date.now() - 60_000).first<{ n: number }>()
+  return (recents?.n ?? 0) >= MESSAGES_PAR_MINUTE
+}
+
+/** Contenu d'un message texte ou lien, vérifié ; une Response en cas d'erreur. */
+function contenuMessage(d: Record<string, unknown>): { texte: string; url: string | null; titre: string | null } | Response {
+  const texte = String(d.texte ?? '').trim().slice(0, MAX_MESSAGE)
+  let lien: string | null = null
+  if (d.url !== undefined) {
+    try {
+      const u = new URL(String(d.url))
+      if (u.protocol === 'http:' || u.protocol === 'https:') lien = u.href.slice(0, 2000)
+    } catch {
+      /* adresse invalide */
+    }
+    if (!lien) return erreur('Lien invalide.')
+  }
+  if (!texte && !lien) return erreur('Message vide.')
+  return { texte, url: lien, titre: lien ? String(d.titre ?? '').slice(0, 200) : null }
+}
+
+/** Image envoyée (corps brut) : vérifiée puis rangée ; renvoie son identifiant ou une Response d'erreur. */
+async function rangerImage(env: Env, req: Request, corps: ArrayBuffer, de: string, cible: { a?: string; groupe?: string }): Promise<string | Response> {
+  const type = (req.headers.get('Content-Type') ?? '').split(';')[0]
+  if (!TYPES_PHOTO.includes(type) || corps.byteLength > MAX_IMAGE || corps.byteLength < 100) return erreur('Image invalide (JPEG, PNG ou WebP, 1,5 Mo au plus).')
+  const id = crypto.randomUUID()
+  await env.DB.prepare('INSERT INTO images (id, de, a, groupe, type, donnees, date) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    .bind(id, de, cible.a ?? null, cible.groupe ?? null, type, corps, Date.now())
+    .run()
+  return id
+}
+
+/** Enregistre un message (entre amis ou dans un groupe) et le pousse aux destinataires. */
+async function publierMessage(
+  env: Env,
+  moi: Utilisateur,
+  cible: { a?: string; groupe?: string },
+  contenu: { texte: string; url: string | null; titre: string | null; image?: string | null }
+): Promise<Response> {
+  const message = {
+    id: crypto.randomUUID(),
+    de: moi.id,
+    a: cible.a ?? '',
+    groupe: cible.groupe ?? null,
+    type: contenu.url ? 'lien' : 'texte',
+    texte: contenu.texte,
+    url: contenu.url,
+    titre: contenu.titre,
+    image: contenu.image ?? null,
+    date: Date.now(),
+    lu: 0
+  }
+  await env.DB.prepare(`INSERT INTO messages (${COLONNES_MESSAGE}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`)
+    .bind(message.id, message.de, message.a, message.groupe, message.type, message.texte, message.url, message.titre, message.image, message.date)
+    .run()
+  const destinataires = cible.groupe ? (await membresDe(env, cible.groupe)).filter((x) => x !== moi.id) : [cible.a!]
+  await Promise.allSettled(destinataires.map((id) => boite(env, id).pousser({ type: 'message', message, pseudo: moi.pseudo })))
+  return json({ message }, 201)
+}
+
 async function nouveauCode(env: Env, pseudo: string): Promise<string | null> {
   for (let i = 0; i < 20; i++) {
     const code = String(crypto.getRandomValues(new Uint16Array(1))[0] % 10000).padStart(4, '0')
@@ -76,7 +168,7 @@ async function routeur(req: Request, env: Env): Promise<Response> {
   const url = new URL(req.url)
   if (!url.pathname.startsWith('/api/')) return erreur('introuvable', 404)
   const corps = req.method === 'GET' || req.method === 'HEAD' ? new ArrayBuffer(0) : await req.arrayBuffer()
-  if (corps.byteLength > MAX_PHOTO + 1024) return erreur('Requête trop grande.', 413)
+  if (corps.byteLength > MAX_IMAGE + 1024) return erreur('Requête trop grande.', 413)
   const auth = await authentifier(req, env, url, corps)
   if (auth instanceof Response) return auth
   const { cle, moi } = auth
@@ -108,12 +200,19 @@ async function routeur(req: Request, env: Env): Promise<Response> {
     }
     if (req.method === 'DELETE' && moi) {
       // suppression complète du compte : profil, photo, amitiés, messages
+      const sesGroupes = (await env.DB.prepare('SELECT groupe FROM membres WHERE id = ?').bind(moi.id).all<{ groupe: string }>()).results.map((x) => x.groupe)
       await env.DB.batch([
         env.DB.prepare('DELETE FROM messages WHERE de = ?1 OR a = ?1').bind(moi.id),
+        env.DB.prepare('DELETE FROM images WHERE de = ?1 OR a = ?1').bind(moi.id),
+        env.DB.prepare('DELETE FROM membres WHERE id = ?').bind(moi.id),
         env.DB.prepare('DELETE FROM amities WHERE a = ?1 OR b = ?1').bind(moi.id),
         env.DB.prepare('DELETE FROM photos WHERE id = ?').bind(moi.id),
         env.DB.prepare('DELETE FROM utilisateurs WHERE id = ?').bind(moi.id)
       ])
+      for (const g of sesGroupes) {
+        await supprimerGroupeSiVide(env, g)
+        await Promise.allSettled((await membresDe(env, g)).map((id) => boite(env, id).pousser({ type: 'groupes' })))
+      }
       return json({ ok: true })
     }
   }
@@ -134,7 +233,7 @@ async function routeur(req: Request, env: Env): Promise<Response> {
     if (req.method === 'GET' && chemin[1]) {
       // sa propre photo, ou celle d'un ami (ou de quelqu'un qui nous a envoyé une demande)
       const cible = chemin[1]
-      const lien = cible === moi.id || (await amis(env, moi.id)).some((x) => x.id === cible)
+      const lien = cible === moi.id || (await amis(env, moi.id)).some((x) => x.id === cible) || (await groupeCommun(env, moi.id, cible))
       if (!lien) return erreur('introuvable', 404)
       const ph = await env.DB.prepare('SELECT type, donnees FROM photos WHERE id = ?').bind(cible).first<{ type: string; donnees: ArrayBuffer | number[] }>()
       if (!ph) return erreur('introuvable', 404)
@@ -199,7 +298,8 @@ async function routeur(req: Request, env: Env): Promise<Response> {
         // refuser une demande, l'annuler, ou retirer un ami (les messages échangés sont supprimés aussi)
         await env.DB.batch([
           env.DB.prepare('DELETE FROM amities WHERE a = ? AND b = ?').bind(a, b),
-          env.DB.prepare('DELETE FROM messages WHERE (de = ?1 AND a = ?2) OR (de = ?2 AND a = ?1)').bind(moi.id, chemin[1])
+          env.DB.prepare('DELETE FROM messages WHERE (de = ?1 AND a = ?2) OR (de = ?2 AND a = ?1)').bind(moi.id, chemin[1]),
+          env.DB.prepare('DELETE FROM images WHERE (de = ?1 AND a = ?2) OR (de = ?2 AND a = ?1)').bind(moi.id, chemin[1])
         ])
       }
       await boite(env, chemin[1]).pousser({ type: 'amis' })
@@ -214,48 +314,123 @@ async function routeur(req: Request, env: Env): Promise<Response> {
     if (req.method === 'GET' && !chemin[2]) {
       const avant = Number(url.searchParams.get('avant')) || Date.now() + 1
       const r = await env.DB.prepare(
-        'SELECT id, de, a, type, texte, url, titre, date, lu FROM messages WHERE ((de = ?1 AND a = ?2) OR (de = ?2 AND a = ?1)) AND date < ?3 ORDER BY date DESC LIMIT 50'
+        `SELECT ${COLONNES_MESSAGE} FROM messages WHERE ((de = ?1 AND a = ?2) OR (de = ?2 AND a = ?1)) AND date < ?3 ORDER BY date DESC LIMIT 50`
       )
         .bind(moi.id, ami, avant)
         .all()
       return json({ messages: r.results.reverse() })
     }
     if (req.method === 'POST' && !chemin[2]) {
-      const recents = await env.DB.prepare('SELECT COUNT(*) AS n FROM messages WHERE de = ? AND date > ?').bind(moi.id, Date.now() - 60_000).first<{ n: number }>()
-      if ((recents?.n ?? 0) >= MESSAGES_PAR_MINUTE) return erreur('Trop de messages d’un coup : attends une minute.', 429)
-      const d = lireJson()
-      const texte = String(d.texte ?? '').trim().slice(0, MAX_MESSAGE)
-      let lien: string | null = null
-      if (d.url !== undefined) {
-        try {
-          const u = new URL(String(d.url))
-          if (u.protocol === 'http:' || u.protocol === 'https:') lien = u.href.slice(0, 2000)
-        } catch {
-          /* adresse invalide */
-        }
-        if (!lien) return erreur('Lien invalide.')
-      }
-      if (!texte && !lien) return erreur('Message vide.')
-      const message = {
-        id: crypto.randomUUID(),
-        de: moi.id,
-        a: ami,
-        type: lien ? 'lien' : 'texte',
-        texte,
-        url: lien,
-        titre: lien ? String(d.titre ?? '').slice(0, 200) : null,
-        date: Date.now(),
-        lu: 0
-      }
-      await env.DB.prepare('INSERT INTO messages (id, de, a, type, texte, url, titre, date, lu) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)')
-        .bind(message.id, message.de, message.a, message.type, message.texte, message.url, message.titre, message.date)
-        .run()
-      await boite(env, ami).pousser({ type: 'message', message, pseudo: moi.pseudo })
-      return json({ message }, 201)
+      if (await tropDeMessages(env, moi.id)) return erreur('Trop de messages d’un coup : attends une minute.', 429)
+      const contenu = contenuMessage(lireJson())
+      if (contenu instanceof Response) return contenu
+      return publierMessage(env, moi, { a: ami }, contenu)
+    }
+    if (req.method === 'PUT' && chemin[2] === 'image') {
+      if (await tropDeMessages(env, moi.id)) return erreur('Trop de messages d’un coup : attends une minute.', 429)
+      const image = await rangerImage(env, req, corps, moi.id, { a: ami })
+      if (image instanceof Response) return image
+      return publierMessage(env, moi, { a: ami }, { texte: '', url: null, titre: null, image })
     }
     if (req.method === 'POST' && chemin[2] === 'lu') {
-      await env.DB.prepare('UPDATE messages SET lu = 1 WHERE de = ? AND a = ? AND lu = 0').bind(ami, moi.id).run()
+      const r = await env.DB.prepare('UPDATE messages SET lu = 1 WHERE de = ? AND a = ? AND lu = 0').bind(ami, moi.id).run()
+      // l'ami voit « Vu » sous ses messages
+      if (r.meta.changes) await boite(env, ami).pousser({ type: 'lu', id: moi.id })
       return json({ ok: true })
+    }
+  }
+
+  // ---------- images ----------
+  if (chemin[0] === 'image' && chemin[1] && req.method === 'GET') {
+    const im = await env.DB.prepare('SELECT de, a, groupe, type, donnees FROM images WHERE id = ?')
+      .bind(chemin[1])
+      .first<{ de: string; a: string | null; groupe: string | null; type: string; donnees: ArrayBuffer | number[] }>()
+    const autorise = !!im && (im.de === moi.id || im.a === moi.id || (!!im.groupe && (await membresDe(env, im.groupe)).includes(moi.id)))
+    if (!im || !autorise) return erreur('introuvable', 404)
+    const octets = im.donnees instanceof ArrayBuffer ? new Uint8Array(im.donnees) : Uint8Array.from(im.donnees)
+    return new Response(octets, { headers: { 'Content-Type': im.type, 'Cache-Control': 'private, max-age=86400' } })
+  }
+
+  // ---------- groupes ----------
+  if (chemin[0] === 'groupes') {
+    if (req.method === 'GET' && !chemin[1]) {
+      const r = await env.DB.prepare('SELECT g.id, g.nom, g.createur, m.lu FROM groupes g JOIN membres m ON m.groupe = g.id WHERE m.id = ? ORDER BY g.date')
+        .bind(moi.id)
+        .all<{ id: string; nom: string; createur: string; lu: number }>()
+      const groupes = await Promise.all(
+        r.results.map(async (g) => {
+          const ids = await membresDe(env, g.id)
+          const nonLus = await env.DB.prepare('SELECT COUNT(*) AS n FROM messages WHERE groupe = ? AND de != ? AND date > ?').bind(g.id, moi.id, g.lu).first<{ n: number }>()
+          return { id: g.id, nom: g.nom, createur: g.createur, membres: (await profils(env, ids)).map(profilPublic), nonLus: nonLus?.n ?? 0 }
+        })
+      )
+      return json({ groupes })
+    }
+    if (req.method === 'POST' && !chemin[1]) {
+      const d = lireJson()
+      const nom = String(d.nom ?? '').trim()
+      if (!RE_NOM_GROUPE.test(nom)) return erreur('Donne un nom au groupe (40 caractères au plus).')
+      const invites = [...new Set(Array.isArray(d.membres) ? d.membres.map(String) : [])].filter((x) => x !== moi.id)
+      if (!invites.length) return erreur('Choisis au moins un ami.')
+      if (invites.length + 1 > MAX_MEMBRES) return erreur(`${MAX_MEMBRES} personnes au plus dans un groupe.`)
+      for (const id of invites) if (!(await sontAmis(env, moi.id, id))) return erreur('On ne peut ajouter que ses amis.', 403)
+      const id = crypto.randomUUID()
+      const maintenant = Date.now()
+      await env.DB.batch([
+        env.DB.prepare('INSERT INTO groupes (id, nom, createur, date) VALUES (?, ?, ?, ?)').bind(id, nom, moi.id, maintenant),
+        ...[moi.id, ...invites].map((m) => env.DB.prepare('INSERT INTO membres (groupe, id, lu, date) VALUES (?, ?, ?, ?)').bind(id, m, maintenant, maintenant))
+      ])
+      await Promise.allSettled(invites.map((m) => boite(env, m).pousser({ type: 'groupes' })))
+      return json({ id }, 201)
+    }
+    const g = chemin[1]
+    if (g) {
+      const membres = await membresDe(env, g)
+      if (!membres.includes(moi.id)) return erreur('Tu ne fais pas partie de ce groupe.', 403)
+      const prevenir = (ids: string[]): Promise<unknown> => Promise.allSettled(ids.filter((x) => x !== moi.id).map((x) => boite(env, x).pousser({ type: 'groupes' })))
+      if (req.method === 'POST' && chemin[2] === 'membres') {
+        const id = String(lireJson().id ?? '')
+        if (membres.includes(id)) return json({ ok: true })
+        if (membres.length >= MAX_MEMBRES) return erreur(`${MAX_MEMBRES} personnes au plus dans un groupe.`)
+        if (!(await sontAmis(env, moi.id, id))) return erreur('On ne peut ajouter que ses amis.', 403)
+        await env.DB.prepare('INSERT INTO membres (groupe, id, lu, date) VALUES (?, ?, ?, ?)').bind(g, id, Date.now(), Date.now()).run()
+        await prevenir([...membres, id])
+        return json({ ok: true })
+      }
+      if (req.method === 'POST' && chemin[2] === 'quitter') {
+        await env.DB.prepare('DELETE FROM membres WHERE groupe = ? AND id = ?').bind(g, moi.id).run()
+        await supprimerGroupeSiVide(env, g)
+        await prevenir(membres)
+        return json({ ok: true })
+      }
+      if (req.method === 'POST' && chemin[2] === 'nom') {
+        const nom = String(lireJson().nom ?? '').trim()
+        if (!RE_NOM_GROUPE.test(nom)) return erreur('Nom invalide (40 caractères au plus).')
+        await env.DB.prepare('UPDATE groupes SET nom = ? WHERE id = ?').bind(nom, g).run()
+        await prevenir(membres)
+        return json({ ok: true })
+      }
+      if (req.method === 'POST' && chemin[2] === 'lu') {
+        await env.DB.prepare('UPDATE membres SET lu = ? WHERE groupe = ? AND id = ?').bind(Date.now(), g, moi.id).run()
+        return json({ ok: true })
+      }
+      if (chemin[2] === 'messages' && req.method === 'GET') {
+        const avant = Number(url.searchParams.get('avant')) || Date.now() + 1
+        const r = await env.DB.prepare(`SELECT ${COLONNES_MESSAGE} FROM messages WHERE groupe = ? AND date < ? ORDER BY date DESC LIMIT 50`).bind(g, avant).all()
+        return json({ messages: r.results.reverse() })
+      }
+      if (chemin[2] === 'messages' && req.method === 'POST') {
+        if (await tropDeMessages(env, moi.id)) return erreur('Trop de messages d’un coup : attends une minute.', 429)
+        const contenu = contenuMessage(lireJson())
+        if (contenu instanceof Response) return contenu
+        return publierMessage(env, moi, { groupe: g }, contenu)
+      }
+      if (chemin[2] === 'image' && req.method === 'PUT') {
+        if (await tropDeMessages(env, moi.id)) return erreur('Trop de messages d’un coup : attends une minute.', 429)
+        const image = await rangerImage(env, req, corps, moi.id, { groupe: g })
+        if (image instanceof Response) return image
+        return publierMessage(env, moi, { groupe: g }, { texte: '', url: null, titre: null, image })
+      }
     }
   }
 
@@ -280,10 +455,11 @@ export default {
     }
   },
 
-  /** Ménage quotidien : messages de plus de 90 jours, nonces expirés. */
+  /** Ménage quotidien : messages et images de plus de 90 jours, nonces expirés. */
   async scheduled(_e: ScheduledController, env: Env): Promise<void> {
     await env.DB.batch([
       env.DB.prepare('DELETE FROM messages WHERE date < ?').bind(Date.now() - 90 * 24 * 3600 * 1000),
+      env.DB.prepare('DELETE FROM images WHERE date < ?').bind(Date.now() - 90 * 24 * 3600 * 1000),
       env.DB.prepare('DELETE FROM nonces WHERE expire < ?').bind(Date.now())
     ])
   }

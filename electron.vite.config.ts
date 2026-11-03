@@ -23,12 +23,13 @@ export default defineConfig({
   },
   preload: {
     // Preload en CommonJS d'un seul fichier : obligatoire avec sandbox: true.
-    build: { rollupOptions: { input: { ui: resolve('src/preload/ui.ts') } } }
+    build: { rollupOptions: { input: { ui: resolve('src/preload/ui.ts'), notif: resolve('src/preload/notif.ts') } } }
   },
   renderer: {
     root: resolve('src/renderer'),
-    // deux pages : l'interface du navigateur, et la visionneuse PDF (servie à part, dans un onglet isolé)
-    build: { rollupOptions: { input: { index: resolve('src/renderer/index.html'), pdf: resolve('src/renderer/pdf.html') } } },
+    // trois pages : l'interface du navigateur, la visionneuse PDF (servie à part, dans un onglet isolé)
+    // et la notification de message (petite vue posée au-dessus des pages)
+    build: { rollupOptions: { input: { index: resolve('src/renderer/index.html'), pdf: resolve('src/renderer/pdf.html'), notif: resolve('src/renderer/notif.html') } } },
     plugins: [react(), cspDeveloppement()]
   }
 })

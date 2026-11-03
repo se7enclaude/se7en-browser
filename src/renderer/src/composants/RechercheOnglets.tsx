@@ -5,16 +5,14 @@ import type { EtatOnglets } from '../../../shared/onglets'
 import { normaliser } from '../../../shared/coffre'
 import { IconeRecherche } from './Icones'
 import { IconeOnglet } from './OngletItem'
+import { useFigerPages } from '../pagesFigees'
 
 export function RechercheOnglets({ etat, fermer }: { etat: EtatOnglets; fermer: () => void }): React.JSX.Element {
   const [texte, setTexte] = useState('')
   const [choix, setChoix] = useState(0)
 
-  // les pages passent au-dessus de l'interface : cachées le temps de la recherche
-  useEffect(() => {
-    window.se7en.onglets.masquer(true)
-    return () => window.se7en.onglets.masquer(false)
-  }, [])
+  // les pages passent au-dessus de l'interface : figées (et floutées sous le verre) le temps de la recherche
+  useFigerPages()
 
   const liste = useMemo(() => {
     const mots = normaliser(texte).split(' ').filter(Boolean)

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ZoneCapture } from '../../../shared/chat'
 import { IconeCroix, IconeIA } from './Icones'
+import { useFigerPages } from '../pagesFigees'
 
 interface Props {
   idCapture: string
@@ -36,17 +37,14 @@ export function SelecteurZone({ idCapture, image, valider, fermer }: Props): Rea
   const [fini, setFini] = useState(false)
   const [question, setQuestion] = useState('')
 
-  // les pages web passent au-dessus de l'interface : on les cache le temps du choix
+  // les pages web passent au-dessus de l'interface : figées le temps du choix
+  useFigerPages()
   useEffect(() => {
-    window.se7en.onglets.masquer(true)
     const echap = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') fermer()
     }
     window.addEventListener('keydown', echap)
-    return () => {
-      window.se7en.onglets.masquer(false)
-      window.removeEventListener('keydown', echap)
-    }
+    return () => window.removeEventListener('keydown', echap)
   }, [])
 
   const commencer = (e: React.PointerEvent): void => {

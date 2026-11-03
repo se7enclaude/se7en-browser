@@ -1,8 +1,13 @@
 /* Emplacement des pages. Le main y pose la vue de chaque onglet visible ; l'interface indique leur position exacte.
  * Un seul volet d'habitude, deux en vue partagée (séparés par une poignée qu'on peut glisser).
- * Quand un onglet n'a pas de page web (Nouvel onglet, page interne) ou a planté, c'est l'interface qui dessine son volet. */
+ * Quand un onglet n'a pas de page web (Nouvel onglet, page interne) ou a planté, c'est l'interface qui dessine son volet.
+ * Le temps d'une animation, le volet affiche l'image figée de sa page (voir pagesFigees.ts), et au changement
+ * d'onglet l'image de l'ancienne page s'efface en fondu sur la nouvelle. */
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
-import type { EtatOnglet, EtatOnglets, ZoneOnglet } from '../../../shared/onglets'
+import type { CommandeUi, EtatOnglet, EtatOnglets, ZoneOnglet } from '../../../shared/onglets'
+import { figerPages, useImagesFigees } from '../pagesFigees'
+
+type Fondu = Extract<CommandeUi, { type: 'transition-onglet' }> & { n: number }
 
 interface Props {
   etat: EtatOnglets
@@ -14,6 +19,24 @@ export function ZonePage({ etat, contenu }: Props): React.JSX.Element {
   const volets = useRef(new Map<number, HTMLDivElement>())
   const zone = useRef<HTMLDivElement>(null)
   const [ratioGlisse, setRatioGlisse] = useState<number | null>(null)
+  const figees = useImagesFigees()
+  const [fondu, setFondu] = useState<Fondu | null>(null)
+
+  // changement d'onglet : le main envoie l'image de la page quittée (et celle d'arrivée s'il l'a gardée)
+  useEffect(
+    () =>
+      window.se7en.app.surCommande((c) => {
+        if (c.type !== 'transition-onglet') return
+        setFondu(c.depart ? (f) => ({ ...c, n: (f?.n ?? 0) + 1 }) : null)
+      }),
+    []
+  )
+  useEffect(() => {
+    if (!fondu) return
+    // l'image reste un peu après le fondu, le temps que la vraie page s'affiche dessous
+    const t = setTimeout(() => setFondu(null), fondu.duree + 120)
+    return () => clearTimeout(t)
+  }, [fondu])
 
   const actif = etat.onglets.find((o) => o.id === etat.actifId)
   const split = etat.split
@@ -48,14 +71,14 @@ export function ZonePage({ etat, contenu }: Props): React.JSX.Element {
   const glisserPoignee = (): void => {
     const z = zone.current?.getBoundingClientRect()
     if (!z) return
-    // Pendant le glissement, les pages sont cachées : sinon la souris passerait « dans » une page
-    // et l'interface ne recevrait plus ses mouvements.
-    window.se7en.onglets.masquer(true)
+    // Pendant le glissement, les pages sont figées : sinon la souris passerait « dans » une page
+    // et l'interface ne recevrait plus ses mouvements. Leur image suit la poignée.
+    const rendre = figerPages()
     const calcul = (x: number): number => Math.min(0.8, Math.max(0.2, (x - z.left) / z.width))
     const bouger = (ev: PointerEvent): void => setRatioGlisse(calcul(ev.clientX))
     const lacher = (ev: PointerEvent): void => {
       window.se7en.onglets.ratio(calcul(ev.clientX))
-      window.se7en.onglets.masquer(false)
+      void rendre.then((r) => r())
       setRatioGlisse(null)
       window.removeEventListener('pointermove', bouger)
       window.removeEventListener('pointerup', lacher)
@@ -79,6 +102,13 @@ export function ZonePage({ etat, contenu }: Props): React.JSX.Element {
           style={enSplit ? { flexBasis: `calc(${(i === 0 ? ratio : 1 - ratio) * 100}% - 4px)` } : undefined}
           onMouseDown={() => enSplit && o.id !== etat.actifId && window.se7en.onglets.activer(o.id)}
         >
+          {figees.get(o.id) && <img className="page-figee" src={figees.get(o.id)} alt="" draggable={false} />}
+          {i === 0 && fondu && (
+            <div key={fondu.n} className="fondu-onglet" style={{ '--duree-fondu': `${fondu.duree}ms` } as React.CSSProperties}>
+              {fondu.arrivee && <img className="page-figee" src={fondu.arrivee} alt="" draggable={false} />}
+              <img className="page-figee depart" src={fondu.depart!} alt="" draggable={false} />
+            </div>
+          )}
           {o.chargement && <div className="progression" />}
           {o.plantee ? (
             <div className="page-plantee">

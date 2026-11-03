@@ -6,21 +6,31 @@ import type { Conversation, DemandeChat, FluxChat, ReponseEnvoi, ResumeConversat
 import type { Coffre, EtatCoffre } from './coffre'
 import type { AnalyseFormulaire, ResultatRemplissage, ValeurARemplir } from './formulaire'
 import type { EtatOllama } from './ia'
-import type { CommandeUi, EtatOnglets, ZoneOnglet } from './onglets'
+import type { CommandeUi, EtatOnglets, PageFigee, ZoneOnglet } from './onglets'
 import type { Reglages } from './reglages'
-import type { Ami, EtatSocial, EvenementSocial, MessageSocial } from './social'
+import type { Ami, CibleSocial, EtatEnsemble, EtatSocial, EvenementSocial, GroupeSocial, MessageSocial } from './social'
 import type { EtatEcriture } from './ecriture'
 import type { EtatMiseAJour } from './miseAJour'
+import type { RapportPlantage } from './plantages'
 
 export const CANAUX = {
   // fenêtre
   fenetreReduire: 'fenetre:reduire',
+  // rapports de plantage (locaux)
+  plantagesLister: 'plantages:lister',
+  plantagesVus: 'plantages:vus',
+  plantagesEffacer: 'plantages:effacer',
+  plantagesSignaler: 'plantages:signaler',
   fenetreAgrandir: 'fenetre:agrandir',
   fenetreFermer: 'fenetre:fermer',
   fenetreEtat: 'fenetre:etat', // main → interface
   // application
   appInfos: 'app:infos',
   uiCommande: 'ui:commande', // main → interface
+  // notification de message (vue à part, en bas à droite)
+  notifMessage: 'notif:message', // main → notification
+  notifTaille: 'notif:taille',
+  notifOuvrir: 'notif:ouvrir',
   appMenu: 'app:menu',
   // réglages
   reglagesLire: 'reglages:lire',
@@ -42,7 +52,8 @@ export const CANAUX = {
   ongletsFocusPage: 'onglets:focus-page',
   ongletsMenu: 'onglets:menu',
   ongletsPrioritaire: 'onglets:prioritaire',
-  ongletsMasquer: 'onglets:masquer',
+  ongletsFiger: 'onglets:figer',
+  ongletsLiberer: 'onglets:liberer',
   ongletsInterne: 'onglets:interne',
   ongletsDiviser: 'onglets:diviser',
   ongletsQuitterSplit: 'onglets:quitter-split',
@@ -114,6 +125,23 @@ export const CANAUX = {
   socialEnvoyerOnglet: 'social:envoyer-onglet',
   socialLu: 'social:lu',
   socialOuvrirLien: 'social:ouvrir-lien',
+  socialGroupes: 'social:groupes',
+  socialCreerGroupe: 'social:creer-groupe',
+  socialAjouterMembre: 'social:ajouter-membre',
+  socialRenommerGroupe: 'social:renommer-groupe',
+  socialQuitterGroupe: 'social:quitter-groupe',
+  socialImage: 'social:image',
+  socialEnvoyerImage: 'social:envoyer-image',
+  socialEcrit: 'social:ecrit',
+  socialCodeSecours: 'social:code-secours',
+  socialEnregistrerCode: 'social:enregistrer-code',
+  socialRecuperer: 'social:recuperer',
+  ensembleEtat: 'ensemble:etat',
+  ensembleChange: 'ensemble:change', // main → interface
+  ensembleInviter: 'ensemble:inviter',
+  ensembleRepondre: 'ensemble:repondre',
+  ensembleMain: 'ensemble:main',
+  ensembleArreter: 'ensemble:arreter',
   // aide à l'écriture, zone de l'écran, insertion d'une réponse dans la page
   ecritureEtat: 'ecriture:etat', // main → interface
   ecritureAppliquer: 'ecriture:appliquer',
@@ -129,7 +157,9 @@ export const CANAUX = {
   favorisImporter: 'favoris:importer',
   defautEtat: 'defaut:etat',
   defautChoisir: 'defaut:choisir',
-  phishingIgnorer: 'phishing:ignorer'
+  phishingIgnorer: 'phishing:ignorer',
+  traductionTraduire: 'traduction:traduire',
+  traductionOriginal: 'traduction:original'
 } as const
 
 export interface EtatFenetre {
@@ -141,6 +171,8 @@ export interface InfosApp {
   version: string
   /** Vrai si Windows applique l'effet de verre natif (Windows 11 22H2 ou plus récent). */
   effetNatif: boolean
+  /** PC modeste (peu de cœurs, peu de mémoire ou pas d'accélération graphique) : effets de verre allégés en « auto ». */
+  modeste: boolean
 }
 
 /** API exposée à l'interface par le preload, sous window.se7en. */
@@ -175,8 +207,10 @@ export interface ApiSe7en {
     menu(id: number): void
     /** Épingle l'onglet dans la barre latérale (ou l'en retire). */
     prioritaire(id: number, oui: boolean): void
-    /** Cache les pages pendant qu'un écran de l'interface passe devant (accueil). */
-    masquer(oui: boolean): void
+    /** Fige les pages visibles : leur image est renvoyée et elles sont cachées, le temps qu'une animation
+     * ou un écran de l'interface passe devant. Chaque appel doit être suivi d'un `liberer()`. */
+    figer(): Promise<PageFigee[]>
+    liberer(): void
     /** Ouvre une page interne (paramètres, historique…), ou revient sur son onglet. */
     interne(page: PageInterne): void
     naviguer(id: number, saisie: string): void
@@ -207,6 +241,21 @@ export interface ApiSe7en {
     surChangement(rappel: (f: Favori[]) => void): () => void
     /** Choisir le fichier de favoris exporté d'un autre navigateur et l'importer (null : annulé). */
     importer(): Promise<{ ajoutes: number; trouves: number } | { erreur: string } | null>
+  }
+  /** Naviguer ensemble : un onglet partagé en direct avec un ami. */
+  ensemble: {
+    etat(): Promise<EtatEnsemble>
+    surEtat(rappel: (e: EtatEnsemble) => void): () => void
+    inviter(ami: string, idOnglet: number): Promise<{ ok: true } | { erreur: string }>
+    repondre(accepter: boolean): void
+    prendreLaMain(): void
+    arreter(): void
+  }
+  traduction: {
+    /** Traduit la page de l'onglet en français, en gardant sa mise en page (IA locale). */
+    traduire(id: number): void
+    /** Remet le texte d'origine (et arrête une traduction en cours). */
+    original(id: number): void
   }
   phishing: {
     /** « Je fais confiance à ce site » : plus d'alerte pour ce site (l'onglet est rechargé sans alerte). */
@@ -286,6 +335,15 @@ export interface ApiSe7en {
     supprimer(id: string): Promise<Souvenir[]>
     effacer(): Promise<Souvenir[]>
   }
+  plantages: {
+    lister(): Promise<{ rapports: RapportPlantage[]; nonVus: number }>
+    /** L'utilisateur a vu les rapports : le bandeau ne revient plus pour eux. */
+    vus(): void
+    /** Efface un rapport (ou tous, sans identifiant). */
+    effacer(id?: string): Promise<{ rapports: RapportPlantage[]; nonVus: number }>
+    /** Erreur JavaScript de l'interface, notée dans les rapports. */
+    signaler(message: string, pile: string): void
+  }
   miseAJour: {
     etat(): Promise<EtatMiseAJour>
     verifier(): Promise<EtatMiseAJour>
@@ -323,11 +381,31 @@ export interface ApiSe7en {
     accepter(id: string): Promise<{ ok: true } | { erreur: string }>
     /** Refuse une demande, l'annule, ou retire un ami. */
     retirer(id: string): Promise<{ ok: true } | { erreur: string }>
-    messages(ami: string, avant?: number): Promise<MessageSocial[] | { erreur: string }>
-    envoyer(ami: string, texte: string): Promise<MessageSocial | { erreur: string }>
-    /** Envoie l'adresse et le titre de l'onglet à un ami. */
-    envoyerOnglet(ami: string, idOnglet: number, avecResume?: boolean): Promise<MessageSocial | { erreur: string }>
-    lu(ami: string): void
+    messages(cible: CibleSocial, avant?: number): Promise<MessageSocial[] | { erreur: string }>
+    envoyer(cible: CibleSocial, texte: string): Promise<MessageSocial | { erreur: string }>
+    /** Envoie l'adresse et le titre de l'onglet à un ami ou un groupe. */
+    envoyerOnglet(cible: CibleSocial, idOnglet: number, avecResume?: boolean): Promise<MessageSocial | { erreur: string }>
+    lu(cible: CibleSocial): void
+    groupes(): Promise<GroupeSocial[] | { erreur: string }>
+    creerGroupe(nom: string, membres: string[]): Promise<{ id: string } | { erreur: string }>
+    ajouterMembre(groupe: string, id: string): Promise<{ ok: true } | { erreur: string }>
+    renommerGroupe(groupe: string, nom: string): Promise<{ ok: true } | { erreur: string }>
+    quitterGroupe(groupe: string): Promise<{ ok: true } | { erreur: string }>
+    /** Image d'un message (data: URL), ou null. */
+    image(id: string): Promise<string | null>
+    /** Envoie une image : choisie sur le PC, capture d'un onglet, ou collée (data: URL). Réduite avant l'envoi. */
+    envoyerImage(
+      cible: CibleSocial,
+      source: { type: 'fichier' } | { type: 'capture'; idOnglet: number } | { type: 'collee'; donnees: string }
+    ): Promise<MessageSocial | { erreur: string } | null>
+    /** « Je suis en train d'écrire » (à envoyer de temps en temps pendant la frappe). */
+    ecrit(cible: CibleSocial): void
+    /** Code de secours du profil de ce PC (pour le retrouver sur un autre PC). */
+    codeSecours(): Promise<string | null>
+    /** Enregistre le code de secours dans un fichier texte choisi par l'utilisateur. */
+    enregistrerCode(): Promise<boolean>
+    /** Retrouve un profil existant avec son code de secours. */
+    recuperer(code: string): Promise<EtatSocial | { erreur: string }>
     /** Ouvre un lien reçu dans un nouvel onglet (http/https seulement). */
     ouvrirLien(url: string): void
   }

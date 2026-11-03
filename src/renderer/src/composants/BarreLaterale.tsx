@@ -1,6 +1,8 @@
 /* Barre latérale gauche : les onglets prioritaires (épinglés, gardés entre les sessions),
  * et en disposition « à gauche » les onglets normaux en dessous. Ctrl+B l'affiche ou la cache. */
+import { useRef } from 'react'
 import type { EtatOnglets } from '../../../shared/onglets'
+import { useFlip } from '../useFlip'
 import type { Glisser } from '../useGlisser'
 import { IconePlus } from './Icones'
 import { OngletItem } from './OngletItem'
@@ -17,10 +19,12 @@ export function BarreLaterale({ etat, glisser, ouverte, avecNormaux }: Props): R
   const o = window.se7en.onglets
   const prioritaires = etat.onglets.filter((x) => x.prioritaire)
   const normaux = etat.onglets.filter((x) => !x.prioritaire)
+  const contenu = useRef<HTMLDivElement>(null)
+  useFlip(contenu)
 
   return (
     <aside className={`barre-laterale${ouverte ? ' ouverte' : ''}`} aria-hidden={!ouverte}>
-      <div className="barre-laterale-contenu">
+      <div ref={contenu} className="barre-laterale-contenu">
         <div className="titre-section">Prioritaires</div>
         <div className="liste-onglets" {...glisser.zone((id) => o.prioritaire(id, true))}>
           {prioritaires.map((x) => (

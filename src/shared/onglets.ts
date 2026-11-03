@@ -1,4 +1,5 @@
 /* État des onglets, tel que l'interface l'affiche. Le main en est la seule source. */
+import type { CibleSocial } from './social'
 
 export interface EtatOnglet {
   id: number
@@ -24,10 +25,16 @@ export interface EtatOnglet {
   groupe: string | null
   /** Alerte anti-phishing sur la page actuelle (texte à montrer), ou null. */
   phishing: string | null
+  /** Traduction de la page par l'IA locale (en cours, faite, ou en erreur), ou null. */
+  traduction: EtatTraduction
 }
 
 export const COULEURS_GROUPES = ['bleu', 'vert', 'orange', 'rose', 'violet', 'cyan', 'jaune', 'rouge'] as const
 export type CouleurGroupe = (typeof COULEURS_GROUPES)[number]
+
+export type EtatTraduction =
+  /** `fond` : ce qui est à l'écran est traduit, le reste de la page continue en arrière-plan. */
+  | { etat: 'en-cours'; progression: number; fond?: boolean } | { etat: 'traduite' } | { etat: 'erreur'; message: string } | null
 
 export interface GroupeOnglets {
   id: string
@@ -74,7 +81,17 @@ export interface ZoneOnglet {
 }
 
 /** Commandes que le main envoie à l'interface (ex. raccourci Ctrl+L capté dans une page). */
+/** Image figée d'une page (data: URL), le temps qu'une animation de l'interface passe. */
+export interface PageFigee {
+  id: number
+  image: string
+}
+
 export type CommandeUi =
+  /** Changement d'onglet : l'ancienne page s'efface en fondu sur la nouvelle (`depart` null : fondu annulé). */
+  /** Clic sur la notification d'un message : ouvrir la conversation avec cet ami. */
+  | { type: 'ouvrir-conversation'; cible: CibleSocial }
+  | { type: 'transition-onglet'; depart: string | null; arrivee: string | null; duree: number }
   | { type: 'focus-adresse' }
   | { type: 'basculer-ia' }
   /** Ctrl+Maj+A : chercher parmi les onglets ouverts. */

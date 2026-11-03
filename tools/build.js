@@ -74,7 +74,7 @@ for (const m of modules) {
   if (modules.some((p) => p !== m && m.startsWith(p + path.sep))) continue
   taille += copy(m, path.join(RES, m.slice(m.indexOf('node_modules'))), sansCartes)
 }
-const attendus = ['out/main/index.js', 'out/preload/ui.js', 'out/renderer/index.html', 'out/renderer/pdf.html', 'node_modules/pdfjs-dist/legacy/build/pdf.mjs', 'node_modules/@ghostery/adblocker/package.json', 'node_modules/pdf-lib/package.json']
+const attendus = ['out/main/index.js', 'out/preload/ui.js', 'out/renderer/index.html', 'out/renderer/pdf.html', 'out/preload/notif.js', 'out/renderer/notif.html', 'node_modules/pdfjs-dist/legacy/build/pdf.mjs', 'node_modules/@ghostery/adblocker/package.json', 'node_modules/pdf-lib/package.json']
 for (const f of attendus) if (!fs.existsSync(path.join(RES, f))) stop('absent du paquet : ' + f)
 console.log('Navigateur : ' + mb(taille) + ' (' + modules.length + ' modules) + Electron')
 

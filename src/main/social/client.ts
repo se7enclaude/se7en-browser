@@ -5,7 +5,7 @@ import { EventEmitter } from 'node:events'
 import { promises as fs, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { Identite } from './identite'
-import type { Ami, EtatSocial, EvenementSocial, MessageSocial, ProfilSocial } from '../../shared/social'
+import type { ActionEnsemble, Ami, CibleSocial, EtatSocial, EvenementSocial, GroupeSocial, MessageSocial, ProfilSocial } from '../../shared/social'
 
 /** Réponse d'erreur du serveur ou du réseau, déjà en français. */
 export class ErreurSocial extends Error {
@@ -29,6 +29,8 @@ export class ClientSocial extends EventEmitter<{ etat: [EtatSocial]; evenement: 
   private minuteurReconnexion: NodeJS.Timeout | null = null
   private attente = 2000
   private readonly photos = new Map<string, { url: string | null; date: number }>()
+  /** Images des messages déjà chargées (data: URL), les plus récentes. */
+  private readonly images = new Map<string, string>()
   private generation = 0
 
   constructor(
@@ -85,6 +87,32 @@ export class ClientSocial extends EventEmitter<{ etat: [EtatSocial]; evenement: 
     this.changer({ profil })
     if (this.etatActuel.connexion !== 'connecte') await this.demarrer()
     return this.etatActuel
+  }
+
+  /** Code de secours du profil de ce PC (pour le retrouver sur un autre PC). */
+  codeSecours(): string | null {
+    return this.identite?.codeSecours() ?? null
+  }
+
+  /** Retrouve un profil existant avec son code de secours : la clé remplace celle de ce PC. */
+  async recuperer(code: string): Promise<EtatSocial> {
+    const id = Identite.depuisCode(code)
+    if (!id) throw new ErreurSocial('Code de secours incorrect : vérifie chaque groupe de lettres.')
+    if (!safeStorage.isEncryptionAvailable()) throw new ErreurSocial('Windows ne permet pas de protéger ta clé sur ce compte.')
+    const ancienne = this.identite
+    this.identite = id
+    try {
+      const profil = await this.requete<ProfilSocial>('GET', '/api/profil')
+      await fs.writeFile(this.cheminIdentite, safeStorage.encryptString(id.exporter()))
+      this.photos.clear()
+      this.changer({ profil })
+      await this.demarrer()
+      return this.etatActuel
+    } catch (e) {
+      this.identite = ancienne
+      const err = e as ErreurSocial
+      throw err.statut === 404 ? new ErreurSocial('Aucun profil ne correspond à ce code.') : err
+    }
   }
 
   /** Supprime le compte sur le serveur (profil, photo, amis, messages) et la clé de ce PC. */
@@ -151,6 +179,75 @@ export class ClientSocial extends EventEmitter<{ etat: [EtatSocial]; evenement: 
 
   async marquerLu(ami: string): Promise<void> {
     await this.requete('POST', `/api/messages/${encodeURIComponent(ami)}/lu`)
+  }
+
+  // ---------- groupes ----------
+
+  async groupes(): Promise<GroupeSocial[]> {
+    return (await this.requete<{ groupes: GroupeSocial[] }>('GET', '/api/groupes')).groupes
+  }
+
+  async creerGroupe(nom: string, membres: string[]): Promise<string> {
+    return (await this.requete<{ id: string }>('POST', '/api/groupes', { nom, membres })).id
+  }
+
+  async ajouterMembre(groupe: string, id: string): Promise<void> {
+    await this.requete('POST', `/api/groupes/${encodeURIComponent(groupe)}/membres`, { id })
+  }
+
+  async renommerGroupe(groupe: string, nom: string): Promise<void> {
+    await this.requete('POST', `/api/groupes/${encodeURIComponent(groupe)}/nom`, { nom })
+  }
+
+  async quitterGroupe(groupe: string): Promise<void> {
+    await this.requete('POST', `/api/groupes/${encodeURIComponent(groupe)}/quitter`)
+  }
+
+  // ---------- conversations (ami ou groupe) ----------
+
+  private base(c: CibleSocial): string {
+    return c.type === 'ami' ? `/api/messages/${encodeURIComponent(c.id)}` : `/api/groupes/${encodeURIComponent(c.id)}/messages`
+  }
+
+  async messagesDe(c: CibleSocial, avant?: number): Promise<MessageSocial[]> {
+    const q = avant ? `?avant=${Math.floor(avant)}` : ''
+    return (await this.requete<{ messages: MessageSocial[] }>('GET', `${this.base(c)}${q}`)).messages
+  }
+
+  async envoyerA(c: CibleSocial, contenu: { texte: string; url?: string; titre?: string }): Promise<MessageSocial> {
+    return (await this.requete<{ message: MessageSocial }>('POST', this.base(c), contenu)).message
+  }
+
+  async marquerLuDe(c: CibleSocial): Promise<void> {
+    await this.requete('POST', c.type === 'ami' ? `/api/messages/${encodeURIComponent(c.id)}/lu` : `/api/groupes/${encodeURIComponent(c.id)}/lu`)
+  }
+
+  /** Envoie une image (déjà réduite en JPEG par le main). */
+  async envoyerImage(c: CibleSocial, jpeg: Buffer): Promise<MessageSocial> {
+    const chemin = c.type === 'ami' ? `/api/messages/${encodeURIComponent(c.id)}/image` : `/api/groupes/${encodeURIComponent(c.id)}/image`
+    const m = (await this.requete<{ message: MessageSocial }>('PUT', chemin, jpeg, 'image/jpeg')).message
+    this.images.set(m.image!, `data:image/jpeg;base64,${jpeg.toString('base64')}`)
+    return m
+  }
+
+  /** Image d'un message en data: URL (gardée tant que la session dure, 60 au plus). */
+  async image(id: string): Promise<string | null> {
+    const enCache = this.images.get(id)
+    if (enCache) return enCache
+    const r = await this.brut('GET', `/api/image/${encodeURIComponent(id)}`)
+    const type = r.headers.get('Content-Type') ?? ''
+    if (!r.ok || !/^image\/(jpeg|png|webp)$/.test(type)) return null
+    const url = `data:${type};base64,${Buffer.from(await r.arrayBuffer()).toString('base64')}`
+    this.images.set(id, url)
+    while (this.images.size > 60) this.images.delete(this.images.keys().next().value!)
+    return url
+  }
+
+  /** Petit signal relayé en direct (« écrit… », naviguer ensemble) ; ignoré hors connexion. */
+  signal(donnees: Record<string, unknown>): boolean {
+    if (this.ws?.readyState !== WebSocket.OPEN) return false
+    this.ws.send(JSON.stringify(donnees))
+    return true
   }
 
   arreter(): void {
@@ -253,6 +350,8 @@ export class ClientSocial extends EventEmitter<{ etat: [EtatSocial]; evenement: 
   }
 }
 
+const ACTIONS_ENSEMBLE: ActionEnsemble[] = ['invite', 'accepte', 'refuse', 'url', 'defile', 'main', 'fin']
+
 /** Vérifie la forme d'un évènement reçu (le serveur est distant : on ne lui fait pas confiance aveuglément). */
 export function lireEvenement(texte: string): EvenementSocial | null {
   let o: Record<string, unknown>
@@ -262,7 +361,22 @@ export function lireEvenement(texte: string): EvenementSocial | null {
     return null
   }
   if (o?.type === 'amis') return { type: 'amis' }
+  if (o?.type === 'groupes') return { type: 'groupes' }
   if (o?.type === 'presence' && typeof o.id === 'string' && typeof o.enLigne === 'boolean') return { type: 'presence', id: o.id, enLigne: o.enLigne }
+  if (o?.type === 'lu' && typeof o.id === 'string') return { type: 'lu', id: o.id }
+  if (o?.type === 'ecrit' && typeof o.id === 'string') return { type: 'ecrit', id: o.id, ...(typeof o.groupe === 'string' ? { groupe: o.groupe } : {}) }
+  if (o?.type === 'ensemble' && typeof o.de === 'string' && typeof o.action === 'string' && ACTIONS_ENSEMBLE.includes(o.action as ActionEnsemble)) {
+    const url = typeof o.url === 'string' && /^https?:\/\//i.test(o.url) ? o.url.slice(0, 2000) : undefined
+    return {
+      type: 'ensemble',
+      de: o.de,
+      action: o.action as ActionEnsemble,
+      ...(url ? { url } : {}),
+      ...(typeof o.titre === 'string' ? { titre: o.titre.slice(0, 200) } : {}),
+      ...(typeof o.pseudo === 'string' ? { pseudo: o.pseudo.slice(0, 24) } : {}),
+      ...(typeof o.y === 'number' && o.y >= 0 && o.y <= 1 ? { y: o.y } : {})
+    }
+  }
   const m = o?.message as Record<string, unknown> | undefined
   if (o?.type === 'message' && m && typeof m.id === 'string' && typeof m.de === 'string' && typeof m.texte === 'string' && typeof m.date === 'number') {
     let url: string | null = null
@@ -278,6 +392,8 @@ export function lireEvenement(texte: string): EvenementSocial | null {
         texte: m.texte.slice(0, 2000),
         url,
         titre: url && typeof m.titre === 'string' ? m.titre.slice(0, 200) : null,
+        groupe: typeof m.groupe === 'string' ? m.groupe : null,
+        image: typeof m.image === 'string' && /^[\w-]{8,64}$/.test(m.image) ? m.image : null,
         date: m.date,
         lu: 0
       }

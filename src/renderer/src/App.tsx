@@ -9,9 +9,11 @@ import { NouvelOnglet } from './composants/NouvelOnglet'
 import { OngletsHaut } from './composants/OngletsHaut'
 import { PageFavoris, PageHistorique, PageTelechargements } from './composants/PagesDonnees'
 import { PageIA, useOllama } from './composants/PageIA'
-import { PageAmis } from './composants/PageAmis'
+import { ouvrirConversation, PageAmis } from './composants/PageAmis'
 import { SelecteurZone } from './composants/SelecteurZone'
 import { BandeauEcriture } from './composants/BandeauEcriture'
+import { BandeauPlantage } from './composants/Plantages'
+import { BandeauEnsemble } from './composants/BandeauEnsemble'
 import { RechercheOnglets } from './composants/RechercheOnglets'
 import type { ZoneCapture } from '../../shared/chat'
 import { PanneauIA, type DemandeExterne } from './composants/PanneauIA'
@@ -19,6 +21,7 @@ import { QuestionIA } from './composants/QuestionIA'
 import { Parametres } from './composants/Parametres'
 import { ZonePage } from './composants/ZonePage'
 import { useGlisser } from './useGlisser'
+import { useApresFigeage } from './pagesFigees'
 import { useOnglets } from './useOnglets'
 import { useAttributsTheme, useInfosApp, useReglages } from './useReglages'
 
@@ -46,13 +49,17 @@ export function App(): React.JSX.Element {
         else if (c.type === 'demander-ia') demanderIA(c.texte, c.avecPage)
         else if (c.type === 'zone') setZone({ idCapture: c.idCapture, image: c.image })
         else if (c.type === 'rechercher-onglets') setRechercheOnglets((v) => !v)
+        else if (c.type === 'ouvrir-conversation') ouvrirConversation(c.cible)
       }),
     []
   )
 
   const disposition = reglages?.disposition ?? 'les-deux'
   const barreDispo = disposition !== 'haut'
-  const barreOuverte = barreDispo && !!reglages?.barreLaterale
+  const barreDemandee = barreDispo && !!reglages?.barreLaterale
+  // la barre latérale et le panneau IA s'animent sur l'image figée des pages (sinon la page saccade à chaque image)
+  const barreOuverte = useApresFigeage(barreDemandee, 320)
+  const panneauOuvert = useApresFigeage(iaOuverte, 340)
   // Barre latérale cachée en disposition « à gauche » : les onglets remontent en haut pour rester accessibles.
   const normauxEnHaut = disposition !== 'gauche' || !barreOuverte
   const enSplit = !!etat.split && !!actif && (etat.split.gauche === actif.id || etat.split.droite === actif.id)
@@ -92,10 +99,30 @@ export function App(): React.JSX.Element {
             enSplit={enSplit}
             bloqueurActif={reglages?.bloqueur ?? true}
             ia={{ ouverte: iaOuverte, basculer: () => setIaOuverte((v) => !v), demander: (t) => demanderIA(t, true) }}
-            barre={barreDispo ? { ouverte: barreOuverte, basculer: () => modifier({ barreLaterale: !barreOuverte }) } : null}
+            barre={barreDispo ? { ouverte: barreDemandee, basculer: () => modifier({ barreLaterale: !barreDemandee }) } : null}
           />
           {reglages && <QuestionIA reglages={reglages} modifier={modifier} ia={ia} />}
           <BandeauEcriture />
+          <BandeauPlantage />
+          <BandeauEnsemble />
+          {actif?.traduction && actif.traduction.etat !== 'traduite' && !(actif.traduction.etat === 'en-cours' && actif.traduction.fond) && (
+            <div className={`bandeau-traduction${actif.traduction.etat === 'erreur' ? ' erreur' : ''}`} role="status">
+              {actif.traduction.etat === 'en-cours' ? (
+                <>
+                  <span>Traduction en français… {Math.round(actif.traduction.progression * 100)} %</span>
+                  <div className="jauge-traduction">
+                    <div style={{ width: `${Math.max(4, actif.traduction.progression * 100)}%` }} />
+                  </div>
+                </>
+              ) : (
+                <span>{actif.traduction.message}</span>
+              )}
+              <span className="espace" />
+              <button className="bouton-verre petit" onClick={() => window.se7en.traduction.original(actif.id)}>
+                {actif.traduction.etat === 'en-cours' ? 'Arrêter et revenir à l’original' : 'Fermer'}
+              </button>
+            </div>
+          )}
           {actif?.phishing && (
             <div className="bandeau-phishing" role="alert">
               <strong>⚠ Attention : page peut-être frauduleuse</strong>
@@ -112,7 +139,7 @@ export function App(): React.JSX.Element {
           <ZonePage etat={etat} contenu={contenu} />
         </div>
         {reglages && (
-          <PanneauIA etat={etat} actif={actif} ia={ia} reglages={reglages} ouvert={iaOuverte} fermer={() => setIaOuverte(false)} demande={demande} />
+          <PanneauIA etat={etat} actif={actif} ia={ia} reglages={reglages} ouvert={panneauOuvert} fermer={() => setIaOuverte(false)} demande={demande} />
         )}
       </div>
       {rechercheOnglets && <RechercheOnglets etat={etat} fermer={() => setRechercheOnglets(false)} />}

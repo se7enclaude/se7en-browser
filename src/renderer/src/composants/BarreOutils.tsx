@@ -11,6 +11,7 @@ import {
   IconeCadenas,
   IconeCroix,
   IconeEtoile,
+  IconeTraduire,
   IconeIA,
   IconePrecedent,
   IconeRecherche,
@@ -139,6 +140,16 @@ export function BarreOutils({ actif, enSplit, barre, ia, bloqueurActif }: Props)
           >
             <IconeBouclier />
             {bloqueurActif && actif.bloques > 0 && <span className="compteur-bloques">{actif.bloques > 99 ? '99+' : actif.bloques}</span>}
+          </button>
+        )}
+        {estWeb && actif && brouillon === null && (
+          <button
+            type="button"
+            className={`bouton-etoile bouton-traduire${actif.traduction && actif.traduction.etat !== 'erreur' ? ' actif' : ''}${actif.traduction?.etat === 'en-cours' ? ' en-cours' : ''}`}
+            title={actif.traduction ? 'Afficher la page d’origine' : 'Traduire la page en français (IA locale)'}
+            onClick={() => (actif.traduction ? window.se7en.traduction.original(actif.id) : window.se7en.traduction.traduire(actif.id))}
+          >
+            <IconeTraduire />
           </button>
         )}
         {estWeb && brouillon === null && (

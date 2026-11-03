@@ -6,7 +6,7 @@ import type { FluxChat } from '../shared/chat'
 import type { EtatOllama } from '../shared/ia'
 import type { CommandeUi, EtatOnglets } from '../shared/onglets'
 import type { Reglages } from '../shared/reglages'
-import type { EtatSocial, EvenementSocial } from '../shared/social'
+import type { EtatEnsemble, EtatSocial, EvenementSocial } from '../shared/social'
 import type { EtatEcriture } from '../shared/ecriture'
 import type { EtatMiseAJour } from '../shared/miseAJour'
 
@@ -60,7 +60,8 @@ const api: ApiSe7en = {
     focusPage: envoyer(CANAUX.ongletsFocusPage),
     menu: envoyer(CANAUX.ongletsMenu),
     prioritaire: envoyer(CANAUX.ongletsPrioritaire),
-    masquer: envoyer(CANAUX.ongletsMasquer),
+    figer: demander(CANAUX.ongletsFiger),
+    liberer: envoyer(CANAUX.ongletsLiberer),
     interne: envoyer(CANAUX.ongletsInterne),
     diviser: envoyer(CANAUX.ongletsDiviser),
     quitterSplit: envoyer(CANAUX.ongletsQuitterSplit),
@@ -141,6 +142,24 @@ const api: ApiSe7en = {
     etat: demander(CANAUX.defautEtat),
     choisir: envoyer(CANAUX.defautChoisir)
   },
+  ensemble: {
+    etat: demander(CANAUX.ensembleEtat),
+    surEtat: (rappel) => ecouter<EtatEnsemble>(CANAUX.ensembleChange, rappel),
+    inviter: demander(CANAUX.ensembleInviter),
+    repondre: envoyer(CANAUX.ensembleRepondre),
+    prendreLaMain: envoyer(CANAUX.ensembleMain),
+    arreter: envoyer(CANAUX.ensembleArreter)
+  },
+  traduction: {
+    traduire: envoyer(CANAUX.traductionTraduire),
+    original: envoyer(CANAUX.traductionOriginal)
+  },
+  plantages: {
+    lister: demander(CANAUX.plantagesLister),
+    vus: envoyer(CANAUX.plantagesVus),
+    effacer: demander(CANAUX.plantagesEffacer),
+    signaler: envoyer(CANAUX.plantagesSignaler)
+  },
   miseAJour: {
     etat: demander(CANAUX.majEtat),
     verifier: demander(CANAUX.majVerifier),
@@ -172,7 +191,18 @@ const api: ApiSe7en = {
     envoyer: demander(CANAUX.socialEnvoyer),
     envoyerOnglet: demander(CANAUX.socialEnvoyerOnglet),
     lu: envoyer(CANAUX.socialLu),
-    ouvrirLien: envoyer(CANAUX.socialOuvrirLien)
+    ouvrirLien: envoyer(CANAUX.socialOuvrirLien),
+    groupes: demander(CANAUX.socialGroupes),
+    creerGroupe: demander(CANAUX.socialCreerGroupe),
+    ajouterMembre: demander(CANAUX.socialAjouterMembre),
+    renommerGroupe: demander(CANAUX.socialRenommerGroupe),
+    quitterGroupe: demander(CANAUX.socialQuitterGroupe),
+    image: demander(CANAUX.socialImage),
+    envoyerImage: demander(CANAUX.socialEnvoyerImage),
+    ecrit: envoyer(CANAUX.socialEcrit),
+    codeSecours: demander(CANAUX.socialCodeSecours),
+    enregistrerCode: demander(CANAUX.socialEnregistrerCode),
+    recuperer: demander(CANAUX.socialRecuperer)
   }
 }
 
