@@ -66,6 +66,14 @@
     radial-gradient(70% 50% at 40% 95%, #e6e1d6 0%, transparent 70%),
     linear-gradient(180deg, #f3f1eb 0%, #dedbd3 100%);
   --fond-uni: #e8e5de;
+  /* verre « par-dessus » (menus, cartes posées sur une page) : voile assez dense pour que le texte reste lisible
+   * sur n'importe quelle page (blanche, très colorée, vidéo) — contraste ≥ 4,5:1 même sur du noir ou du blanc purs */
+  --verre-dessus: rgb(250 248 243 / 0.8);
+  --verre-dessus-reflet: linear-gradient(180deg, rgb(255 255 255 / 0.45), rgb(255 255 255 / 0) 42%);
+  --flou-dessus: saturate(120%) blur(32px);
+  --texte-2-dessus: rgb(27 27 30 / 0.8);
+  --texte-discret-dessus: rgb(27 27 30 / 0.7);
+  --survol-dessus: rgb(0 0 0 / 0.07);
 
   --rayon: 24px;
   --rayon-petit: 12px;
@@ -116,6 +124,11 @@
     radial-gradient(70% 50% at 60% 90%, #2b2a2c 0%, transparent 70%),
     linear-gradient(180deg, #3a3836 0%, #1c1b1c 100%);
   --fond-uni: #2a2928;
+  --verre-dessus: rgb(28 27 31 / 0.84);
+  --verre-dessus-reflet: linear-gradient(180deg, rgb(255 255 255 / 0.05), rgb(255 255 255 / 0) 42%);
+  --texte-2-dessus: rgb(255 255 255 / 0.86);
+  --texte-discret-dessus: rgb(255 255 255 / 0.78);
+  --survol-dessus: rgb(255 255 255 / 0.1);
   color-scheme: dark;
 }
 @media (prefers-color-scheme: dark) {
@@ -148,6 +161,11 @@
       radial-gradient(70% 50% at 60% 90%, #2b2a2c 0%, transparent 70%),
       linear-gradient(180deg, #3a3836 0%, #1c1b1c 100%);
     --fond-uni: #2a2928;
+    --verre-dessus: rgb(28 27 31 / 0.84);
+    --verre-dessus-reflet: linear-gradient(180deg, rgb(255 255 255 / 0.05), rgb(255 255 255 / 0) 42%);
+    --texte-2-dessus: rgb(255 255 255 / 0.86);
+    --texte-discret-dessus: rgb(255 255 255 / 0.78);
+    --survol-dessus: rgb(255 255 255 / 0.1);
     color-scheme: dark;
   }
 }
@@ -3216,6 +3234,7 @@ textarea.champ {
 :root[data-verre='leger'] {
   --flou: saturate(140%) blur(8px);
   --flou-fort: saturate(140%) blur(12px);
+  --flou-dessus: saturate(120%) blur(14px);
 }
 :root[data-verre='leger'] .fond-recherche-onglets,
 :root[data-verre='leger'] .accueil,
@@ -3598,6 +3617,24 @@ textarea.champ {
   transform-origin: top right;
   /* il se déroule depuis le bouton : la découpe descend, le verre grandit légèrement */
   animation: menu-deroule 300ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
+}
+/* Verre posé par-dessus une page : menus, recherche d'onglets, remplissage, zone de l'écran, accueil.
+ * Toujours du verre (flou, liseré, reflet), mais avec un voile dense qui ne laisse plus la page « traverser »
+ * le texte : lisible sur une page blanche, très colorée ou une vidéo, en sombre comme en clair. */
+.menu-verre,
+.recherche-onglets,
+.carte-remplissage,
+.consigne-zone,
+.question-zone,
+.accueil-carte {
+  --texte-2: var(--texte-2-dessus);
+  --texte-discret: var(--texte-discret-dessus);
+  --survol: var(--survol-dessus);
+  background: var(--verre-dessus-reflet), var(--verre-dessus);
+  backdrop-filter: var(--flou-dessus);
+}
+.menu-verre.ancre::before {
+  background: var(--verre-dessus);
 }
 .menu-verre.ancre {
   position: absolute;
