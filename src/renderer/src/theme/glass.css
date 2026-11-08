@@ -4847,3 +4847,106 @@ textarea.champ {
   font-size: 11.5px;
   color: var(--ia);
 }
+
+/* ---------- Tâches en arrière-plan ---------- */
+.liste-taches {
+  display: grid;
+  gap: 12px;
+}
+.carte-tache {
+  display: grid;
+  gap: 10px;
+}
+.carte-tache.en-pause {
+  opacity: 0.6;
+}
+.tete-tache {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.type-tache {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: var(--pilule);
+  background: var(--verre-creux);
+  color: var(--ia);
+}
+.titre-tache {
+  font-family: var(--police-titre);
+  font-size: 16px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.titre-tache:hover {
+  text-decoration: underline;
+}
+.etat-tache {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.valeur-tache {
+  font-family: var(--police-titre);
+  font-size: 26px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.valeur-tache.petite {
+  font-size: 15px;
+}
+.resume-tache {
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: 13px;
+  color: var(--texte-2);
+}
+.courbe-prix .aire {
+  fill: rgb(230 207 151 / 0.16);
+}
+.courbe-prix .trait {
+  fill: none;
+  stroke: var(--ia);
+  stroke-width: 1.6;
+}
+.courbe-prix .point {
+  fill: var(--ia);
+}
+.alerte-tache {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: var(--rayon-petit);
+  background: rgb(230 207 151 / 0.12);
+  font-size: 13px;
+}
+.pied-tache {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.nouvelle-tache {
+  display: grid;
+  gap: 10px;
+}
+.chip.actif {
+  background: var(--accent);
+  color: var(--sur-accent);
+}
+.vide-taches {
+  text-align: center;
+}
+.pied-tache select.champ {
+  width: auto;
+  flex: none;
+}

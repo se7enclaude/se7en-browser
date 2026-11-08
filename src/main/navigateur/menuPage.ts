@@ -22,6 +22,8 @@ export interface ActionsMenuPage {
   traduite: () => boolean
   /** Ouvre l'aperçu « Remplir ce formulaire avec mon coffre ». */
   remplirFormulaire: () => void
+  /** Surveille la page en arrière-plan (tâche) et ouvre la page Tâches. */
+  surveiller: (type: 'prix' | 'changement' | 'resume') => void
   /** Position de la page dans la fenêtre (pour placer le menu au clic). */
   origine: () => { x: number; y: number } | null
 }
@@ -95,6 +97,14 @@ export function ouvrirMenuPage(fenetre: BrowserWindow, wc: WebContents, p: Conte
       { label: '✦ Résumer la page', enabled: ia, click: () => a.demander('/resume') },
       { label: '✦ Explique-moi cette page', enabled: ia, click: () => a.demander(DEMANDE_EXPLIQUE_PAGE) },
       { label: '✦ Remplir un formulaire avec mon coffre…', click: () => a.remplirFormulaire() },
+      {
+        label: 'Surveiller cette page',
+        submenu: [
+          { label: 'Me prévenir quand le prix baisse', click: () => a.surveiller('prix') },
+          { label: 'Me prévenir quand la page change', click: () => a.surveiller('changement') },
+          { label: '✦ Un résumé chaque matin', click: () => a.surveiller('resume') }
+        ]
+      },
       a.traduite()
         ? { label: 'Afficher la page d’origine', click: () => a.traduire() }
         : { label: '✦ Traduire la page en français', enabled: ia, click: () => a.traduire() }

@@ -7,6 +7,7 @@ import type { Coffre, EtatCoffre } from './coffre'
 import type { AnalyseFormulaire, AnalyseFormulaireWeb, ResultatRemplissage, ValeurARemplir } from './formulaire'
 import type { EtatOllama } from './ia'
 import type { Materiel } from './materiel'
+import type { DemandeTache, Tache } from './taches'
 import type { CommandeUi, EtatOnglets, PageFigee, ZoneOnglet } from './onglets'
 import type { Reglages } from './reglages'
 import type { EtatVpn } from './vpn'
@@ -115,6 +116,12 @@ export const CANAUX = {
   iaArreter: 'ia:arreter',
   iaChange: 'ia:change', // main → interface
   iaMateriel: 'ia:materiel',
+  tachesLister: 'taches:lister',
+  tachesCreer: 'taches:creer',
+  tachesModifier: 'taches:modifier',
+  tachesSupprimer: 'taches:supprimer',
+  tachesVerifier: 'taches:verifier',
+  tachesChange: 'taches:change', // main → interface
   iaVitesse: 'ia:vitesse',
   // chat avec l'IA
   chatEnvoyer: 'chat:envoyer',
@@ -283,6 +290,16 @@ export interface ApiSe7en {
     deplacerVersSession(idOnglet: number, session: string): void
     quitterSplit(): void
     ratio(r: number): void
+  }
+  /** Tâches en arrière-plan : pages surveillées (prix, changement, résumé du jour). */
+  taches: {
+    lister(): Promise<Tache[]>
+    /** Surveille une page (l'onglet actif, en général). */
+    creer(url: string, titre: string, demande: DemandeTache): Promise<Tache | { erreur: string }>
+    modifier(id: string, partiel: { active?: boolean; seuil?: number | null; intervalleMin?: number; heure?: string }): void
+    supprimer(id: string): void
+    verifier(id: string): void
+    surChangement(rappel: (t: Tache[]) => void): () => void
   }
   /** VPN gratuit du navigateur (réseau Tor), activé seulement par l'utilisateur. */
   vpn: {

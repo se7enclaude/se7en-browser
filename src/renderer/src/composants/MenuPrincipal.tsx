@@ -16,6 +16,7 @@ function elements(etat: EtatOnglets): ElementMenu[] {
     { libelle: 'Favoris', raccourci: 'Ctrl+Maj+O', action: () => o.interne('se7en://favoris') },
     { libelle: 'Téléchargements', raccourci: 'Ctrl+J', action: () => o.interne('se7en://telechargements') },
     { libelle: 'Amis', action: () => o.interne('se7en://amis') },
+    { libelle: 'Tâches', action: () => o.interne('se7en://taches') },
     { separateur: true },
     { libelle: 'Paramètres', raccourci: 'Ctrl+Virgule', action: () => o.interne('se7en://parametres') }
   ]

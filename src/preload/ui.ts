@@ -1,6 +1,7 @@
 /* Preload de l'interface : expose window.se7en, et rien d'autre. Aucun accès direct à Node ni à ipcRenderer. */
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import { CANAUX, type ApiSe7en, type EtatFenetre } from '../shared/ipc'
+import type { Tache } from '../shared/taches'
 import type { Favori, Telechargement } from '../shared/donnees'
 import type { FluxChat } from '../shared/chat'
 import type { EtatOllama } from '../shared/ia'
@@ -212,6 +213,14 @@ const api: ApiSe7en = {
     surEtat: (rappel) => ecouter<EtatEcriture | null>(CANAUX.ecritureEtat, rappel),
     appliquer: envoyer(CANAUX.ecritureAppliquer),
     annuler: envoyer(CANAUX.ecritureAnnuler)
+  },
+  taches: {
+    lister: demander(CANAUX.tachesLister),
+    creer: demander(CANAUX.tachesCreer),
+    modifier: envoyer(CANAUX.tachesModifier),
+    supprimer: envoyer(CANAUX.tachesSupprimer),
+    verifier: envoyer(CANAUX.tachesVerifier),
+    surChangement: (rappel) => ecouter<Tache[]>(CANAUX.tachesChange, rappel)
   },
   social: {
     etat: demander(CANAUX.socialEtat),

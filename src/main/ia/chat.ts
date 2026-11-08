@@ -31,6 +31,8 @@ const MAX_CAPTURES = 3
 export class ServiceChat extends EventEmitter<{ flux: [FluxChat] }> {
   private enCours: AbortController | null = null
   private readonly captures = new Map<string, NativeImage>()
+  /** « Préviens-moi quand ce prix baisse… » : crée une tâche en arrière-plan sur la page active (réponse immédiate), ou null. */
+  commandeTache: ((texte: string, page: { url: string; titre: string } | null) => string | null) | null = null
 
   constructor(
     private readonly ollama: Ollama,
@@ -107,7 +109,7 @@ export class ServiceChat extends EventEmitter<{ flux: [FluxChat] }> {
     this.conversations.toucher(conv)
 
     // « retiens que … » / « oublie … » : réponse immédiate du navigateur, sans IA
-    const reponseLocale = this.commandeMemoire(d.texte)
+    const reponseLocale = this.commandeMemoire(d.texte) ?? this.commandeTacheLocale(d)
     if (reponseLocale !== null) {
       reponse.texte = reponseLocale
       this.conversations.toucher(conv)
@@ -120,6 +122,15 @@ export class ServiceChat extends EventEmitter<{ flux: [FluxChat] }> {
       this.conversations.toucher(conv)
     })
     return { idConversation: conv.id, idQuestion: question.id, idReponse: reponse.id }
+  }
+
+  private commandeTacheLocale(d: DemandeChat): string | null {
+    if (!this.commandeTache) return null
+    const g = this.onglets()
+    const id = g?.etat().actifId
+    const o = id != null ? g?.etat().onglets.find((x) => x.id === id) : undefined
+    const page = d.avecPageActive && o && /^https?:/.test(o.url) ? { url: o.url, titre: o.titre } : null
+    return this.commandeTache(d.texte, page)
   }
 
   /** Réponse du navigateur à une demande de mémoire, ou null si ce n'en est pas une. */

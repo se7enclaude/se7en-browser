@@ -17,6 +17,9 @@ import { preparerWidevine } from './widevine'
 import { creerFenetrePrincipale, appliquerTheme } from './fenetre/fenetrePrincipale'
 import { ServiceChat } from './ia/chat'
 import { Conversations, Skills } from './ia/conversations'
+import { sessionAgent } from './agent/lecteur'
+import { ServiceTaches } from './taches'
+import { comprendreDemandeTache, confirmationTache } from '../shared/taches'
 import { Ollama } from './ia/ollama'
 import { Memoire } from './ia/memoire'
 import { proposerGroupes } from './ia/rangement'
@@ -165,6 +168,26 @@ if (!app.requestSingleInstanceLock()) {
     navigation.purger()
     setInterval(() => navigation.purger(), 6 * 3600 * 1000).unref()
     const chat = new ServiceChat(ollama, conversations, skills, documents, memoire, () => reglages.get(), () => [...onglets.values()][0], navigation)
+
+    // tâches en arrière-plan (prix, changements, résumé du jour) : pages lues par le lecteur cloisonné, sans tes cookies
+    bloqueur.brancher(sessionAgent(), () => true, () => [])
+    const taches = new ServiceTaches(dossier, ollama, () => reglages.get())
+    taches.ouvrir = (url) => {
+      const f = BrowserWindow.getAllWindows()[0]
+      if (!f) return
+      onglets.get(f.id)?.nouveau(url)
+      if (f.isMinimized()) f.restore()
+      f.focus()
+    }
+    taches.demarrer()
+    app.on('will-quit', () => taches.arreter())
+    chat.commandeTache = (texte, page) => {
+      const d = comprendreDemandeTache(texte)
+      if (!d) return null
+      if (!page) return "Ouvre d'abord la page à surveiller dans un onglet, puis redemande-moi."
+      const t = taches.creer(page.url, page.titre, d)
+      return 'erreur' in t ? t.erreur : confirmationTache(t)
+    }
 
     /** L'IA range les onglets par sujet (titres et sites seulement). */
     const ranger = async (g: GestionnaireOnglets): Promise<{ groupes: number } | { erreur: string }> => {
@@ -355,7 +378,7 @@ if (!app.requestSingleInstanceLock()) {
       discussion(f, null)
       ouvrirConversation(f, cible)
     }
-    enregistrerIpc({ vpn, discussion, agrandirDiscussion, ensemble, traduire, plantages, miseAJour, navigation, ecriture, zone: (f) => void zone(f), social, reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, coffre, formulaires, bloqueur, memoire, ranger, ouvrirFichier: (f) => void ouvrirFichier(f), ongletsDe: (f) => onglets.get(f.id) })
+    enregistrerIpc({ taches, vpn, discussion, agrandirDiscussion, ensemble, traduire, plantages, miseAJour, navigation, ecriture, zone: (f) => void zone(f), social, reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, coffre, formulaires, bloqueur, memoire, ranger, ouvrirFichier: (f) => void ouvrirFichier(f), ongletsDe: (f) => onglets.get(f.id) })
 
     const fenetre = creerFenetrePrincipale()
     const idFenetre = fenetre.id
@@ -413,6 +436,12 @@ if (!app.requestSingleInstanceLock()) {
           traduite: () => !!gestionnaire.pageDe(idOnglet)?.etat.traduction,
           origine: () => gestionnaire.origineDe(idOnglet),
           remplirFormulaire: () => commande({ type: 'remplir-formulaire', idOnglet }),
+          surveiller: (type) => {
+            const o = gestionnaire.pageDe(idOnglet)?.etat
+            if (!o) return
+            taches.creer(o.url, o.titre, { type, seuil: null, texteGuette: '', heure: '08:00', intervalleMin: type === 'resume' ? 1440 : 60 })
+            gestionnaire.ouvrirInterne('se7en://taches')
+          },
           traduire: () => traduire(fenetre, idOnglet, !!gestionnaire.pageDe(idOnglet)?.etat.traduction)
         })
       }

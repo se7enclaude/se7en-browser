@@ -28,6 +28,8 @@ import type { AssistantEcriture } from '../ia/ecriture'
 import type { MemoireNavigation } from '../ia/memoireNavigation'
 import { lirePage } from '../ia/lecturePage'
 import { detecterMateriel, testerVitesse } from '../ia/materiel'
+import type { ServiceTaches } from '../taches'
+import type { DemandeTache } from '../../shared/taches'
 import { resumerPourEnvoi, traduireTexte } from '../ia/eclair'
 import * as donneesWidgets from '../widgets'
 import { LANGUES, villeValide } from '../../shared/widgets'
@@ -46,6 +48,7 @@ import { promises as fsp } from 'node:fs'
 import { MAX_MEMBRES_GROUPE, MAX_MESSAGE, type CibleSocial, type StatutSocial } from '../../shared/social'
 
 export interface Services {
+  taches: ServiceTaches
   reglages: MagasinReglages
   historique: Historique
   favoris: Favoris
@@ -277,6 +280,28 @@ export function enregistrerIpc(s: Services): void {
   ipcMain.on(CANAUX.iaAnnuler, (e) => fenetreDe(e) && ollama.annuler())
   ipcMain.on(CANAUX.iaArreter, (e) => fenetreDe(e) && ollama.arreter())
   ollama.on('change', (etat) => diffuser(CANAUX.iaChange, etat))
+
+  // ---------- tâches en arrière-plan ----------
+  const { taches } = s
+  const estDemandeTache = (d: unknown): d is DemandeTache =>
+    !!d &&
+    typeof d === 'object' &&
+    ['prix', 'changement', 'resume'].includes((d as DemandeTache).type) &&
+    ((d as DemandeTache).seuil === null || (typeof (d as DemandeTache).seuil === 'number' && (d as DemandeTache).seuil! > 0)) &&
+    typeof (d as DemandeTache).texteGuette === 'string' &&
+    typeof (d as DemandeTache).heure === 'string' &&
+    /^\d{2}:\d{2}$/.test((d as DemandeTache).heure) &&
+    typeof (d as DemandeTache).intervalleMin === 'number'
+  ipcMain.handle(CANAUX.tachesLister, (e) => (fenetreDe(e) ? taches.lister() : []))
+  ipcMain.handle(CANAUX.tachesCreer, (e, url: unknown, titre: unknown, d: unknown) =>
+    fenetreDe(e) && typeof url === 'string' && typeof titre === 'string' && estDemandeTache(d) ? taches.creer(url, titre, d) : { erreur: 'Demande invalide.' }
+  )
+  ipcMain.on(CANAUX.tachesModifier, (e, id: unknown, p: unknown) => {
+    if (fenetreDe(e) && typeof id === 'string' && p && typeof p === 'object') taches.modifier(id, p as Parameters<typeof taches.modifier>[1])
+  })
+  ipcMain.on(CANAUX.tachesSupprimer, (e, id: unknown) => fenetreDe(e) && typeof id === 'string' && taches.supprimer(id))
+  ipcMain.on(CANAUX.tachesVerifier, (e, id: unknown) => fenetreDe(e) && typeof id === 'string' && void taches.executer(id))
+  taches.on('change', (l) => diffuser(CANAUX.tachesChange, l))
   ipcMain.handle(CANAUX.iaMateriel, (e) => (fenetreDe(e) ? detecterMateriel() : null))
   ipcMain.handle(CANAUX.iaVitesse, async (e, modele: unknown) => {
     if (!fenetreDe(e) || typeof modele !== 'string' || !RE_NOM_MODELE.test(modele) || !modelePresent(modele, ollama.etat().modeles)) return null

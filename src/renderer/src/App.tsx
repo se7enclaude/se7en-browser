@@ -21,6 +21,7 @@ import type { ZoneCapture } from '../../shared/chat'
 import { PanneauIA, type DemandeExterne } from './composants/PanneauIA'
 import { QuestionIA } from './composants/QuestionIA'
 import { Parametres } from './composants/Parametres'
+import { PageTaches } from './composants/PageTaches'
 import { ZonePage } from './composants/ZonePage'
 import { useGlisser } from './useGlisser'
 import { useApresFigeage } from './pagesFigees'
@@ -93,6 +94,8 @@ export function App(): React.JSX.Element {
         return reglages && <PageIA reglages={reglages} />
       case 'se7en://amis':
         return <PageAmis onglets={etat} />
+      case 'se7en://taches':
+        return <PageTaches onglets={etat} />
       default:
         return null
     }
