@@ -4764,3 +4764,41 @@ textarea.champ {
 .vpn-erreur .point-vpn {
   background: #e0463c;
 }
+
+/* ---------- IA locale : modèle recommandé selon le PC ---------- */
+.recommandation-ia {
+  display: grid;
+  gap: 10px;
+  box-shadow: var(--reflet), var(--ombre), var(--ia-lueur);
+}
+.recommandation-ia .numero-etape {
+  color: var(--ia);
+}
+.recommandation-ia p {
+  margin: 0;
+}
+.actions-recommandation {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.vitesse-modele {
+  font-size: 12px;
+  color: var(--texte-2);
+}
+.vitesse-modele.rapide::before,
+.vitesse-modele.correct::before,
+.vitesse-modele.lent::before {
+  content: '●';
+  margin-right: 6px;
+}
+.vitesse-modele.rapide::before {
+  color: #4fb37e;
+}
+.vitesse-modele.correct::before {
+  color: var(--ia);
+}
+.vitesse-modele.lent::before {
+  color: #e5484d;
+}

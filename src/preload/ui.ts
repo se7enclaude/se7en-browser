@@ -124,6 +124,8 @@ const api: ApiSe7en = {
     zone: envoyer(CANAUX.iaZone),
     inserer: demander(CANAUX.iaInserer),
     annuler: envoyer(CANAUX.iaAnnuler),
+    materiel: demander(CANAUX.iaMateriel),
+    vitesse: demander(CANAUX.iaVitesse),
     surChangement: (rappel) => ecouter<EtatOllama>(CANAUX.iaChange, rappel)
   },
   chat: {

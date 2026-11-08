@@ -27,6 +27,7 @@ import type { ClientSocial } from '../social/client'
 import type { AssistantEcriture } from '../ia/ecriture'
 import type { MemoireNavigation } from '../ia/memoireNavigation'
 import { lirePage } from '../ia/lecturePage'
+import { detecterMateriel, testerVitesse } from '../ia/materiel'
 import { resumerPourEnvoi, traduireTexte } from '../ia/eclair'
 import * as donneesWidgets from '../widgets'
 import { LANGUES, villeValide } from '../../shared/widgets'
@@ -276,6 +277,15 @@ export function enregistrerIpc(s: Services): void {
   ipcMain.on(CANAUX.iaAnnuler, (e) => fenetreDe(e) && ollama.annuler())
   ipcMain.on(CANAUX.iaArreter, (e) => fenetreDe(e) && ollama.arreter())
   ollama.on('change', (etat) => diffuser(CANAUX.iaChange, etat))
+  ipcMain.handle(CANAUX.iaMateriel, (e) => (fenetreDe(e) ? detecterMateriel() : null))
+  ipcMain.handle(CANAUX.iaVitesse, async (e, modele: unknown) => {
+    if (!fenetreDe(e) || typeof modele !== 'string' || !RE_NOM_MODELE.test(modele) || !modelePresent(modele, ollama.etat().modeles)) return null
+    try {
+      return await testerVitesse(modele)
+    } catch {
+      return null
+    }
+  })
 
   // ---------- chat ----------
   ipcMain.handle(CANAUX.chatEnvoyer, (e, d: unknown) => {

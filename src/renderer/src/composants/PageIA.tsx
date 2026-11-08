@@ -1,6 +1,7 @@
 /* Page interne se7en://ia : installe et prépare l'IA locale (Ollama + modèles Qwen), étape par étape. */
 import { useEffect, useState } from 'react'
 import { modelePresent, TAILLES_CONNUES, type EtatOllama } from '../../../shared/ia'
+import { recommander, TAILLES_RECOMMANDES, verdictVitesse, type Materiel } from '../../../shared/materiel'
 import type { Reglages } from '../../../shared/reglages'
 import { taille } from '../useDonnees'
 
@@ -40,7 +41,72 @@ function Etape({ numero, titre, fait, actif, children }: { numero: number; titre
   )
 }
 
-const tailleModele = (nom: string): string => (TAILLES_CONNUES[nom] ? `≈ ${taille(TAILLES_CONNUES[nom])}` : 'taille inconnue')
+const tailleConnue = (nom: string): number | undefined => TAILLES_CONNUES[nom] ?? TAILLES_RECOMMANDES[nom]
+const tailleModele = (nom: string): string => (tailleConnue(nom) ? `≈ ${taille(tailleConnue(nom)!)}` : 'taille inconnue')
+
+/** Carte « Recommandé pour ton PC » : matériel détecté, trio de modèles conseillé, et bouton pour l'adopter. */
+function Recommandation({ reglages, etat }: { reglages: Reglages; etat: EtatOllama }): React.JSX.Element | null {
+  const [materiel, setMateriel] = useState<Materiel | null>(null)
+  useEffect(() => {
+    void window.se7en.ia.materiel().then(setMateriel)
+  }, [])
+  if (!materiel) return null
+  const r = recommander(materiel)
+  const conseilles = [r.texte, r.vision, r.rapide].filter((m): m is string => !!m)
+  const dejaChoisi = reglages.modeleTexte === r.texte && reglages.modeleRapide === r.rapide && (!r.vision || reglages.modeleVision === r.vision)
+  const aTelecharger = conseilles.filter((m) => !modelePresent(m, etat.modeles))
+  const poids = aTelecharger.reduce((t, m) => t + (tailleConnue(m) ?? 0), 0)
+  const adopter = (): void => {
+    void window.se7en.reglages.modifier({ modeleTexte: r.texte, modeleRapide: r.rapide, ...(r.vision ? { modeleVision: r.vision } : {}) })
+  }
+  return (
+    <section className="bloc verre-fort recommandation-ia">
+      <div className="entete-etape">
+        <span className="numero-etape">✦</span>
+        <h2>Recommandé pour ton PC · {r.titre}</h2>
+      </div>
+      <p className="discret">
+        {Math.round(materiel.ramGo)} Go de mémoire · {materiel.coeurs} cœurs
+        {materiel.gpu ? ` · ${materiel.gpu}${materiel.vramGo ? ` (${Math.round(materiel.vramGo)} Go)` : ''}` : ' · pas de carte graphique dédiée'}
+      </p>
+      <p>{r.raison}</p>
+      <div className="liste-chips">
+        <span className="chip">Texte · {r.texte}</span>
+        {r.vision ? <span className="chip">Vision · {r.vision}</span> : <span className="chip">Vision déconseillée</span>}
+        <span className="chip">Rapide · {r.rapide}</span>
+      </div>
+      {dejaChoisi ? (
+        <p className="discret petit">✓ Ce sont déjà tes modèles.{aTelecharger.length ? ' Il reste à les télécharger ci-dessous.' : ''}</p>
+      ) : (
+        <div className="actions-recommandation">
+          <button className="bouton-principal" onClick={adopter}>
+            Utiliser ces modèles
+          </button>
+          <span className="discret petit">{poids ? `${taille(poids)} à télécharger ensuite` : 'Déjà téléchargés'}</span>
+        </div>
+      )}
+    </section>
+  )
+}
+
+/** Bouton « Tester la vitesse » d'un modèle téléchargé. */
+function TestVitesse({ modele }: { modele: string }): React.JSX.Element {
+  const [etat, setEtat] = useState<'repos' | 'test' | number | 'erreur'>('repos')
+  const lancer = async (): Promise<void> => {
+    setEtat('test')
+    const v = await window.se7en.ia.vitesse(modele)
+    setEtat(v === null ? 'erreur' : v)
+  }
+  if (typeof etat === 'number') {
+    const v = verdictVitesse(etat)
+    return <span className={`vitesse-modele ${v.niveau}`}>{v.texte}</span>
+  }
+  return (
+    <button className="lien-discret" disabled={etat === 'test'} onClick={lancer}>
+      {etat === 'test' ? 'Test en cours (10 s environ)…' : etat === 'erreur' ? 'Test impossible, réessayer' : 'Tester la vitesse'}
+    </button>
+  )
+}
 
 export function PageIA({ reglages }: { reglages: Reglages }): React.JSX.Element {
   const etat = useOllama()
@@ -71,6 +137,8 @@ export function PageIA({ reglages }: { reglages: Reglages }): React.JSX.Element 
       </p>
 
       {etat.erreur && <div className="message-erreur">{etat.erreur}</div>}
+
+      <Recommandation reglages={reglages} etat={etat} />
 
       <Etape numero={1} titre="Installer Ollama" fait={installe} actif={!installe}>
         {etat.phase === 'verification' && <p className="discret">Recherche d'Ollama…</p>}
@@ -126,6 +194,7 @@ export function PageIA({ reglages }: { reglages: Reglages }): React.JSX.Element 
                     {m.detail} · {tailleModele(m.nom)}
                   </span>
                   {enCours && <Progression recus={t.recus} total={t.total} texte="Téléchargement" />}
+                  {present && pret && !t && <TestVitesse modele={m.nom} />}
                 </div>
                 {!present && !t && (
                   <button className="bouton-verre" onClick={() => ia.telecharger([m.nom])}>

@@ -6,6 +6,7 @@ import type { Conversation, DemandeChat, FluxChat, ReponseEnvoi, ResumeConversat
 import type { Coffre, EtatCoffre } from './coffre'
 import type { AnalyseFormulaire, AnalyseFormulaireWeb, ResultatRemplissage, ValeurARemplir } from './formulaire'
 import type { EtatOllama } from './ia'
+import type { Materiel } from './materiel'
 import type { CommandeUi, EtatOnglets, PageFigee, ZoneOnglet } from './onglets'
 import type { Reglages } from './reglages'
 import type { EtatVpn } from './vpn'
@@ -113,6 +114,8 @@ export const CANAUX = {
   iaAnnuler: 'ia:annuler',
   iaArreter: 'ia:arreter',
   iaChange: 'ia:change', // main → interface
+  iaMateriel: 'ia:materiel',
+  iaVitesse: 'ia:vitesse',
   // chat avec l'IA
   chatEnvoyer: 'chat:envoyer',
   chatArreter: 'chat:arreter',
@@ -375,6 +378,10 @@ export interface ApiSe7en {
     /** Télécharge ces modèles (noms Ollama, ex. « qwen3:8b »). */
     telecharger(noms: string[]): void
     annuler(): void
+    /** Mémoire et carte graphique du PC, pour proposer le bon modèle. */
+    materiel(): Promise<Materiel>
+    /** Mesure la vitesse d'un modèle téléchargé (jetons par seconde), ou null si le test échoue. */
+    vitesse(modele: string): Promise<number | null>
     surChangement(rappel: (e: EtatOllama) => void): () => void
   }
   chat: {
