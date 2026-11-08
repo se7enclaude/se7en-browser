@@ -1,6 +1,7 @@
 /* Panneau IA, à droite (Ctrl+Espace) : chat en flux avec l'IA locale, « discute avec la page », @onglets, /Skills,
  * résumé en un clic, historique des conversations. L'IA ne fait que répondre : aucune action sur les pages. */
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { BoutonEnregistrerSkill } from './SkillPartagee'
 import { DEMANDE_EXPLIQUE_PAGE, type FluxChat, type MessageChat, type PageJointe, type ResumeConversation, type Skill, type ZoneCapture } from '../../../shared/chat'
 import { modelePresent, type EtatOllama } from '../../../shared/ia'
 import type { EtatOnglet, EtatOnglets } from '../../../shared/onglets'
@@ -331,6 +332,7 @@ export function PanneauIA({ etat, actif, ia, reglages, ouvert, fermer, demande }
                 <div key={m.id} className="message-ia utilisateur">
                   <div className="bulle">{m.texte}</div>
                   <ChipsPages pages={m.pages} image={m.image} alertes={m.alertes} />
+                  {!enCours && <BoutonEnregistrerSkill texte={m.texte} />}
                 </div>
               ) : (
                 <div key={m.id} className={`message-ia assistant${m.erreur ? ' erreur' : ''}`}>

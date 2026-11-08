@@ -131,3 +131,53 @@ export function appliquerSkill(texte: string, skills: Skill[]): { texte: string;
   const reste = m[2]?.trim()
   return { texte: reste ? `${skill.consigne}\n\nPrécision : ${reste}` : skill.consigne, skill }
 }
+
+/* ---------- Skills partagées entre amis ----------
+ * Une Skill part comme un message texte ordinaire, dans un format reconnaissable : une version qui ne le connaît pas
+ * affiche simplement le texte. Reçue, elle n'est qu'une proposition : elle s'ajoute seulement au clic sur « Ajouter ». */
+const ENTETE_SKILL = '✦ Skill se7en'
+/** Place laissée à la consigne dans un message (limité à 2000 caractères). */
+export const MAX_CONSIGNE_PARTAGEE = 1800
+
+export function texteSkillPartagee(s: Pick<Skill, 'commande' | 'titre' | 'consigne'>): string {
+  const titre = s.titre.replace(/\s+/g, ' ').trim().slice(0, 80) || s.commande
+  return `${ENTETE_SKILL}\n/${s.commande} — ${titre}\n${s.consigne.trim().slice(0, MAX_CONSIGNE_PARTAGEE)}`
+}
+
+/** Skill contenue dans un message, ou null si le message n'en est pas une (ou est mal formé). */
+export function lireSkillPartagee(texte: string): Omit<Skill, 'id'> | null {
+  const lignes = texte.replace(/\r\n/g, '\n').split('\n')
+  if (lignes[0]?.trim() !== ENTETE_SKILL) return null
+  const m = /^\/([a-z0-9-]{1,30}) — (.{1,80})$/.exec(lignes[1]?.trim() ?? '')
+  const consigne = lignes.slice(2).join('\n').trim()
+  if (!m || !consigne || consigne.length > MAX_CONSIGNE_PARTAGEE) return null
+  return { commande: m[1], titre: m[2].trim(), consigne }
+}
+
+/** Ajoute une Skill reçue : rien si on l'a déjà (même consigne), sinon sous une commande libre (« resume-2 »). */
+export function ajouterSkillRecue(liste: Skill[], recue: Omit<Skill, 'id'>, id: string): { liste: Skill[]; commande: string; deja: boolean } {
+  const meme = liste.find((s) => s.consigne.trim() === recue.consigne.trim())
+  if (meme) return { liste, commande: meme.commande, deja: true }
+  const prises = new Set(liste.map((s) => s.commande))
+  let commande = recue.commande
+  for (let n = 2; prises.has(commande); n++) commande = `${recue.commande.slice(0, 27)}-${n}`
+  return { liste: [...liste, { id, commande, titre: recue.titre, consigne: recue.consigne }], commande, deja: false }
+}
+
+/** Commande proposée pour une question enregistrée comme Skill : ses premiers mots, sans accents (« Compare les prix » → « compare-les-prix »). */
+export function commandeDepuis(texte: string): string {
+  const mots = texte
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .split(' ')
+    .filter((m) => m.length > 1)
+  let c = ''
+  for (const m of mots) {
+    if ((c ? c.length + 1 : 0) + m.length > 24) break
+    c = c ? `${c}-${m}` : m
+  }
+  return c || 'ma-skill'
+}

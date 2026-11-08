@@ -3,6 +3,8 @@
  * Les messages reçus sont affichés en texte brut ; un lien ne s'ouvre que sur clic, dans un nouvel onglet, et seulement en http(s).
  * Une image reçue n'est qu'une image (data: URL vérifiée par le main), jamais du HTML. */
 import { useEffect, useRef, useState } from 'react'
+import { lireSkillPartagee } from '../../../shared/chat'
+import { CarteSkillRecue } from './SkillPartagee'
 import { adresseLisible, estAdresseAutorisee } from '../../../shared/adresse'
 import type { EtatOnglets } from '../../../shared/onglets'
 import {
@@ -875,7 +877,7 @@ export function Conversation({ cible, ami, groupe, amis, moi, onglets, retour, m
                     </span>
                   </button>
                 ) : null}
-                {m.texte && <p>{m.texte}</p>}
+                {m.texte && (lireSkillPartagee(m.texte) ? <CarteSkillRecue skill={lireSkillPartagee(m.texte)!} deMoi={deMoi} /> : <p>{m.texte}</p>)}
                 <time>{heure(m.date)}</time>
               </div>
               {ami && m === derniereDeMoi && m.lu === 1 && <span className="vu">Vu</span>}

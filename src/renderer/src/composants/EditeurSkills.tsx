@@ -1,11 +1,13 @@
 /* Paramètres › Skills : les consignes lancées avec /commande dans le panneau IA. On peut les modifier, en ajouter, en supprimer. */
 import { useEffect, useState } from 'react'
 import { RE_COMMANDE_SKILL, type Skill } from '../../../shared/chat'
-import { IconeCorbeille, IconePlus } from './Icones'
+import { IconeAmis, IconeCorbeille, IconePlus } from './Icones'
+import { EnvoyerSkill } from './SkillPartagee'
 
 export function EditeurSkills(): React.JSX.Element {
   const [skills, setSkills] = useState<Skill[]>([])
   const [modifiees, setModifiees] = useState(false)
+  const [partage, setPartage] = useState<string | null>(null)
   useEffect(() => {
     window.se7en.skills.lire().then(setSkills)
   }, [])
@@ -21,7 +23,8 @@ export function EditeurSkills(): React.JSX.Element {
     <section className="bloc verre-fort">
       <h2>Skills</h2>
       <p className="discret">
-        Dans le panneau IA, tape <kbd>/</kbd> puis le nom d'une Skill : sa consigne est envoyée avec la page. Exemple : <code>/resume en 3 lignes</code>.
+        Dans le panneau IA, tape <kbd>/</kbd> puis le nom d'une Skill : sa consigne est envoyée avec la page. Exemple : <code>/resume en 3 lignes</code>. Le bouton
+        Amis envoie une Skill à un ami, qui la voit en entier avant de l'ajouter.
       </p>
       {skills.map((s, i) => (
         <div key={s.id} className="ligne-skill">
@@ -36,6 +39,14 @@ export function EditeurSkills(): React.JSX.Element {
             <input className="champ" value={s.titre} onChange={(e) => changer(i, { titre: e.target.value })} aria-label="Nom" placeholder="Nom" />
             <button
               className="bouton-icone"
+              title={modifiees ? "Enregistre d'abord tes changements" : 'Envoyer à un ami'}
+              disabled={modifiees || !s.consigne.trim()}
+              onClick={() => setPartage((p) => (p === s.id ? null : s.id))}
+            >
+              <IconeAmis />
+            </button>
+            <button
+              className="bouton-icone"
               title="Supprimer"
               onClick={() => {
                 setSkills((l) => l.filter((_, j) => j !== i))
@@ -46,6 +57,7 @@ export function EditeurSkills(): React.JSX.Element {
             </button>
           </div>
           <textarea className="champ consigne" rows={2} value={s.consigne} onChange={(e) => changer(i, { consigne: e.target.value })} placeholder="Consigne envoyée à l'IA" />
+          {partage === s.id && <EnvoyerSkill skill={s} fermer={() => setPartage(null)} />}
         </div>
       ))}
       <div className="ligne-reglage">
