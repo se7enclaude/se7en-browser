@@ -160,6 +160,46 @@ Les deux se désactivent dans Paramètres › À propos.
 retenu (jamais le contenu d'une page, jamais l'IA d'elle-même) ; les souvenirs sont ajoutés à la consigne système.
 Liste, ajout, suppression et désactivation dans Paramètres › Mémoire de l'IA.
 
+**Le bon modèle selon le PC** (page IA locale) : le navigateur lit la mémoire, les cœurs et la carte graphique
+(`nvidia-smi`, sinon le registre de Windows) et propose le trio texte / vision / rapide adapté, de Qwen3 1.7B à
+Qwen3 30B, à adopter en un clic. « Tester la vitesse » mesure chaque modèle téléchargé (`src/shared/materiel.ts`).
+
+**Skills partagées entre amis** : Paramètres › Skills › bouton Amis. La Skill part comme un message texte au format
+reconnaissable ; chez l'ami, elle s'affiche en carte (consigne lisible en entier) et ne s'ajoute qu'au clic, sans jamais
+écraser une Skill existante (« resume-2 »). « Enregistrer comme Skill » sous chaque question du panneau IA.
+
+**Lecteur cloisonné** (`src/main/agent/lecteur.ts`) : quand l'IA doit lire une page d'elle-même (tâches, recherche),
+elle l'ouvre dans une fenêtre invisible, avec une session en mémoire séparée (ni tes cookies, ni tes connexions),
+sans permission, sans téléchargement, son coupé, bloqueur actif.
+
+**Tâches en arrière-plan** (menu › Tâches, `se7en://taches`) : « préviens-moi quand ce prix baisse sous 300 € » dans le
+panneau IA, clic droit › Surveiller cette page, ou le formulaire. Prix lu dans les données structurées de la page, sinon
+par l'IA locale, sinon dans le texte ; alerte une fois sous le seuil (ou à chaque baisse). Aussi : guetter un texte
+(« en stock »), un changement de page, ou un résumé chaque matin. Notification Windows ; courbe des prix ; tant que
+le navigateur est ouvert.
+
+**Recherche approfondie** (menu › Recherche approfondie, ou `/recherche …` dans le panneau IA) : l'IA prépare les
+recherches, lit les onglets ouverts sur le sujet, Wikipédia (API officielle), le web par l'API officielle de Brave
+Search si une clé est enregistrée (chiffrée avec le compte Windows), suit quelques liens utiles, tire les faits de
+chaque source puis écrit un rapport « En bref / Détails / À vérifier » où chaque affirmation renvoie à sa source.
+
+**Extensions** (menu › Extensions, `se7en://extensions`) : liste vérifiée (SponsorBlock, Return YouTube Dislike,
+Dark Reader), installation par lien du Chrome Web Store (paquet officiel, décompressé avec `tar.exe` de Windows),
+import depuis Chrome, Edge, Brave ou Opera (seuls les noms des extensions installées sont lus). Les extensions ne
+tournent que dans la session des pages web : jamais l'interface, le panneau IA, les pages internes ni l'agent.
+Limite connue : Electron n'ouvre pas les fenêtres des extensions (bouton, réglages) ; elles agissent avec leurs
+réglages par défaut.
+
+**Agents IA extérieurs (MCP)** (Paramètres, désactivé par défaut) : serveur MCP local (HTTP, 127.0.0.1 seulement,
+jeton secret) pour Claude Desktop, Claude Code… Lire les onglets ; si la navigation est permise : ouvrir, naviguer, et
+utiliser les outils **WebMCP** que les sites déclarent avec `navigator.modelContext` (preload `src/preload/webmcp.ts`).
+Chaque nouvel agent et chaque action d'un site passent par une fenêtre de confirmation ; requêtes venues d'une page web
+refusées ; jamais les onglets privés ni les pages avec un mot de passe.
+
+**Synchronisation chiffrée** (Paramètres › Synchronisation) : favoris, Skills, apparence, moteur de recherche, et
+onglets ouverts des autres PC. Clé créée sur le PC (jamais envoyée), code de liaison pour les autres PC, paquet
+AES-256-GCM sous un identifiant dérivé de la clé : le serveur ne lit rien. Route `/sync` du serveur (migration 0005).
+
 **Profils et amis** (`se7en://amis`, menu › Amis) : un profil = un pseudo + un code à 4 chiffres (« Claire#4821 »)
 et une photo. On s'ajoute avec ce code, puis on s'envoie des messages et des onglets (liens) en direct ; une
 notification Windows signale un message quand la fenêtre n'est pas au premier plan. Pas de mot de passe ni d'e-mail :
