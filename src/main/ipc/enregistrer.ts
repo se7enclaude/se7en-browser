@@ -31,6 +31,7 @@ import { detecterMateriel, testerVitesse } from '../ia/materiel'
 import type { ServiceTaches } from '../taches'
 import type { ServiceExtensions } from '../extensions/extensions'
 import type { ServeurMcp } from '../agent/mcp'
+import type { ServiceSync } from '../sync/sync'
 import { idExtension } from '../../shared/extensions'
 import type { ServiceRecherche } from '../agent/recherche'
 import type { DemandeTache } from '../../shared/taches'
@@ -52,6 +53,7 @@ import { promises as fsp } from 'node:fs'
 import { MAX_MEMBRES_GROUPE, MAX_MESSAGE, type CibleSocial, type StatutSocial } from '../../shared/social'
 
 export interface Services {
+  sync: ServiceSync
   mcp: ServeurMcp
   extensions: ServiceExtensions
   taches: ServiceTaches
@@ -287,6 +289,17 @@ export function enregistrerIpc(s: Services): void {
   ipcMain.on(CANAUX.iaAnnuler, (e) => fenetreDe(e) && ollama.annuler())
   ipcMain.on(CANAUX.iaArreter, (e) => fenetreDe(e) && ollama.arreter())
   ollama.on('change', (etat) => diffuser(CANAUX.iaChange, etat))
+
+  // ---------- synchronisation chiffrée ----------
+  const { sync } = s
+  ipcMain.handle(CANAUX.syncEtat, (e) => (fenetreDe(e) ? sync.etat() : null))
+  ipcMain.handle(CANAUX.syncActiver, (e) => (fenetreDe(e) ? sync.activer() : { erreur: 'Refusé.' }))
+  ipcMain.handle(CANAUX.syncRelier, (e, code: unknown) => (fenetreDe(e) && typeof code === 'string' ? sync.relier(code) : { erreur: 'Code invalide.' }))
+  ipcMain.handle(CANAUX.syncCode, (e) => (fenetreDe(e) ? sync.codeLiaison() : null))
+  ipcMain.handle(CANAUX.syncDesactiver, (e, effacer: unknown) => (fenetreDe(e) ? sync.desactiver(effacer === true) : undefined))
+  ipcMain.on(CANAUX.syncRenommer, (e, nom: unknown) => fenetreDe(e) && typeof nom === 'string' && sync.renommer(nom))
+  ipcMain.on(CANAUX.syncMaintenant, (e) => fenetreDe(e) && void sync.synchroniser())
+  sync.on('etat', (v) => diffuser(CANAUX.syncChange, v))
 
   // ---------- serveur MCP local ----------
   ipcMain.handle(CANAUX.mcpJeton, (e) => (fenetreDe(e) ? s.mcp.jeton() : ''))

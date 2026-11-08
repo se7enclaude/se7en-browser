@@ -5134,3 +5134,36 @@ textarea.champ {
   user-select: text;
   white-space: pre;
 }
+
+/* ---------- Synchronisation ---------- */
+.choix-sync {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px;
+}
+.choix-sync h3,
+.autres-pc h3 {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+.code-liaison code {
+  display: block;
+  padding: 10px 12px;
+  border-radius: var(--rayon-petit);
+  background: var(--verre-creux);
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  user-select: all;
+  word-break: break-all;
+}
+.autres-pc {
+  display: grid;
+  gap: 10px;
+}
+.pc-distant ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  display: grid;
+  gap: 2px;
+}

@@ -21,6 +21,7 @@ import { sessionAgent } from './agent/lecteur'
 import { ServiceTaches } from './taches'
 import { ServiceExtensions } from './extensions/extensions'
 import { ServeurMcp } from './agent/mcp'
+import { ServiceSync } from './sync/sync'
 import { ServiceRecherche } from './agent/recherche'
 import { questionDeRecherche } from '../shared/recherche'
 import { comprendreDemandeTache, confirmationTache } from '../shared/taches'
@@ -178,6 +179,12 @@ if (!app.requestSingleInstanceLock()) {
     void extensions.charger()
     // WebMCP : les sites peuvent déclarer des outils pour les agents IA (rangés dans la page, jamais exécutés sans accord)
     sessionWeb.registerPreloadScript({ type: 'frame', filePath: join(__dirname, '../preload/webmcp.js') })
+    // synchronisation chiffrée de bout en bout entre les PC (désactivée tant qu'elle n'est pas activée ou reliée)
+    const sync = new ServiceSync(dossier, favoris, skills, reglages, () =>
+      ([...onglets.values()][0]?.etat().onglets ?? []).filter((o) => /^https?:/.test(o.url) && !o.prive).map((o) => ({ titre: o.titre, url: o.url }))
+    )
+    sync.demarrer()
+    app.on('will-quit', () => sync.arreter())
     // serveur MCP local : désactivé par défaut, suit les réglages
     const mcp = new ServeurMcp(dossier, () => reglages.get(), () => [...onglets.values()][0])
     mcp.appliquer()
@@ -404,7 +411,7 @@ if (!app.requestSingleInstanceLock()) {
       discussion(f, null)
       ouvrirConversation(f, cible)
     }
-    enregistrerIpc({ mcp, extensions, recherche, taches, vpn, discussion, agrandirDiscussion, ensemble, traduire, plantages, miseAJour, navigation, ecriture, zone: (f) => void zone(f), social, reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, coffre, formulaires, bloqueur, memoire, ranger, ouvrirFichier: (f) => void ouvrirFichier(f), ongletsDe: (f) => onglets.get(f.id) })
+    enregistrerIpc({ sync, mcp, extensions, recherche, taches, vpn, discussion, agrandirDiscussion, ensemble, traduire, plantages, miseAJour, navigation, ecriture, zone: (f) => void zone(f), social, reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, coffre, formulaires, bloqueur, memoire, ranger, ouvrirFichier: (f) => void ouvrirFichier(f), ongletsDe: (f) => onglets.get(f.id) })
 
     const fenetre = creerFenetrePrincipale()
     const idFenetre = fenetre.id

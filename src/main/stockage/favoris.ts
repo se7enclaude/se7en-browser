@@ -54,6 +54,12 @@ export class Favoris extends EventEmitter<{ change: [Favori[]] }> {
     return nouveaux.length
   }
 
+  /** Remplace toute la liste (synchronisation depuis un autre PC). */
+  remplacer(brut: unknown): void {
+    this.liste = nettoyerFavoris(brut)
+    this.changer()
+  }
+
   supprimer(id: string): void {
     this.liste = this.liste.filter((f) => f.id !== id)
     this.changer()

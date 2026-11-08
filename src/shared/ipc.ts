@@ -10,6 +10,7 @@ import type { Materiel } from './materiel'
 import type { DemandeTache, Tache } from './taches'
 import type { Recherche } from './recherche'
 import type { ExtensionInstallee, ExtensionTrouvee } from './extensions'
+import type { EtatSync } from './sync'
 import type { CommandeUi, EtatOnglets, PageFigee, ZoneOnglet } from './onglets'
 import type { Reglages } from './reglages'
 import type { EtatVpn } from './vpn'
@@ -122,6 +123,14 @@ export const CANAUX = {
   rechercheLister: 'recherche:lister',
   extensionsLister: 'extensions:lister',
   mcpJeton: 'mcp:jeton',
+  syncEtat: 'sync:etat',
+  syncActiver: 'sync:activer',
+  syncRelier: 'sync:relier',
+  syncCode: 'sync:code',
+  syncDesactiver: 'sync:desactiver',
+  syncRenommer: 'sync:renommer',
+  syncMaintenant: 'sync:maintenant',
+  syncChange: 'sync:change', // main → interface
   mcpNouveauJeton: 'mcp:nouveau-jeton',
   extensionsInstaller: 'extensions:installer',
   extensionsActiver: 'extensions:activer',
@@ -307,6 +316,19 @@ export interface ApiSe7en {
     deplacerVersSession(idOnglet: number, session: string): void
     quitterSplit(): void
     ratio(r: number): void
+  }
+  /** Synchronisation chiffrée de bout en bout entre tes PC. */
+  sync: {
+    etat(): Promise<EtatSync>
+    /** Premier PC : crée l'espace et renvoie le code de liaison. */
+    activer(): Promise<string | { erreur: string }>
+    /** Autre PC : se relie avec le code de liaison. */
+    relier(code: string): Promise<{ ok: true } | { erreur: string }>
+    code(): Promise<string | null>
+    desactiver(effacer: boolean): Promise<void>
+    renommer(nom: string): void
+    maintenant(): void
+    surEtat(rappel: (e: EtatSync) => void): () => void
   }
   /** Serveur MCP local : jeton secret à donner à l'agent IA (Claude Desktop…). */
   mcp: {

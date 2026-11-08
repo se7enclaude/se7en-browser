@@ -12,6 +12,7 @@ import { EditeurCoffre } from './EditeurCoffre'
 import { ReglagesBloqueur, ReglagesMemoire, ReglagesNavigation } from './ReglagesViePrivee'
 import { EditeurSkills } from './EditeurSkills'
 import { ReglagesMcp } from './ReglagesMcp'
+import { ReglagesSync } from './ReglagesSync'
 import { useOllama } from './PageIA'
 import { ReglagesMiseAJour } from './MiseAJour'
 import { Migration } from './Migration'
@@ -187,6 +188,8 @@ export function Parametres({ reglages, modifier, infos }: Props): React.JSX.Elem
       <EditeurCoffre />
 
       <EditeurSkills />
+
+      <ReglagesSync />
 
       <ReglagesMcp reglages={reglages} modifier={modifier} />
 

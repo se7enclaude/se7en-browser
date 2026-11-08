@@ -1,6 +1,7 @@
 /* se7en social : profils, amis, messages et liens entre utilisateurs de se7en Browser.
  * Toutes les routes /api/* demandent une requête signée (voir auth.ts) ; aucun mot de passe n'est stocké.
  * Ce serveur ne voit que : le pseudo, la photo, la liste d'amis, les groupes et les messages (et images) échangés. */
+import { routeSync } from './sync'
 import { Boite } from './boite'
 import { FENETRE, verifier, type Signature } from './auth'
 
@@ -182,6 +183,9 @@ async function nouveauCode(env: Env, pseudo: string): Promise<string | null> {
 
 async function routeur(req: Request, env: Env): Promise<Response> {
   const url = new URL(req.url)
+  // synchronisation chiffrée : sa propre protection (jeton dérivé de la clé), sans profil social
+  const sync = await routeSync(req, env, url)
+  if (sync) return sync
   if (!url.pathname.startsWith('/api/')) return erreur('introuvable', 404)
   const corps = req.method === 'GET' || req.method === 'HEAD' ? new ArrayBuffer(0) : await req.arrayBuffer()
   if (corps.byteLength > MAX_IMAGE + 1024) return erreur('Requête trop grande.', 413)
@@ -490,7 +494,9 @@ export default {
     await env.DB.batch([
       env.DB.prepare('DELETE FROM messages WHERE date < ?').bind(Date.now() - 90 * 24 * 3600 * 1000),
       env.DB.prepare('DELETE FROM images WHERE date < ?').bind(Date.now() - 90 * 24 * 3600 * 1000),
-      env.DB.prepare('DELETE FROM nonces WHERE expire < ?').bind(Date.now())
+      env.DB.prepare('DELETE FROM nonces WHERE expire < ?').bind(Date.now()),
+      // espaces de synchronisation abandonnés depuis plus d'un an
+      env.DB.prepare('DELETE FROM sync WHERE maj < ?').bind(Date.now() - 365 * 24 * 3600 * 1000)
     ])
   }
 } satisfies ExportedHandler<Env>

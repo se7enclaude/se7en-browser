@@ -4,6 +4,7 @@ import { CANAUX, type ApiSe7en, type EtatFenetre } from '../shared/ipc'
 import type { Tache } from '../shared/taches'
 import type { Recherche } from '../shared/recherche'
 import type { ExtensionInstallee } from '../shared/extensions'
+import type { EtatSync } from '../shared/sync'
 import type { Favori, Telechargement } from '../shared/donnees'
 import type { FluxChat } from '../shared/chat'
 import type { EtatOllama } from '../shared/ia'
@@ -215,6 +216,16 @@ const api: ApiSe7en = {
     surEtat: (rappel) => ecouter<EtatEcriture | null>(CANAUX.ecritureEtat, rappel),
     appliquer: envoyer(CANAUX.ecritureAppliquer),
     annuler: envoyer(CANAUX.ecritureAnnuler)
+  },
+  sync: {
+    etat: demander(CANAUX.syncEtat),
+    activer: demander(CANAUX.syncActiver),
+    relier: demander(CANAUX.syncRelier),
+    code: demander(CANAUX.syncCode),
+    desactiver: demander(CANAUX.syncDesactiver),
+    renommer: envoyer(CANAUX.syncRenommer),
+    maintenant: envoyer(CANAUX.syncMaintenant),
+    surEtat: (rappel) => ecouter<EtatSync>(CANAUX.syncChange, rappel)
   },
   mcp: {
     jeton: demander(CANAUX.mcpJeton),
