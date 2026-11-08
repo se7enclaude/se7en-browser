@@ -30,6 +30,7 @@ import { lirePage } from '../ia/lecturePage'
 import { detecterMateriel, testerVitesse } from '../ia/materiel'
 import type { ServiceTaches } from '../taches'
 import type { ServiceExtensions } from '../extensions/extensions'
+import type { ServeurMcp } from '../agent/mcp'
 import { idExtension } from '../../shared/extensions'
 import type { ServiceRecherche } from '../agent/recherche'
 import type { DemandeTache } from '../../shared/taches'
@@ -51,6 +52,7 @@ import { promises as fsp } from 'node:fs'
 import { MAX_MEMBRES_GROUPE, MAX_MESSAGE, type CibleSocial, type StatutSocial } from '../../shared/social'
 
 export interface Services {
+  mcp: ServeurMcp
   extensions: ServiceExtensions
   taches: ServiceTaches
   recherche: ServiceRecherche
@@ -285,6 +287,10 @@ export function enregistrerIpc(s: Services): void {
   ipcMain.on(CANAUX.iaAnnuler, (e) => fenetreDe(e) && ollama.annuler())
   ipcMain.on(CANAUX.iaArreter, (e) => fenetreDe(e) && ollama.arreter())
   ollama.on('change', (etat) => diffuser(CANAUX.iaChange, etat))
+
+  // ---------- serveur MCP local ----------
+  ipcMain.handle(CANAUX.mcpJeton, (e) => (fenetreDe(e) ? s.mcp.jeton() : ''))
+  ipcMain.handle(CANAUX.mcpNouveauJeton, (e) => (fenetreDe(e) ? s.mcp.nouveauJeton() : ''))
 
   // ---------- extensions ----------
   const { extensions } = s

@@ -23,7 +23,7 @@ export default defineConfig({
   },
   preload: {
     // Preload en CommonJS d'un seul fichier : obligatoire avec sandbox: true.
-    build: { rollupOptions: { input: { ui: resolve('src/preload/ui.ts'), notif: resolve('src/preload/notif.ts') } } }
+    build: { rollupOptions: { input: { ui: resolve('src/preload/ui.ts'), notif: resolve('src/preload/notif.ts'), webmcp: resolve('src/preload/webmcp.ts') } } }
   },
   renderer: {
     root: resolve('src/renderer'),

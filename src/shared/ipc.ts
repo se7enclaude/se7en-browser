@@ -121,6 +121,8 @@ export const CANAUX = {
   tachesLister: 'taches:lister',
   rechercheLister: 'recherche:lister',
   extensionsLister: 'extensions:lister',
+  mcpJeton: 'mcp:jeton',
+  mcpNouveauJeton: 'mcp:nouveau-jeton',
   extensionsInstaller: 'extensions:installer',
   extensionsActiver: 'extensions:activer',
   extensionsSupprimer: 'extensions:supprimer',
@@ -305,6 +307,11 @@ export interface ApiSe7en {
     deplacerVersSession(idOnglet: number, session: string): void
     quitterSplit(): void
     ratio(r: number): void
+  }
+  /** Serveur MCP local : jeton secret à donner à l'agent IA (Claude Desktop…). */
+  mcp: {
+    jeton(): Promise<string>
+    nouveauJeton(): Promise<string>
   }
   /** Extensions du Chrome Web Store (pages web seulement, jamais l'interface ni l'IA). */
   extensions: {

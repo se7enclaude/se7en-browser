@@ -5122,3 +5122,15 @@ textarea.champ {
 .page-interne form.ligne-reglage .champ {
   flex: 1;
 }
+
+/* ---------- Agents IA extérieurs (MCP) ---------- */
+.config-mcp {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--rayon-petit);
+  background: var(--verre-creux);
+  font-size: 12px;
+  overflow-x: auto;
+  user-select: text;
+  white-space: pre;
+}

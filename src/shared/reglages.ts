@@ -52,6 +52,11 @@ export interface Reglages {
   widgets: WidgetPlace[]
   /** Accélération graphique (carte graphique) ; à couper si un stream Discord d'une vidéo sort en noir. Appliquée au démarrage. */
   accelerationGraphique: boolean
+  /** Serveur MCP local (agents IA du PC) : désactivé par défaut. */
+  mcpActif: boolean
+  /** Les agents peuvent aussi ouvrir des pages et utiliser les outils WebMCP des sites (avec confirmation). */
+  mcpNavigation: boolean
+  mcpPort: number
 }
 
 export const REGLAGES_DEFAUT: Reglages = {
@@ -76,6 +81,9 @@ export const REGLAGES_DEFAUT: Reglages = {
   raccourcis: {},
   widgets: WIDGETS_DEFAUT,
   accelerationGraphique: true,
+  mcpActif: false,
+  mcpNavigation: false,
+  mcpPort: 47070,
   phishingExceptions: [],
   modelesAuto: true,
   serveurSocial: ''
@@ -139,6 +147,9 @@ export function fusionnerReglages(base: Reglages, brut: unknown): Reglages {
     r.phishingExceptions = [...new Set(o.phishingExceptions.filter((h): h is string => typeof h === 'string' && /^[a-z0-9.-]{1,253}$/.test(h)))].slice(0, 500)
   if (typeof o.modelesAuto === 'boolean') r.modelesAuto = o.modelesAuto
   if (typeof o.accelerationGraphique === 'boolean') r.accelerationGraphique = o.accelerationGraphique
+  if (typeof o.mcpActif === 'boolean') r.mcpActif = o.mcpActif
+  if (typeof o.mcpNavigation === 'boolean') r.mcpNavigation = o.mcpNavigation
+  if (typeof o.mcpPort === 'number' && Number.isInteger(o.mcpPort) && o.mcpPort >= 1024 && o.mcpPort <= 65535) r.mcpPort = o.mcpPort
   if (typeof o.serveurSocial === 'string') {
     const s = o.serveurSocial.trim()
     const propre = s ? adresseServeur(s) : ''

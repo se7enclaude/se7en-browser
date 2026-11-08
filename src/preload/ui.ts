@@ -216,6 +216,10 @@ const api: ApiSe7en = {
     appliquer: envoyer(CANAUX.ecritureAppliquer),
     annuler: envoyer(CANAUX.ecritureAnnuler)
   },
+  mcp: {
+    jeton: demander(CANAUX.mcpJeton),
+    nouveauJeton: demander(CANAUX.mcpNouveauJeton)
+  },
   extensions: {
     lister: demander(CANAUX.extensionsLister),
     installer: demander(CANAUX.extensionsInstaller),

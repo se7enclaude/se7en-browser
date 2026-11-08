@@ -20,6 +20,7 @@ import { Conversations, Skills } from './ia/conversations'
 import { sessionAgent } from './agent/lecteur'
 import { ServiceTaches } from './taches'
 import { ServiceExtensions } from './extensions/extensions'
+import { ServeurMcp } from './agent/mcp'
 import { ServiceRecherche } from './agent/recherche'
 import { questionDeRecherche } from '../shared/recherche'
 import { comprendreDemandeTache, confirmationTache } from '../shared/taches'
@@ -175,6 +176,13 @@ if (!app.requestSingleInstanceLock()) {
     // extensions du Chrome Web Store : dans la session des pages web seulement (ni l'interface, ni l'IA, ni l'agent)
     const extensions = new ServiceExtensions(dossier, sessionWeb)
     void extensions.charger()
+    // WebMCP : les sites peuvent déclarer des outils pour les agents IA (rangés dans la page, jamais exécutés sans accord)
+    sessionWeb.registerPreloadScript({ type: 'frame', filePath: join(__dirname, '../preload/webmcp.js') })
+    // serveur MCP local : désactivé par défaut, suit les réglages
+    const mcp = new ServeurMcp(dossier, () => reglages.get(), () => [...onglets.values()][0])
+    mcp.appliquer()
+    reglages.on('change', () => mcp.appliquer())
+    app.on('will-quit', () => mcp.arreter())
 
     // tâches en arrière-plan (prix, changements, résumé du jour) : pages lues par le lecteur cloisonné, sans tes cookies
     bloqueur.brancher(sessionAgent(), () => true, () => [])
@@ -396,7 +404,7 @@ if (!app.requestSingleInstanceLock()) {
       discussion(f, null)
       ouvrirConversation(f, cible)
     }
-    enregistrerIpc({ extensions, recherche, taches, vpn, discussion, agrandirDiscussion, ensemble, traduire, plantages, miseAJour, navigation, ecriture, zone: (f) => void zone(f), social, reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, coffre, formulaires, bloqueur, memoire, ranger, ouvrirFichier: (f) => void ouvrirFichier(f), ongletsDe: (f) => onglets.get(f.id) })
+    enregistrerIpc({ mcp, extensions, recherche, taches, vpn, discussion, agrandirDiscussion, ensemble, traduire, plantages, miseAJour, navigation, ecriture, zone: (f) => void zone(f), social, reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, coffre, formulaires, bloqueur, memoire, ranger, ouvrirFichier: (f) => void ouvrirFichier(f), ongletsDe: (f) => onglets.get(f.id) })
 
     const fenetre = creerFenetrePrincipale()
     const idFenetre = fenetre.id
