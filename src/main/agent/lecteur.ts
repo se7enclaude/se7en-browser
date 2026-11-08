@@ -40,6 +40,12 @@ const SCRIPT_DONNEES = `(() => {
   return { jsonld, metas, liens }
 })()`
 
+/** Liens d'une page déjà ouverte (onglet), lus dans un monde isolé. */
+export async function liensDe(wc: Electron.WebContents): Promise<{ url: string; texte: string }[]> {
+  const d = ((await wc.executeJavaScriptInIsolatedWorld(7008, [{ code: SCRIPT_DONNEES }]).catch(() => null)) ?? {}) as Partial<PageCloisonnee>
+  return Array.isArray(d.liens) ? d.liens.filter((l) => l && typeof l.url === 'string' && estAdresseAutorisee(l.url)) : []
+}
+
 let sessionPreparee: Session | null = null
 
 /** Session de l'agent : en mémoire seulement, tout refusé. Le bloqueur de pubs y est branché par l'appelant. */

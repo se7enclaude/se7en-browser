@@ -5,7 +5,7 @@ import { net } from 'electron'
 import { API_OLLAMA } from './ollama'
 import { neutraliser } from './prompts'
 
-async function demander(modele: string, systeme: string, contenu: string, format?: object, maxJetons = 200): Promise<string> {
+export async function demander(modele: string, systeme: string, contenu: string, format?: object, maxJetons = 200, contexte = 4096, delaiMs = 60_000): Promise<string> {
   const r = await net.fetch(`${API_OLLAMA}/api/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -18,9 +18,9 @@ async function demander(modele: string, systeme: string, contenu: string, format
       stream: false,
       think: false,
       ...(format ? { format } : {}),
-      options: { num_ctx: 4096, temperature: 0.2, num_predict: maxJetons }
+      options: { num_ctx: contexte, temperature: 0.2, num_predict: maxJetons }
     }),
-    signal: AbortSignal.timeout(60_000)
+    signal: AbortSignal.timeout(delaiMs)
   })
   if (!r.ok) throw new Error(`Ollama a répondu par une erreur (${r.status}).`)
   const d = (await r.json()) as { message?: { content?: string } }

@@ -19,6 +19,8 @@ import { ServiceChat } from './ia/chat'
 import { Conversations, Skills } from './ia/conversations'
 import { sessionAgent } from './agent/lecteur'
 import { ServiceTaches } from './taches'
+import { ServiceRecherche } from './agent/recherche'
+import { questionDeRecherche } from '../shared/recherche'
 import { comprendreDemandeTache, confirmationTache } from '../shared/taches'
 import { Ollama } from './ia/ollama'
 import { Memoire } from './ia/memoire'
@@ -181,7 +183,18 @@ if (!app.requestSingleInstanceLock()) {
     }
     taches.demarrer()
     app.on('will-quit', () => taches.arreter())
+    // recherche approfondie : sources lues sur le PC (onglets, Wikipédia, web par l'API Brave si clé), rapport sourcé
+    const recherche = new ServiceRecherche(dossier, ollama, () => reglages.get(), () => [...onglets.values()][0])
+    app.on('before-quit', () => recherche.vider())
     chat.commandeTache = (texte, page) => {
+      const q = questionDeRecherche(texte)
+      if (q) {
+        const r = recherche.lancer(q)
+        if (!('id' in r)) return r.erreur
+        const f = BrowserWindow.getAllWindows()[0]
+        if (f) onglets.get(f.id)?.ouvrirInterne('se7en://recherche')
+        return `Je lance une recherche approfondie sur « ${r.question} ». Suis-la dans l'onglet Recherche : je lis plusieurs sources, j'en tire les faits utiles, puis j'écris un rapport où chaque affirmation renvoie à sa source.`
+      }
       const d = comprendreDemandeTache(texte)
       if (!d) return null
       if (!page) return "Ouvre d'abord la page à surveiller dans un onglet, puis redemande-moi."
@@ -378,7 +391,7 @@ if (!app.requestSingleInstanceLock()) {
       discussion(f, null)
       ouvrirConversation(f, cible)
     }
-    enregistrerIpc({ taches, vpn, discussion, agrandirDiscussion, ensemble, traduire, plantages, miseAJour, navigation, ecriture, zone: (f) => void zone(f), social, reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, coffre, formulaires, bloqueur, memoire, ranger, ouvrirFichier: (f) => void ouvrirFichier(f), ongletsDe: (f) => onglets.get(f.id) })
+    enregistrerIpc({ recherche, taches, vpn, discussion, agrandirDiscussion, ensemble, traduire, plantages, miseAJour, navigation, ecriture, zone: (f) => void zone(f), social, reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, coffre, formulaires, bloqueur, memoire, ranger, ouvrirFichier: (f) => void ouvrirFichier(f), ongletsDe: (f) => onglets.get(f.id) })
 
     const fenetre = creerFenetrePrincipale()
     const idFenetre = fenetre.id

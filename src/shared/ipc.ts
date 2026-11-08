@@ -8,6 +8,7 @@ import type { AnalyseFormulaire, AnalyseFormulaireWeb, ResultatRemplissage, Vale
 import type { EtatOllama } from './ia'
 import type { Materiel } from './materiel'
 import type { DemandeTache, Tache } from './taches'
+import type { Recherche } from './recherche'
 import type { CommandeUi, EtatOnglets, PageFigee, ZoneOnglet } from './onglets'
 import type { Reglages } from './reglages'
 import type { EtatVpn } from './vpn'
@@ -117,6 +118,13 @@ export const CANAUX = {
   iaChange: 'ia:change', // main → interface
   iaMateriel: 'ia:materiel',
   tachesLister: 'taches:lister',
+  rechercheLister: 'recherche:lister',
+  rechercheLancer: 'recherche:lancer',
+  rechercheArreter: 'recherche:arreter',
+  rechercheSupprimer: 'recherche:supprimer',
+  rechercheCle: 'recherche:cle',
+  rechercheDefinirCle: 'recherche:definir-cle',
+  rechercheChange: 'recherche:change', // main → interface
   tachesCreer: 'taches:creer',
   tachesModifier: 'taches:modifier',
   tachesSupprimer: 'taches:supprimer',
@@ -290,6 +298,17 @@ export interface ApiSe7en {
     deplacerVersSession(idOnglet: number, session: string): void
     quitterSplit(): void
     ratio(r: number): void
+  }
+  /** Recherche approfondie en local : sources lues sur le PC, rapport où chaque affirmation renvoie à sa source. */
+  recherche: {
+    lister(): Promise<Recherche[]>
+    lancer(question: string): Promise<Recherche | { erreur: string }>
+    arreter(): void
+    supprimer(id: string): void
+    /** Vrai si une clé de l'API Brave Search est enregistrée (chiffrée avec le compte Windows). */
+    cle(): Promise<boolean>
+    definirCle(cle: string | null): Promise<boolean>
+    surChangement(rappel: (r: Recherche) => void): () => void
   }
   /** Tâches en arrière-plan : pages surveillées (prix, changement, résumé du jour). */
   taches: {

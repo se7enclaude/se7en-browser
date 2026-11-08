@@ -29,6 +29,7 @@ import type { MemoireNavigation } from '../ia/memoireNavigation'
 import { lirePage } from '../ia/lecturePage'
 import { detecterMateriel, testerVitesse } from '../ia/materiel'
 import type { ServiceTaches } from '../taches'
+import type { ServiceRecherche } from '../agent/recherche'
 import type { DemandeTache } from '../../shared/taches'
 import { resumerPourEnvoi, traduireTexte } from '../ia/eclair'
 import * as donneesWidgets from '../widgets'
@@ -49,6 +50,7 @@ import { MAX_MEMBRES_GROUPE, MAX_MESSAGE, type CibleSocial, type StatutSocial } 
 
 export interface Services {
   taches: ServiceTaches
+  recherche: ServiceRecherche
   reglages: MagasinReglages
   historique: Historique
   favoris: Favoris
@@ -280,6 +282,18 @@ export function enregistrerIpc(s: Services): void {
   ipcMain.on(CANAUX.iaAnnuler, (e) => fenetreDe(e) && ollama.annuler())
   ipcMain.on(CANAUX.iaArreter, (e) => fenetreDe(e) && ollama.arreter())
   ollama.on('change', (etat) => diffuser(CANAUX.iaChange, etat))
+
+  // ---------- recherche approfondie ----------
+  const { recherche } = s
+  ipcMain.handle(CANAUX.rechercheLister, (e) => (fenetreDe(e) ? recherche.lister() : []))
+  ipcMain.handle(CANAUX.rechercheLancer, (e, q: unknown) =>
+    fenetreDe(e) && typeof q === 'string' && q.trim().length >= 3 ? recherche.lancer(q) : { erreur: 'Écris ta question (au moins quelques mots).' }
+  )
+  ipcMain.on(CANAUX.rechercheArreter, (e) => fenetreDe(e) && recherche.arreter())
+  ipcMain.on(CANAUX.rechercheSupprimer, (e, id: unknown) => fenetreDe(e) && typeof id === 'string' && recherche.supprimer(id))
+  ipcMain.handle(CANAUX.rechercheCle, (e) => !!fenetreDe(e) && recherche.aUneCle())
+  ipcMain.handle(CANAUX.rechercheDefinirCle, (e, cle: unknown) => (fenetreDe(e) && (cle === null || typeof cle === 'string') ? recherche.definirCle(cle) : false))
+  recherche.on('change', (r) => diffuser(CANAUX.rechercheChange, r))
 
   // ---------- tâches en arrière-plan ----------
   const { taches } = s
