@@ -18,6 +18,7 @@ function elements(etat: EtatOnglets): ElementMenu[] {
     { libelle: 'Amis', action: () => o.interne('se7en://amis') },
     { libelle: 'Recherche approfondie', action: () => o.interne('se7en://recherche') },
     { libelle: 'Tâches', action: () => o.interne('se7en://taches') },
+    { libelle: 'Extensions', action: () => o.interne('se7en://extensions') },
     { separateur: true },
     { libelle: 'Paramètres', raccourci: 'Ctrl+Virgule', action: () => o.interne('se7en://parametres') }
   ]

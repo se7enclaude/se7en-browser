@@ -5072,3 +5072,53 @@ textarea.champ {
 .ligne-recherche.active .titre-source {
   font-weight: 600;
 }
+
+/* ---------- Extensions ---------- */
+.liste-extensions {
+  display: grid;
+  gap: 4px;
+}
+.ligne-extension {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--verre-creux);
+}
+.ligne-extension:last-child {
+  border-bottom: 0;
+}
+.ligne-extension.desactivee {
+  opacity: 0.55;
+}
+.icone-extension {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: 8px;
+}
+.icone-extension.vide {
+  background: var(--verre-creux);
+}
+.infos-extension {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.actions-extension {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+.badge-extension {
+  font-size: 11px;
+  color: var(--texte-discret);
+}
+.badge-extension.verifiee {
+  color: var(--ia);
+}
+.page-interne form.ligne-reglage .champ {
+  flex: 1;
+}

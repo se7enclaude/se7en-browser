@@ -48,6 +48,7 @@ export function ouvrirMenuPrincipal(fenetre: BrowserWindow, g: GestionnaireOngle
     { label: 'Amis', click: () => g.ouvrirInterne('se7en://amis') },
     { label: 'Recherche approfondie', click: () => g.ouvrirInterne('se7en://recherche') },
     { label: 'Tâches', click: () => g.ouvrirInterne('se7en://taches') },
+    { label: 'Extensions', click: () => g.ouvrirInterne('se7en://extensions') },
     { type: 'separator' },
     { label: 'Paramètres', accelerator: 'Ctrl+,', click: () => g.ouvrirInterne('se7en://parametres') }
   ])

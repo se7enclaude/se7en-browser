@@ -3,6 +3,7 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import { CANAUX, type ApiSe7en, type EtatFenetre } from '../shared/ipc'
 import type { Tache } from '../shared/taches'
 import type { Recherche } from '../shared/recherche'
+import type { ExtensionInstallee } from '../shared/extensions'
 import type { Favori, Telechargement } from '../shared/donnees'
 import type { FluxChat } from '../shared/chat'
 import type { EtatOllama } from '../shared/ia'
@@ -214,6 +215,14 @@ const api: ApiSe7en = {
     surEtat: (rappel) => ecouter<EtatEcriture | null>(CANAUX.ecritureEtat, rappel),
     appliquer: envoyer(CANAUX.ecritureAppliquer),
     annuler: envoyer(CANAUX.ecritureAnnuler)
+  },
+  extensions: {
+    lister: demander(CANAUX.extensionsLister),
+    installer: demander(CANAUX.extensionsInstaller),
+    activer: envoyer(CANAUX.extensionsActiver),
+    supprimer: envoyer(CANAUX.extensionsSupprimer),
+    trouver: demander(CANAUX.extensionsTrouver),
+    surChangement: (rappel) => ecouter<ExtensionInstallee[]>(CANAUX.extensionsChange, rappel)
   },
   recherche: {
     lister: demander(CANAUX.rechercheLister),

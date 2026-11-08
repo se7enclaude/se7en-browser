@@ -29,6 +29,8 @@ import type { MemoireNavigation } from '../ia/memoireNavigation'
 import { lirePage } from '../ia/lecturePage'
 import { detecterMateriel, testerVitesse } from '../ia/materiel'
 import type { ServiceTaches } from '../taches'
+import type { ServiceExtensions } from '../extensions/extensions'
+import { idExtension } from '../../shared/extensions'
 import type { ServiceRecherche } from '../agent/recherche'
 import type { DemandeTache } from '../../shared/taches'
 import { resumerPourEnvoi, traduireTexte } from '../ia/eclair'
@@ -49,6 +51,7 @@ import { promises as fsp } from 'node:fs'
 import { MAX_MEMBRES_GROUPE, MAX_MESSAGE, type CibleSocial, type StatutSocial } from '../../shared/social'
 
 export interface Services {
+  extensions: ServiceExtensions
   taches: ServiceTaches
   recherche: ServiceRecherche
   reglages: MagasinReglages
@@ -282,6 +285,18 @@ export function enregistrerIpc(s: Services): void {
   ipcMain.on(CANAUX.iaAnnuler, (e) => fenetreDe(e) && ollama.annuler())
   ipcMain.on(CANAUX.iaArreter, (e) => fenetreDe(e) && ollama.arreter())
   ollama.on('change', (etat) => diffuser(CANAUX.iaChange, etat))
+
+  // ---------- extensions ----------
+  const { extensions } = s
+  ipcMain.handle(CANAUX.extensionsLister, (e) => (fenetreDe(e) ? extensions.lister() : []))
+  ipcMain.handle(CANAUX.extensionsInstaller, (e, texte: unknown) => {
+    const id = typeof texte === 'string' ? idExtension(texte) : null
+    return fenetreDe(e) && id ? extensions.installer(id) : { erreur: 'Colle le lien de l’extension sur le Chrome Web Store (chromewebstore.google.com/detail/…).' }
+  })
+  ipcMain.on(CANAUX.extensionsActiver, (e, id: unknown, oui: unknown) => fenetreDe(e) && typeof id === 'string' && typeof oui === 'boolean' && void extensions.activer(id, oui))
+  ipcMain.on(CANAUX.extensionsSupprimer, (e, id: unknown) => fenetreDe(e) && typeof id === 'string' && void extensions.supprimer(id))
+  ipcMain.handle(CANAUX.extensionsTrouver, (e) => (fenetreDe(e) ? extensions.trouverAilleurs() : []))
+  extensions.on('change', (l) => diffuser(CANAUX.extensionsChange, l))
 
   // ---------- recherche approfondie ----------
   const { recherche } = s

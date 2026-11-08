@@ -19,6 +19,7 @@ import { ServiceChat } from './ia/chat'
 import { Conversations, Skills } from './ia/conversations'
 import { sessionAgent } from './agent/lecteur'
 import { ServiceTaches } from './taches'
+import { ServiceExtensions } from './extensions/extensions'
 import { ServiceRecherche } from './agent/recherche'
 import { questionDeRecherche } from '../shared/recherche'
 import { comprendreDemandeTache, confirmationTache } from '../shared/taches'
@@ -170,6 +171,10 @@ if (!app.requestSingleInstanceLock()) {
     navigation.purger()
     setInterval(() => navigation.purger(), 6 * 3600 * 1000).unref()
     const chat = new ServiceChat(ollama, conversations, skills, documents, memoire, () => reglages.get(), () => [...onglets.values()][0], navigation)
+
+    // extensions du Chrome Web Store : dans la session des pages web seulement (ni l'interface, ni l'IA, ni l'agent)
+    const extensions = new ServiceExtensions(dossier, sessionWeb)
+    void extensions.charger()
 
     // tâches en arrière-plan (prix, changements, résumé du jour) : pages lues par le lecteur cloisonné, sans tes cookies
     bloqueur.brancher(sessionAgent(), () => true, () => [])
@@ -391,7 +396,7 @@ if (!app.requestSingleInstanceLock()) {
       discussion(f, null)
       ouvrirConversation(f, cible)
     }
-    enregistrerIpc({ recherche, taches, vpn, discussion, agrandirDiscussion, ensemble, traduire, plantages, miseAJour, navigation, ecriture, zone: (f) => void zone(f), social, reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, coffre, formulaires, bloqueur, memoire, ranger, ouvrirFichier: (f) => void ouvrirFichier(f), ongletsDe: (f) => onglets.get(f.id) })
+    enregistrerIpc({ extensions, recherche, taches, vpn, discussion, agrandirDiscussion, ensemble, traduire, plantages, miseAJour, navigation, ecriture, zone: (f) => void zone(f), social, reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, coffre, formulaires, bloqueur, memoire, ranger, ouvrirFichier: (f) => void ouvrirFichier(f), ongletsDe: (f) => onglets.get(f.id) })
 
     const fenetre = creerFenetrePrincipale()
     const idFenetre = fenetre.id

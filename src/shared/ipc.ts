@@ -9,6 +9,7 @@ import type { EtatOllama } from './ia'
 import type { Materiel } from './materiel'
 import type { DemandeTache, Tache } from './taches'
 import type { Recherche } from './recherche'
+import type { ExtensionInstallee, ExtensionTrouvee } from './extensions'
 import type { CommandeUi, EtatOnglets, PageFigee, ZoneOnglet } from './onglets'
 import type { Reglages } from './reglages'
 import type { EtatVpn } from './vpn'
@@ -119,6 +120,12 @@ export const CANAUX = {
   iaMateriel: 'ia:materiel',
   tachesLister: 'taches:lister',
   rechercheLister: 'recherche:lister',
+  extensionsLister: 'extensions:lister',
+  extensionsInstaller: 'extensions:installer',
+  extensionsActiver: 'extensions:activer',
+  extensionsSupprimer: 'extensions:supprimer',
+  extensionsTrouver: 'extensions:trouver',
+  extensionsChange: 'extensions:change', // main → interface
   rechercheLancer: 'recherche:lancer',
   rechercheArreter: 'recherche:arreter',
   rechercheSupprimer: 'recherche:supprimer',
@@ -298,6 +305,17 @@ export interface ApiSe7en {
     deplacerVersSession(idOnglet: number, session: string): void
     quitterSplit(): void
     ratio(r: number): void
+  }
+  /** Extensions du Chrome Web Store (pages web seulement, jamais l'interface ni l'IA). */
+  extensions: {
+    lister(): Promise<ExtensionInstallee[]>
+    /** Installe depuis le Chrome Web Store, par son lien ou son identifiant. */
+    installer(lienOuId: string): Promise<ExtensionInstallee | { erreur: string }>
+    activer(id: string, activee: boolean): void
+    supprimer(id: string): void
+    /** Extensions des autres navigateurs du PC (identifiant et nom seulement). */
+    trouver(): Promise<ExtensionTrouvee[]>
+    surChangement(rappel: (l: ExtensionInstallee[]) => void): () => void
   }
   /** Recherche approfondie en local : sources lues sur le PC, rapport où chaque affirmation renvoie à sa source. */
   recherche: {
