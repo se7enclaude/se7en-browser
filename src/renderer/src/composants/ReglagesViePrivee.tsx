@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react'
 import type { Souvenir } from '../../../shared/chat'
 import type { Reglages } from '../../../shared/reglages'
 import { IconeCroix } from './Icones'
+import { texteBloqueur } from '../../../shared/composants'
+import { useComposants } from './EtatComposants'
 
 interface Props {
   reglages: Reglages
@@ -14,6 +16,7 @@ export function Interrupteur({ actif, changer, label }: { actif: boolean; change
 }
 
 export function ReglagesBloqueur({ reglages, modifier }: Props): React.JSX.Element {
+  const composants = useComposants()
   return (
     <section className="bloc verre-fort">
       <h2>Confidentialité</h2>
@@ -25,6 +28,7 @@ export function ReglagesBloqueur({ reglages, modifier }: Props): React.JSX.Eleme
         Listes EasyList et EasyPrivacy (préparées par Ghostery), renouvelées chaque semaine. Le blocage se fait sur le réseau, sans rien ajouter aux pages. Le bouclier de la barre
         d'adresse montre ce qui a été bloqué, et permet de désactiver le bloqueur sur un site.
       </p>
+      {composants && <p className="discret petit">{texteBloqueur(composants.bloqueur)}</p>}
       {reglages.bloqueurExceptions.length > 0 && (
         <>
           <span className="etiquette-petite">Sites où le bloqueur est désactivé</span>

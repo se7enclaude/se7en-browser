@@ -49,7 +49,8 @@ import { MemoireNavigation } from './ia/memoireNavigation'
 import { MiseAJour } from './miseAJour'
 import { fusionnerReglages, migrerReglages, REGLAGES_DEFAUT } from '../shared/reglages'
 import { liensDesArguments } from './navigateurDefaut'
-import { ecrireJson, lireJson } from './stockage/fichierJson'
+import { lireJson } from './stockage/fichierJson'
+import { ServiceComposants } from './composants'
 import { join } from 'node:path'
 import { lirePage } from './ia/lecturePage'
 import { estAdresseAutorisee } from '../shared/adresse'
@@ -391,27 +392,17 @@ if (!app.requestSingleInstanceLock()) {
     setInterval(() => void miseAJour.verifier(), 6 * 3600 * 1000).unref()
     app.on('will-quit', () => miseAJour.installerALaFermeture())
 
-    // modèles Qwen : quand l'IA est prête, au plus une fois par semaine, Ollama récupère leur dernière version
-    // (seuls les morceaux qui ont changé sont téléchargés)
-    const fichierModeles = join(dossier, 'maj-modeles.json')
-    let modelesVerifies = false
-    ollama.on('change', (e) => {
-      if (modelesVerifies || e.phase !== 'pret' || e.tache || !reglages.get().modelesAuto) return
-      modelesVerifies = true
-      const derniere = (lireJson(fichierModeles) as { date?: number } | null)?.date ?? 0
-      if (Date.now() - derniere < 7 * 24 * 3600 * 1000) return
-      const r = reglages.get()
-      const noms = [r.modeleTexte, r.modeleVision].filter((n) => modelePresent(n, e.modeles))
-      if (!noms.length) return
-      void ecrireJson(fichierModeles, { date: Date.now() }).catch(() => undefined)
-      void ollama.telecharger(noms)
-    })
+    // composants téléchargés (Ollama, modèles Qwen, extensions, listes du bloqueur) : à jour ou pas ?
+    // Vérifiés 45 s après le lancement puis au plus toutes les 12 heures ; seuls ceux qui ont changé sont retéléchargés.
+    const composants = new ServiceComposants(dossier, { ollama, extensions, bloqueur, reglages: () => reglages.get() })
+    setTimeout(() => void composants.verifier(), 45_000).unref()
+    setInterval(() => void composants.verifier(), 3600 * 1000).unref()
 
     const agrandirDiscussion = (f: BrowserWindow, cible: CibleSocial): void => {
       discussion(f, null)
       ouvrirConversation(f, cible)
     }
-    enregistrerIpc({ sync, mcp, extensions, recherche, taches, vpn, discussion, agrandirDiscussion, ensemble, traduire, plantages, miseAJour, navigation, ecriture, zone: (f) => void zone(f), social, reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, coffre, formulaires, bloqueur, memoire, ranger, ouvrirFichier: (f) => void ouvrirFichier(f), ongletsDe: (f) => onglets.get(f.id) })
+    enregistrerIpc({ composants, sync, mcp, extensions, recherche, taches, vpn, discussion, agrandirDiscussion, ensemble, traduire, plantages, miseAJour, navigation, ecriture, zone: (f) => void zone(f), social, reglages, historique, favoris, telechargements, ollama, chat, conversations, skills, coffre, formulaires, bloqueur, memoire, ranger, ouvrirFichier: (f) => void ouvrirFichier(f), ongletsDe: (f) => onglets.get(f.id) })
 
     const fenetre = creerFenetrePrincipale()
     const idFenetre = fenetre.id

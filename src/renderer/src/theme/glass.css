@@ -5167,3 +5167,22 @@ textarea.champ {
   display: grid;
   gap: 2px;
 }
+
+/* ---------- Composants téléchargés : à jour / mise à jour disponible ---------- */
+.etat-maj {
+  display: inline;
+  color: var(--texte-discret, inherit);
+}
+.etat-maj.a-jour {
+  color: var(--accent);
+}
+.etat-maj.mise-a-jour {
+  color: rgb(214 120 20);
+  font-weight: 500;
+}
+.etat-maj.petit {
+  font-size: 12px;
+}
+.ligne-maj {
+  gap: 12px;
+}

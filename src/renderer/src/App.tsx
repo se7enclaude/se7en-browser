@@ -15,6 +15,7 @@ import { ouvrirConversation, PageAmis } from './composants/PageAmis'
 import { SelecteurZone } from './composants/SelecteurZone'
 import { BandeauEcriture } from './composants/BandeauEcriture'
 import { BandeauPlantage } from './composants/Plantages'
+import { BandeauComposants } from './composants/EtatComposants'
 import { BandeauEnsemble } from './composants/BandeauEnsemble'
 import { RechercheOnglets } from './composants/RechercheOnglets'
 import type { ZoneCapture } from '../../shared/chat'
@@ -126,6 +127,7 @@ export function App(): React.JSX.Element {
           {reglages && <QuestionIA reglages={reglages} modifier={modifier} ia={ia} />}
           <BandeauEcriture />
           <BandeauPlantage />
+          <BandeauComposants />
           <BandeauEnsemble />
           {actif?.traduction && actif.traduction.etat !== 'traduite' && !(actif.traduction.etat === 'en-cours' && actif.traduction.fond) && (
             <div className={`bandeau-traduction${actif.traduction.etat === 'erreur' ? ' erreur' : ''}`} role="status">

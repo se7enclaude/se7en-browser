@@ -19,6 +19,7 @@ import type { Ami, CibleSocial, StatutSocial, EtatEnsemble, EtatSocial, Evenemen
 import type { EtatEcriture } from './ecriture'
 import type { EtatMiseAJour } from './miseAJour'
 import type { RapportPlantage } from './plantages'
+import type { EtatComposants } from './composants'
 
 export const CANAUX = {
   // fenêtre
@@ -137,6 +138,13 @@ export const CANAUX = {
   extensionsSupprimer: 'extensions:supprimer',
   extensionsTrouver: 'extensions:trouver',
   extensionsChange: 'extensions:change', // main → interface
+  composantsEtat: 'composants:etat',
+  composantsChange: 'composants:change', // main → interface
+  composantsVerifier: 'composants:verifier',
+  composantsVu: 'composants:vu',
+  composantsMajOllama: 'composants:maj-ollama',
+  composantsMajModele: 'composants:maj-modele',
+  composantsMajExtension: 'composants:maj-extension',
   rechercheLancer: 'recherche:lancer',
   rechercheArreter: 'recherche:arreter',
   rechercheSupprimer: 'recherche:supprimer',
@@ -345,6 +353,21 @@ export interface ApiSe7en {
     /** Extensions des autres navigateurs du PC (identifiant et nom seulement). */
     trouver(): Promise<ExtensionTrouvee[]>
     surChangement(rappel: (l: ExtensionInstallee[]) => void): () => void
+  }
+  /** Composants téléchargés (Ollama, modèles, extensions, listes du bloqueur) : à jour ou mise à jour disponible. */
+  composants: {
+    etat(): Promise<EtatComposants>
+    /** Vérifie tout de suite (sans attendre les 12 heures). */
+    verifier(): Promise<EtatComposants>
+    /** Bandeau de nouveauté vu ou fermé. */
+    vu(cle: string): void
+    /** Met Ollama à jour (seulement si une version plus récente a été trouvée). */
+    mettreAJourOllama(): void
+    /** Récupère la nouvelle version d'un modèle (seulement s'il a changé). */
+    mettreAJourModele(nom: string): void
+    /** Met une extension à jour (seulement si le Chrome Web Store en a une plus récente). */
+    mettreAJourExtension(id: string): Promise<{ ok: true } | { erreur: string }>
+    surChangement(rappel: (e: EtatComposants) => void): () => void
   }
   /** Recherche approfondie en local : sources lues sur le PC, rapport où chaque affirmation renvoie à sa source. */
   recherche: {

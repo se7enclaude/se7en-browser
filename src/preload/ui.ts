@@ -4,6 +4,7 @@ import { CANAUX, type ApiSe7en, type EtatFenetre } from '../shared/ipc'
 import type { Tache } from '../shared/taches'
 import type { Recherche } from '../shared/recherche'
 import type { ExtensionInstallee } from '../shared/extensions'
+import type { EtatComposants } from '../shared/composants'
 import type { EtatSync } from '../shared/sync'
 import type { Favori, Telechargement } from '../shared/donnees'
 import type { FluxChat } from '../shared/chat'
@@ -238,6 +239,15 @@ const api: ApiSe7en = {
     supprimer: envoyer(CANAUX.extensionsSupprimer),
     trouver: demander(CANAUX.extensionsTrouver),
     surChangement: (rappel) => ecouter<ExtensionInstallee[]>(CANAUX.extensionsChange, rappel)
+  },
+  composants: {
+    etat: demander(CANAUX.composantsEtat),
+    verifier: demander(CANAUX.composantsVerifier),
+    vu: envoyer(CANAUX.composantsVu),
+    mettreAJourOllama: envoyer(CANAUX.composantsMajOllama),
+    mettreAJourModele: envoyer(CANAUX.composantsMajModele),
+    mettreAJourExtension: demander(CANAUX.composantsMajExtension),
+    surChangement: (rappel) => ecouter<EtatComposants>(CANAUX.composantsChange, rappel)
   },
   recherche: {
     lister: demander(CANAUX.rechercheLister),

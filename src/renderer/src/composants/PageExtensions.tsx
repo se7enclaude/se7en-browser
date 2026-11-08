@@ -1,6 +1,8 @@
 /* Page interne se7en://extensions : extensions vérifiées, installation depuis le Chrome Web Store, import depuis un autre navigateur. */
 import { useEffect, useState } from 'react'
 import { EXTENSIONS_VERIFIEES, type ExtensionInstallee, type ExtensionTrouvee } from '../../../shared/extensions'
+import { texteExtension, type EtatComposants } from '../../../shared/composants'
+import { BoutonVerifierComposants, EtatMaj, useComposants } from './EtatComposants'
 
 function useExtensions(): ExtensionInstallee[] {
   const [l, setL] = useState<ExtensionInstallee[]>([])
@@ -11,8 +13,18 @@ function useExtensions(): ExtensionInstallee[] {
   return l
 }
 
-function LigneInstallee({ e }: { e: ExtensionInstallee }): React.JSX.Element {
+function LigneInstallee({ e, composants }: { e: ExtensionInstallee; composants: EtatComposants | null }): React.JSX.Element {
   const api = window.se7en.extensions
+  const maj = texteExtension(e.version, composants?.extensions[e.id])
+  const [enCours, setEnCours] = useState(false)
+  const [erreur, setErreur] = useState<string | null>(null)
+  const mettreAJour = async (): Promise<void> => {
+    setEnCours(true)
+    setErreur(null)
+    const r = await window.se7en.composants.mettreAJourExtension(e.id)
+    setEnCours(false)
+    if ('erreur' in r) setErreur(r.erreur)
+  }
   return (
     <div className={`ligne-extension${e.activee ? '' : ' desactivee'}`}>
       {e.icone ? <img className="icone-extension" src={e.icone} alt="" /> : <span className="icone-extension vide" />}
@@ -22,8 +34,15 @@ function LigneInstallee({ e }: { e: ExtensionInstallee }): React.JSX.Element {
         </strong>
         <span className="discret petit">{e.description}</span>
         <span className={`badge-extension${e.verifiee ? ' verifiee' : ''}`}>{e.verifiee ? '✓ Vérifiée' : 'Non vérifiée : peut ne pas marcher entièrement'}</span>
+        <EtatMaj t={maj} className="petit" />
+        {erreur && <span className="message-erreur petit">{erreur}</span>}
       </div>
       <div className="actions-extension">
+        {maj.etat === 'mise-a-jour' && (
+          <button className="bouton-principal petit" disabled={enCours} onClick={() => void mettreAJour()}>
+            {enCours ? 'Mise à jour…' : 'Mettre à jour'}
+          </button>
+        )}
         <button
           role="switch"
           aria-checked={e.activee}
@@ -41,6 +60,7 @@ function LigneInstallee({ e }: { e: ExtensionInstallee }): React.JSX.Element {
 
 export function PageExtensions(): React.JSX.Element {
   const installees = useExtensions()
+  const composants = useComposants()
   const [lien, setLien] = useState('')
   const [enCours, setEnCours] = useState<string | null>(null)
   const [message, setMessage] = useState<{ ok: boolean; texte: string } | null>(null)
@@ -162,9 +182,10 @@ export function PageExtensions(): React.JSX.Element {
           <h2>Installées</h2>
           <div className="liste-extensions">
             {installees.map((e) => (
-              <LigneInstallee key={e.id} e={e} />
+              <LigneInstallee key={e.id} e={e} composants={composants} />
             ))}
           </div>
+          <BoutonVerifierComposants composants={composants} />
         </section>
       )}
     </div>

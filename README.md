@@ -153,8 +153,17 @@ l'article sur… que j'ai lu » ou la puce « Ma navigation » du panneau IA. D�
 **Mises à jour automatiques** (`src/main/miseAJour.ts`) : la version installée vérifie la dernière release GitHub
 (30 s après le lancement, puis toutes les 6 heures), télécharge l'installeur en arrière-plan, vérifie sa taille et son
 empreinte SHA-256, puis l'installe en silence à la fermeture (ou tout de suite avec « Redémarrer pour la version… »).
-Les modèles Qwen sont remis à jour une fois par semaine (Ollama ne télécharge que ce qui a changé).
 Les deux se désactivent dans Paramètres › À propos.
+
+**Composants à jour** (`src/main/composants.ts`, `src/shared/composants.ts`) : au plus toutes les 12 heures, la version
+d'Ollama est comparée à la dernière release GitHub `ollama/ollama`, le manifeste de chaque modèle Qwen installé à celui
+du registre d'Ollama (quelques Ko, jamais le modèle), et chaque extension à la version du Chrome Web Store (service
+update2, réponse `updatecheck`). Pages IA, Extensions et Paramètres affichent « À jour (version X, vérifié le …) » ou
+« Mise à jour disponible : X → Y » ; le bouton de mise à jour n'apparaît que dans ce cas, et rien n'est retéléchargé
+quand c'est à jour (les modèles qui ont changé sont récupérés automatiquement si le réglage est actif, une seule fois
+par version publiée). Une nouvelle version donne un bandeau dans l'appli, une fois par version. Hors-ligne, le dernier
+état connu reste affiché. Listes du bloqueur : l'ancien cache continue de bloquer tant que les nouvelles listes ne sont
+pas arrivées ; leur date s'affiche dans Paramètres › Confidentialité.
 
 **Mémoire de l'IA** : « retiens que… » / « oublie… » dans le panneau IA. Seul ce que l'utilisateur tape lui-même est
 retenu (jamais le contenu d'une page, jamais l'IA d'elle-même) ; les souvenirs sont ajoutés à la consigne système.

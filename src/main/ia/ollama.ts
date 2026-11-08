@@ -4,14 +4,15 @@
  * Ollama ne tourne que quand le navigateur l'a activé : le navigateur lance lui-même le service (« ollama serve »,
  * sans fenêtre ni icône), l'arrête en se fermant, et ne laisse jamais Ollama démarrer avec Windows. */
 import { app, net } from 'electron'
-import { spawn, spawnSync, type ChildProcess } from 'node:child_process'
+import { execFile, spawn, spawnSync, type ChildProcess } from 'node:child_process'
 import { EventEmitter } from 'node:events'
 import { createWriteStream, existsSync, promises as fs } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pipeline } from 'node:stream/promises'
 import { Readable, Transform } from 'node:stream'
 import type { EtatOllama, TacheOllama } from '../../shared/ia'
+import { cheminModele, versionDeSortieOllama } from '../../shared/composants'
 import { lireNdjson, SuiviPull } from './ndjson'
 
 export const API_OLLAMA = 'http://127.0.0.1:11434'
@@ -30,6 +31,24 @@ function cheminsPossibles(): string[] {
 
 export function trouverOllama(): string | null {
   return cheminsPossibles().find((p) => existsSync(p)) ?? null
+}
+
+/** Version d'Ollama installée, même quand le service ne tourne pas (« ollama --version », sans fenêtre). */
+export function versionInstallee(): Promise<string | null> {
+  const exe = trouverOllama()
+  if (!exe) return Promise.resolve(null)
+  return new Promise((r) =>
+    execFile(exe, ['--version'], { windowsHide: true, timeout: 8000 }, (_err, sortie, erreurs) => r(versionDeSortieOllama(`${sortie ?? ''}
+${erreurs ?? ''}`)))
+  )
+}
+
+/** Manifeste d'un modèle installé (dossier des modèles d'Ollama, ou OLLAMA_MODELS), ou null. */
+export async function manifesteLocal(nom: string): Promise<string | null> {
+  const c = cheminModele(nom)
+  if (!c) return null
+  const racine = process.env.OLLAMA_MODELS || join(homedir(), '.ollama', 'models')
+  return fs.readFile(join(racine, 'manifests', 'registry.ollama.ai', c.espace, c.modele, c.etiquette), 'utf8').catch(() => null)
 }
 
 /** Arrête un programme et tous ceux qu'il a lancés (Ollama lance un « runner » par modèle chargé). */
@@ -179,7 +198,7 @@ export class Ollama extends EventEmitter<{ change: [EtatOllama] }> {
   // ---------- installation ----------
 
   /** Télécharge l'installeur officiel, vérifie sa signature, l'installe sans fenêtre, puis démarre Ollama. */
-  async installer(): Promise<void> {
+  async installer(demarrerEnsuite = true): Promise<void> {
     if (this.e.tache) return
     this.maj({ erreur: null })
     this.annulation = new AbortController()
@@ -224,7 +243,7 @@ export class Ollama extends EventEmitter<{ change: [EtatOllama] }> {
       fermerAppliOllama()
       await empecherDemarrageAuto()
       this.majTache(null)
-      await this.demarrer()
+      if (demarrerEnsuite) await this.demarrer()
     } catch (err) {
       const annule = this.annulation?.signal.aborted
       this.maj({ erreur: annule ? null : (err as Error).message })
@@ -234,6 +253,20 @@ export class Ollama extends EventEmitter<{ change: [EtatOllama] }> {
       await fs.rm(fichier, { force: true }).catch(() => undefined)
       await this.verifier()
     }
+  }
+
+  /**
+   * Met Ollama à jour avec le dernier installeur officiel (seulement quand une version plus récente a été trouvée) :
+   * le service lancé par le navigateur est arrêté le temps de l'installation, puis relancé.
+   */
+  async mettreAJour(): Promise<void> {
+    if (this.e.tache || !trouverOllama()) return
+    const p = this.serveur
+    if (p?.pid) {
+      this.serveur = null
+      arreterArbre(p.pid)
+    }
+    await this.installer(!!p)
   }
 
   // ---------- modèles ----------

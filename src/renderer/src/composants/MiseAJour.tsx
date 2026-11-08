@@ -61,7 +61,7 @@ export function ReglagesMiseAJour({ reglages, modifier, version }: { reglages: R
         <Interrupteur label="Mise à jour automatique" actif={reglages.miseAJourAuto} changer={(v) => modifier({ miseAJourAuto: v })} />
       </div>
       <div className="ligne-reglage">
-        <span>Mettre à jour les modèles Qwen de l’IA chaque semaine</span>
+        <span>Mettre à jour les modèles Qwen de l’IA automatiquement (seulement quand une nouvelle version est publiée)</span>
         <Interrupteur label="Mise à jour des modèles" actif={reglages.modelesAuto} changer={(v) => modifier({ modelesAuto: v })} />
       </div>
     </>

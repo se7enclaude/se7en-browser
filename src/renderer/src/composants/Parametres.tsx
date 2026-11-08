@@ -16,6 +16,7 @@ import { ReglagesSync } from './ReglagesSync'
 import { useOllama } from './PageIA'
 import { ReglagesMiseAJour } from './MiseAJour'
 import { Migration } from './Migration'
+import { BoutonVerifierComposants, LigneMajOllama, useComposants } from './EtatComposants'
 
 interface Props {
   reglages: Reglages
@@ -43,6 +44,7 @@ function ChampModele({ valeur, changer }: { valeur: string; changer: (v: string)
 
 export function Parametres({ reglages, modifier, infos }: Props): React.JSX.Element {
   const ia = useOllama()
+  const composants = useComposants()
   const texteEtatIA = !ia
     ? ''
     : ia.phase === 'absent'
@@ -170,6 +172,8 @@ export function Parametres({ reglages, modifier, infos }: Props): React.JSX.Elem
             Installer et gérer l'IA
           </button>
         </div>
+        {ia && <LigneMajOllama ia={ia} composants={composants} />}
+        <BoutonVerifierComposants composants={composants} />
       </section>
 
       <ReglagesBloqueur reglages={reglages} modifier={modifier} />

@@ -43,7 +43,7 @@ if (cmd === 'publish') {
     gh(['release', 'upload', tag, exe, lj, '-R', REPO, '--clobber'])
     console.log('Republié : ' + tag)
   } else {
-    const texte = (notes || '') + '\n\nInstallation : lance ' + path.basename(exe) + ' (aucun droit administrateur demandé).\nSHA-256 : ' + latest.setup.sha256
+    const texte = (notes || '') + '\n\nInstallation : lance ' + path.basename(exe) + ' (aucun droit administrateur demandé).\nSHA-256 : ' + latest.setup.sha256.toUpperCase()
     gh(['release', 'create', tag, exe, lj, '-R', REPO, '--title', 'se7en Browser ' + VERSION, '--notes', texte, '--latest'])
     console.log('Publié : ' + tag)
   }

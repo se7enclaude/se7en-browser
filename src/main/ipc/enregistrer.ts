@@ -30,9 +30,10 @@ import { lirePage } from '../ia/lecturePage'
 import { detecterMateriel, testerVitesse } from '../ia/materiel'
 import type { ServiceTaches } from '../taches'
 import type { ServiceExtensions } from '../extensions/extensions'
+import type { ServiceComposants } from '../composants'
 import type { ServeurMcp } from '../agent/mcp'
 import type { ServiceSync } from '../sync/sync'
-import { idExtension } from '../../shared/extensions'
+import { idExtension, RE_ID_EXTENSION } from '../../shared/extensions'
 import type { ServiceRecherche } from '../agent/recherche'
 import type { DemandeTache } from '../../shared/taches'
 import { resumerPourEnvoi, traduireTexte } from '../ia/eclair'
@@ -53,6 +54,7 @@ import { promises as fsp } from 'node:fs'
 import { MAX_MEMBRES_GROUPE, MAX_MESSAGE, type CibleSocial, type StatutSocial } from '../../shared/social'
 
 export interface Services {
+  composants: ServiceComposants
   sync: ServiceSync
   mcp: ServeurMcp
   extensions: ServiceExtensions
@@ -279,7 +281,8 @@ export function enregistrerIpc(s: Services): void {
   // ---------- IA locale ----------
   ipcMain.handle(CANAUX.iaEtat, (e) => (fenetreDe(e) ? ollama.etat() : null))
   ipcMain.handle(CANAUX.iaVerifier, (e) => (fenetreDe(e) ? ollama.verifier() : null))
-  ipcMain.on(CANAUX.iaInstaller, (e) => fenetreDe(e) && void ollama.installer())
+  // installation seulement si Ollama est absent (la mise à jour passe par composants, et seulement si une version plus récente existe)
+  ipcMain.on(CANAUX.iaInstaller, (e) => fenetreDe(e) && ollama.etat().phase === 'absent' && void ollama.installer())
   ipcMain.on(CANAUX.iaDemarrer, (e) => fenetreDe(e) && void ollama.demarrer())
   ipcMain.on(CANAUX.iaTelecharger, (e, noms: unknown) => {
     if (!fenetreDe(e) || !Array.isArray(noms)) return
@@ -316,6 +319,29 @@ export function enregistrerIpc(s: Services): void {
   ipcMain.on(CANAUX.extensionsSupprimer, (e, id: unknown) => fenetreDe(e) && typeof id === 'string' && void extensions.supprimer(id))
   ipcMain.handle(CANAUX.extensionsTrouver, (e) => (fenetreDe(e) ? extensions.trouverAilleurs() : []))
   extensions.on('change', (l) => diffuser(CANAUX.extensionsChange, l))
+
+  // ---------- composants téléchargés : à jour ? ----------
+  const { composants } = s
+  ipcMain.handle(CANAUX.composantsEtat, (e) => (fenetreDe(e) ? composants.etat() : null))
+  ipcMain.handle(CANAUX.composantsVerifier, async (e) => {
+    if (!fenetreDe(e)) return null
+    await composants.verifier(true)
+    return composants.etat()
+  })
+  ipcMain.on(CANAUX.composantsVu, (e, cle: unknown) => fenetreDe(e) && typeof cle === 'string' && composants.vu(cle))
+  ipcMain.on(CANAUX.composantsMajOllama, (e) => {
+    // jamais de nouveau téléchargement d'Ollama quand il est déjà à jour
+    if (!fenetreDe(e) || !composants.ollamaAMettreAJour()) return
+    void ollama.mettreAJour().then(() => composants.apresMiseAJourOllama())
+  })
+  ipcMain.on(CANAUX.composantsMajModele, (e, nom: unknown) => {
+    if (!fenetreDe(e) || typeof nom !== 'string' || !RE_NOM_MODELE.test(nom) || !composants.modeleAMettreAJour(nom)) return
+    void composants.mettreAJourModeles([nom])
+  })
+  ipcMain.handle(CANAUX.composantsMajExtension, (e, id: unknown) =>
+    fenetreDe(e) && typeof id === 'string' && RE_ID_EXTENSION.test(id) ? composants.mettreAJourExtension(id) : { erreur: 'Extension introuvable.' }
+  )
+  composants.on('change', (etat) => diffuser(CANAUX.composantsChange, etat))
 
   // ---------- recherche approfondie ----------
   const { recherche } = s

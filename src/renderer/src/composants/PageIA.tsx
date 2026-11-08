@@ -4,6 +4,8 @@ import { modelePresent, TAILLES_CONNUES, type EtatOllama } from '../../../shared
 import { recommander, TAILLES_RECOMMANDES, verdictVitesse, type Materiel } from '../../../shared/materiel'
 import type { Reglages } from '../../../shared/reglages'
 import { taille } from '../useDonnees'
+import { texteModele } from '../../../shared/composants'
+import { BoutonVerifierComposants, EtatMaj, LigneMajOllama, useComposants } from './EtatComposants'
 
 export function useOllama(): EtatOllama | null {
   const [etat, setEtat] = useState<EtatOllama | null>(null)
@@ -110,6 +112,7 @@ function TestVitesse({ modele }: { modele: string }): React.JSX.Element {
 
 export function PageIA({ reglages }: { reglages: Reglages }): React.JSX.Element {
   const etat = useOllama()
+  const composants = useComposants()
   const ia = window.se7en.ia
   if (!etat) return <div className="page-interne" />
 
@@ -128,7 +131,14 @@ export function PageIA({ reglages }: { reglages: Reglages }): React.JSX.Element 
     <div className="page-interne">
       <div className="entete-page">
         <h1>IA locale</h1>
-        <button className="bouton-verre" disabled={!!t} onClick={() => ia.verifier()}>
+        <button
+          className="bouton-verre"
+          disabled={!!t}
+          onClick={() => {
+            void ia.verifier()
+            void window.se7en.composants.verifier()
+          }}
+        >
           Vérifier à nouveau
         </button>
       </div>
@@ -194,8 +204,14 @@ export function PageIA({ reglages }: { reglages: Reglages }): React.JSX.Element 
                     {m.detail} · {tailleModele(m.nom)}
                   </span>
                   {enCours && <Progression recus={t.recus} total={t.total} texte="Téléchargement" />}
+                  {present && <EtatMaj t={texteModele(composants?.modeles[m.nom])} className="petit" />}
                   {present && pret && !t && <TestVitesse modele={m.nom} />}
                 </div>
+                {present && pret && !t && composants?.modeles[m.nom]?.etat === 'mise-a-jour' && (
+                  <button className="bouton-principal petit" title="Ollama ne récupère que les morceaux qui ont changé" onClick={() => window.se7en.composants.mettreAJourModele(m.nom)}>
+                    Mettre à jour
+                  </button>
+                )}
                 {!present && !t && (
                   <button className="bouton-verre" onClick={() => ia.telecharger([m.nom])}>
                     Télécharger
@@ -218,6 +234,18 @@ export function PageIA({ reglages }: { reglages: Reglages }): React.JSX.Element 
         )}
         <p className="discret petit">Les noms des modèles se changent dans les Paramètres. Un téléchargement interrompu reprend là où il s'était arrêté.</p>
       </Etape>
+
+      {installe && (
+        <section className="bloc verre-fort">
+          <h2>Mises à jour</h2>
+          <LigneMajOllama ia={etat} composants={composants} />
+          <p className="discret petit">
+            Vérifiées au plus toutes les 12 heures : la version d'Ollama est comparée à sa dernière version publiée, et chaque modèle à celui du registre d'Ollama. Rien
+            n'est retéléchargé quand c'est à jour.
+          </p>
+          <BoutonVerifierComposants composants={composants} />
+        </section>
+      )}
 
       {toutPret && (
         <section className="bloc verre-fort tout-pret">

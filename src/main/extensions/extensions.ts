@@ -101,18 +101,21 @@ export class ServiceExtensions extends EventEmitter<{ change: [ExtensionInstalle
       await fs.rm(join(dossier, '_metadata'), { recursive: true, force: true })
       const lu = lireManifeste(dossier)
       if (!lu) throw new Error('Manifeste de l’extension illisible.')
-      await this.session.extensions.loadExtension(dossier)
+      // mise à jour : l'extension garde son état (activée ou non) et sa date d'installation
+      const avant = this.liste.find((x) => x.id === id)
+      const activee = avant?.activee ?? true
+      if (activee) await this.session.extensions.loadExtension(dossier)
       const e: ExtensionInstallee = {
         id,
         nom: lu.nom,
         version: lu.m.version ?? '',
         description: lu.description,
-        activee: true,
+        activee,
         verifiee: EXTENSIONS_VERIFIEES.some((v) => v.id === id),
         popup: lu.m.action?.default_popup ?? lu.m.browser_action?.default_popup ?? null,
         options: lu.m.options_ui?.page ?? lu.m.options_page ?? null,
         icone: iconeDe(dossier, lu.m),
-        installee: Date.now()
+        installee: avant?.installee ?? Date.now()
       }
       this.liste = [e, ...this.liste.filter((x) => x.id !== id)]
       this.changer()
