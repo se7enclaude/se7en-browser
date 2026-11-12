@@ -91,20 +91,45 @@ export class ServiceExtensions extends EventEmitter<{ change: [ExtensionInstalle
       const zip = zipDeCrx(Buffer.from(await rep.arrayBuffer()))
       const dossier = join(this.racine, id)
       const tmp = join(app.getPath('temp'), `se7en-ext-${id}.zip`)
-      await fs.writeFile(tmp, zip)
-      if (this.session.extensions.getExtension(id)) this.session.extensions.removeExtension(id)
-      await fs.rm(dossier, { recursive: true, force: true })
-      mkdirSync(dossier, { recursive: true })
-      await decompresser(tmp, dossier)
-      await fs.rm(tmp, { force: true })
-      // les dossiers commençant par « _ » (hors _locales) sont réservés : Chrome les refuse, Electron aussi
-      await fs.rm(join(dossier, '_metadata'), { recursive: true, force: true })
-      const lu = lireManifeste(dossier)
-      if (!lu) throw new Error('Manifeste de l’extension illisible.')
+      // la nouvelle version est préparée à côté : l'ancienne reste en place tant que la nouvelle n'est pas validée
+      const neuf = `${dossier}.nouveau`
+      const ancien = `${dossier}.ancien`
+      let lu: NonNullable<ReturnType<typeof lireManifeste>>
+      try {
+        await fs.writeFile(tmp, zip)
+        await fs.rm(neuf, { recursive: true, force: true })
+        mkdirSync(neuf, { recursive: true })
+        await decompresser(tmp, neuf)
+        // les dossiers commençant par « _ » (hors _locales) sont réservés : Chrome les refuse, Electron aussi
+        await fs.rm(join(neuf, '_metadata'), { recursive: true, force: true })
+        const manifeste = lireManifeste(neuf)
+        if (!manifeste) throw new Error('Manifeste de l’extension illisible.')
+        lu = manifeste
+      } catch (err) {
+        await fs.rm(neuf, { recursive: true, force: true }).catch(() => undefined)
+        throw err
+      } finally {
+        await fs.rm(tmp, { force: true }).catch(() => undefined)
+      }
       // mise à jour : l'extension garde son état (activée ou non) et sa date d'installation
       const avant = this.liste.find((x) => x.id === id)
       const activee = avant?.activee ?? true
-      if (activee) await this.session.extensions.loadExtension(dossier)
+      if (this.session.extensions.getExtension(id)) this.session.extensions.removeExtension(id)
+      await fs.rm(ancien, { recursive: true, force: true })
+      if (existsSync(dossier)) await fs.rename(dossier, ancien)
+      await fs.rename(neuf, dossier)
+      try {
+        if (activee) await this.session.extensions.loadExtension(dossier)
+      } catch (err) {
+        // la nouvelle version refuse de se charger : l'ancienne est remise
+        if (existsSync(ancien)) {
+          await fs.rm(dossier, { recursive: true, force: true })
+          await fs.rename(ancien, dossier)
+          if (avant?.activee) await this.session.extensions.loadExtension(dossier).catch(() => undefined)
+        } else await fs.rm(dossier, { recursive: true, force: true }).catch(() => undefined)
+        throw err
+      }
+      await fs.rm(ancien, { recursive: true, force: true }).catch(() => undefined)
       const e: ExtensionInstallee = {
         id,
         nom: lu.nom,

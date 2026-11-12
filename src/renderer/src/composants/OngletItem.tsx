@@ -1,5 +1,5 @@
 /* Un onglet, dans l'une de ses trois formes : en haut, en ligne (barre latérale) ou en icône seule. */
-import { useRef } from 'react'
+import { memo, useRef } from 'react'
 import type { EtatOnglet } from '../../../shared/onglets'
 import { IconePrive, IconeAmis, IconeCroix, IconeEtoile, IconeGlobe, IconeHistorique, IconeIA, IconePdf, IconeReglages, IconeTelecharger } from './Icones'
 import type { Glisser } from '../useGlisser'
@@ -25,7 +25,9 @@ interface Props {
   glisser: Glisser
 }
 
-export function OngletItem({ onglet, actif, forme, glisser }: Props): React.JSX.Element {
+/** Mémoïsé : un onglet ne se redessine que si son état (objet gardé tel quel par useOnglets quand il ne change pas),
+ * son activation, sa forme ou le glissement changent. */
+export const OngletItem = memo(function OngletItem({ onglet, actif, forme, glisser }: Props): React.JSX.Element {
   const o = window.se7en.onglets
   const ref = useRef<HTMLDivElement>(null)
   const classes = ['onglet', `onglet-${forme}`, actif && 'actif', onglet.endormi && 'endormi', onglet.prive && 'prive', glisser.id === onglet.id && 'glisse']
@@ -60,7 +62,9 @@ export function OngletItem({ onglet, actif, forme, glisser }: Props): React.JSX.
       className={classes.filter(Boolean).join(' ')}
       title={onglet.titre}
       draggable
-      onMouseDown={(e) => e.button === 0 && o.activer(onglet.id)}
+      // activé au clic (relâché sans glisser) : un onglet qu'on glisse reste inactif, et peut donc être lâché
+      // dans la vue partagée à côté de l'onglet affiché
+      onClick={(e) => e.button === 0 && o.activer(onglet.id)}
       onAuxClick={(e) => e.button === 1 && fermer()}
       onContextMenu={(e) => {
         e.preventDefault()
@@ -76,7 +80,10 @@ export function OngletItem({ onglet, actif, forme, glisser }: Props): React.JSX.
             className="onglet-fermer"
             title={onglet.prioritaire ? 'Mettre en veille (Ctrl+W)' : "Fermer l'onglet (Ctrl+W)"}
             onMouseDown={(e) => e.stopPropagation()}
-            onClick={fermer}
+            onClick={(e) => {
+              e.stopPropagation()
+              fermer()
+            }}
           >
             <IconeCroix />
           </button>
@@ -84,4 +91,4 @@ export function OngletItem({ onglet, actif, forme, glisser }: Props): React.JSX.
       )}
     </div>
   )
-}
+})

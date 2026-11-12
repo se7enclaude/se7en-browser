@@ -10,11 +10,15 @@ function positions(el: HTMLElement | null): Map<string, DOMRect> {
   return new Map([...(el?.querySelectorAll<HTMLElement>('[data-flip]') ?? [])].map((e) => [e.dataset.flip!, e.getBoundingClientRect()]))
 }
 
-export function useFlip(conteneur: RefObject<HTMLElement | null>): void {
+/** `signature` : résumé de la liste affichée (identifiants, groupes repliés…). Les positions ne sont relevées
+ * (getBoundingClientRect force une mise en page) que lorsqu'elle change, pas à chaque rendu (compteur de pubs, chargement…). */
+export function useFlip(conteneur: RefObject<HTMLElement | null>, signature: string): void {
   const ordre = useRef('')
+  const derniere = useRef<string | null>(null)
   // relevé pendant le rendu : le DOM est encore celui d'avant le changement
-  const avant = positions(conteneur.current)
+  const avant = signature !== derniere.current ? positions(conteneur.current) : new Map<string, DOMRect>()
   useLayoutEffect(() => {
+    derniere.current = signature
     const el = conteneur.current
     if (!el) return
     const elements = [...el.querySelectorAll<HTMLElement>('[data-flip]')]
@@ -32,5 +36,10 @@ export function useFlip(conteneur: RefObject<HTMLElement | null>): void {
       }
     }
     ordre.current = cles
-  })
+  }, [signature])
+}
+
+/** Signature d'une liste d'onglets : leurs identifiants dans l'ordre et l'état des groupes. */
+export function signatureListe(onglets: { id: number }[], groupes: { id: string; replie: boolean }[]): string {
+  return `${onglets.map((o) => o.id).join(',')}|${groupes.map((g) => `${g.id}${g.replie ? '-' : '+'}`).join(',')}`
 }

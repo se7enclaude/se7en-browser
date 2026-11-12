@@ -36,6 +36,7 @@ export class Telechargements extends EventEmitter<{ change: [Telechargement[]] }
   private readonly items = new Map<string, DownloadItem>()
   private readonly chemin: string
   private minuteur: NodeJS.Timeout | null = null
+  private minuteurDisque: NodeJS.Timeout | null = null
   /** Chemins déjà promis à un téléchargement en cours (deux fichiers du même nom en même temps). */
   private readonly reserves = new Set<string>()
 
@@ -134,17 +135,28 @@ export class Telechargements extends EventEmitter<{ change: [Telechargement[]] }
     this.changer(true)
   }
 
-  /** Les mises à jour de progression sont regroupées (4 par seconde au plus). */
+  /** Les mises à jour de progression sont regroupées (4 par seconde au plus à l'écran, 1 par seconde au plus sur le disque). */
   private changer(immediat: boolean): void {
     const envoyer = (): void => {
       this.minuteur = null
       this.emit('change', this.liste)
-      void ecrireJson(this.chemin, this.liste).catch(() => undefined)
     }
     if (immediat) {
       if (this.minuteur) clearTimeout(this.minuteur)
       envoyer()
     } else if (!this.minuteur) this.minuteur = setTimeout(envoyer, 250)
+    this.sauver(immediat)
+  }
+
+  private sauver(immediat: boolean): void {
+    const ecrire = (): void => {
+      this.minuteurDisque = null
+      void ecrireJson(this.chemin, this.liste).catch(() => undefined)
+    }
+    if (immediat) {
+      if (this.minuteurDisque) clearTimeout(this.minuteurDisque)
+      ecrire()
+    } else if (!this.minuteurDisque) this.minuteurDisque = setTimeout(ecrire, 1000)
   }
 }
 

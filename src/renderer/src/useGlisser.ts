@@ -1,5 +1,5 @@
 /* Glisser-déposer des onglets, partagé entre la barre du haut et la barre latérale. */
-import { useState, type DragEvent } from 'react'
+import { useMemo, useState, type DragEvent } from 'react'
 
 export interface Glisser {
   /** Onglet en cours de déplacement. */
@@ -19,7 +19,8 @@ export interface Glisser {
 
 export function useGlisser(): Glisser {
   const [id, setId] = useState<number | null>(null)
-  return {
+  // objet stable tant qu'aucun onglet n'est saisi : les onglets mémoïsés ne se redessinent pas à chaque rendu
+  return useMemo<Glisser>(() => ({
     id,
     lacher: () => setId(null),
     sur: (cible) => ({
@@ -48,5 +49,5 @@ export function useGlisser(): Glisser {
         setId(null)
       }
     })
-  }
+  }), [id])
 }

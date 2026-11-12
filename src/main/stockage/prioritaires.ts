@@ -30,6 +30,7 @@ export class MagasinPrioritaires {
     return nettoyerPrioritaires(lireJson(this.chemin))
   }
   sauver(liste: OngletPrioritaireSauve[]): void {
-    void ecrireJson(this.chemin, nettoyerPrioritaires(liste))
+    // disque plein ou dossier verrouillé : on réessaiera au prochain changement (pas de faux « Erreur du navigateur »)
+    void ecrireJson(this.chemin, nettoyerPrioritaires(liste)).catch(() => undefined)
   }
 }

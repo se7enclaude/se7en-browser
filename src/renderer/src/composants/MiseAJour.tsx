@@ -51,7 +51,7 @@ export function ReglagesMiseAJour({ reglages, modifier, version }: { reglages: R
           </button>
         ) : (
           <button className="bouton-verre" disabled={e?.phase === 'recherche' || e?.phase === 'telechargement'} onClick={() => void window.se7en.miseAJour.verifier()}>
-            Rechercher une mise à jour
+            {e?.version && e.phase !== 'erreur' ? `Télécharger la version ${e.version}` : 'Rechercher une mise à jour'}
           </button>
         )}
       </div>

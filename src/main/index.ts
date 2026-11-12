@@ -52,7 +52,7 @@ import { liensDesArguments } from './navigateurDefaut'
 import { lireJson } from './stockage/fichierJson'
 import { ServiceComposants } from './composants'
 import { join } from 'node:path'
-import { lirePage } from './ia/lecturePage'
+import { aUnMotDePasse, lirePage } from './ia/lecturePage'
 import { estAdresseAutorisee } from '../shared/adresse'
 import { ouvrirMenuPage } from './navigateur/menuPage'
 import { SERVEUR_SOCIAL_OFFICIEL, type CibleSocial, type MessageSocial } from '../shared/social'
@@ -407,40 +407,57 @@ if (!app.requestSingleInstanceLock()) {
     const fenetre = creerFenetrePrincipale()
     const idFenetre = fenetre.id
     const surTouche = creerGestionRaccourcis(fenetre, () => gestionnaire, reglages, favoris, () => void ouvrirFichier(fenetre))
+    /** Lecture des pages chargées en attente, par page (wc.id). */
+    const lecturesEnAttente = new Map<number, NodeJS.Timeout>()
     const gestionnaire = new GestionnaireOnglets(fenetre, {
       moteur: () => reglages.get().moteurRecherche,
       notifier: (etat) => fenetre.webContents.send(CANAUX.ongletsEtat, etat),
       surTouche,
       sauverPrioritaires: (liste) => prioritaires.sauver(liste),
-      sauverSessions: (liste) => sessionsSauvees.sauver(liste),
+      sauverSessions: (liste, synchrone) => sessionsSauvees.sauver(liste, synchrone),
       journal: { visite: (url, titre) => historique.ajouter(url, titre), titre: (url, titre) => historique.majTitre(url, titre) },
       documentPdf: (id) => documents.lire(id),
-      transition: (t) => fenetre.webContents.send(CANAUX.uiCommande, t),
+      transition: (t) => {
+        if (!fenetre.isDestroyed()) fenetre.webContents.send(CANAUX.uiCommande, t)
+      },
       // une page chargée est lue un peu plus tard (le temps qu'elle s'affiche) : vérification anti-phishing,
       // puis mémoire de navigation
       pageChargee: (wc, etat) => {
         const url = etat.url
-        setTimeout(async () => {
-          if (wc.isDestroyed() || wc.getURL() !== url || !estAdresseAutorisee(url)) return
-          const p = await lirePage(wc, url)
-          const r = reglages.get()
-          if (p.motDePasse && !r.phishingExceptions.includes(hoteDe(url))) {
-            const v = analyserPage({ url, titre: p.titre, texte: p.texte, motDePasse: true })
-            let alerte = v.niveau === 'fort' ? v.message! : null
-            if (v.niveau === 'douteux') {
-              // cas douteux : l'IA locale donne son avis ; sans IA, on prévient par prudence
-              const e = ollama.etat()
-              const pret = e.phase === 'pret' && modelePresent(r.modeleTexte, e.modeles)
-              // vérification de sécurité : le modèle principal, plus fiable que le petit modèle rapide
-              const frauduleux = pret ? await avisPhishing(r.modeleTexte, p, v.marque!).catch(() => true) : true
-              if (frauduleux) alerte = v.message!
+        const prive = etat.prive
+        // anti-rebond par page : seule la dernière page chargée de cet onglet est lue
+        const idWc = wc.id
+        clearTimeout(lecturesEnAttente.get(idWc))
+        lecturesEnAttente.set(
+          idWc,
+          setTimeout(async () => {
+            lecturesEnAttente.delete(idWc)
+            if (wc.isDestroyed() || wc.getURL() !== url || !estAdresseAutorisee(url)) return
+            const r = reglages.get()
+            // la lecture complète (parcours du texte, styles calculés) n'a lieu que si elle sert : mémoire de navigation
+            // pour une adresse pas enregistrée depuis 30 min, ou page avec un mot de passe (anti-phishing)
+            const pourMemoire = r.memoireNavigation && !prive && !(await navigation.estRecente(url).catch(() => false))
+            if (!pourMemoire && !(await aUnMotDePasse(wc))) return
+            if (wc.isDestroyed() || wc.getURL() !== url) return
+            const p = await lirePage(wc, url)
+            if (p.motDePasse && !r.phishingExceptions.includes(hoteDe(url))) {
+              const v = analyserPage({ url, titre: p.titre, texte: p.texte, motDePasse: true })
+              let alerte = v.niveau === 'fort' ? v.message! : null
+              if (v.niveau === 'douteux') {
+                // cas douteux : l'IA locale donne son avis ; sans IA, on prévient par prudence
+                const e = ollama.etat()
+                const pret = e.phase === 'pret' && modelePresent(r.modeleTexte, e.modeles)
+                // vérification de sécurité : le modèle principal, plus fiable que le petit modèle rapide
+                const frauduleux = pret ? await avisPhishing(r.modeleTexte, p, v.marque!).catch(() => true) : true
+                if (frauduleux) alerte = v.message!
+              }
+              if (alerte && !wc.isDestroyed() && wc.getURL() === url) gestionnaire.definirPhishing(wc, alerte)
             }
-            if (alerte && !wc.isDestroyed() && wc.getURL() === url) gestionnaire.definirPhishing(wc, alerte)
-          }
-          // page de connexion ou de paiement, ou onglet privé : jamais gardée
-          if (p.motDePasse || !r.memoireNavigation || etat.prive) return
-          await navigation.enregistrer({ url, titre: p.titre, date: Date.now(), texte: p.texte }).catch(() => false)
-        }, 2500)
+            // page de connexion ou de paiement, ou onglet privé : jamais gardée
+            if (p.motDePasse || !pourMemoire) return
+            await navigation.enregistrer({ url, titre: p.titre, date: Date.now(), texte: p.texte }).catch(() => false)
+          }, 2500)
+        )
       },
       menuPage: (idOnglet, wc, params) => {
         const commande = (c: unknown): void => fenetre.webContents.send(CANAUX.uiCommande, c)
@@ -474,6 +491,16 @@ if (!app.requestSingleInstanceLock()) {
     gestionnaire.restaurerSessions(sessionsSauvees.lire())
     onglets.set(idFenetre, gestionnaire)
     fenetre.on('closed', () => onglets.delete(idFenetre))
+    // la sauvegarde des sessions est différée de 2 s : elle est écrite tout de suite à la fermeture
+    app.on('before-quit', () => gestionnaire.viderSessions())
+    fenetre.on('close', () => gestionnaire.viderSessions())
+    // arrêt ou redémarrage de Windows, fermeture de session : l'appli peut être tuée sans passer par before-quit
+    fenetre.on('session-end', () => {
+      gestionnaire.viderSessions()
+      historique.vider()
+      conversations.vider()
+      recherche.vider()
+    })
     // les raccourcis marchent aussi quand le focus est dans l'interface
     fenetre.webContents.on('before-input-event', (e, input) => {
       if (surTouche(input)) e.preventDefault()

@@ -17,6 +17,8 @@ interface Onglet {
   urlEpinglee: string | null
   /** Dernière fois que l'onglet a été actif (mise en veille des onglets oubliés). */
   vuLe: number
+  /** Une navigation de la page principale attend d'être lue (anti-phishing, mémoire de navigation) quand elle aura chargé. */
+  aLire?: boolean
 }
 
 export interface OptionsGestionnaire {
@@ -36,8 +38,8 @@ export interface OptionsGestionnaire {
   menuPage?: (idOnglet: number, wc: WebContents, params: ContextMenuParams) => void
   /** Une page a fini de charger (mémoire de navigation). */
   pageChargee?: (wc: WebContents, etat: EtatOnglet) => void
-  /** Appelé quand les sessions ou leurs onglets changent, pour les sauvegarder. */
-  sauverSessions?: (liste: SessionSauvee[]) => void
+  /** Appelé quand les sessions ou leurs onglets changent, pour les sauvegarder (`synchrone` : à la fermeture). */
+  sauverSessions?: (liste: SessionSauvee[], synchrone?: boolean) => void
   /** Changement d'onglet animé : l'interface dessine le fondu entre les deux images. */
   transition?: (t: Extract<CommandeUi, { type: 'transition-onglet' }>) => void
 }
@@ -88,6 +90,8 @@ export class GestionnaireOnglets {
   private minuteurFondu: NodeJS.Timeout | null = null
   /** Numéro du dernier changement d'onglet : une capture arrivée trop tard est ignorée. */
   private generationActivation = 0
+  /** Onglet visé par un changement dont la capture de l'ancienne page est en cours. */
+  private cibleEnAttente: number | null = null
   private readonly images = new Map<number, string>()
   private readonly fermes: string[] = []
   private notification: NodeJS.Immediate | null = null
@@ -294,6 +298,8 @@ export class GestionnaireOnglets {
         this.onglets.push(o)
       }
     }
+    // ce qui vient d'être lu est déjà sur le disque : pas besoin de le réécrire
+    this.sessionsEcrites = JSON.stringify(this.sessionsASauver())
     this.signaler()
   }
 
@@ -372,8 +378,22 @@ export class GestionnaireOnglets {
     }))
   }
 
-  private sauverSessions(): void {
-    this.options.sauverSessions?.(this.sessionsASauver())
+  /** Dernier contenu envoyé à la sauvegarde : rien n'est réécrit tant qu'il ne change pas. */
+  private sessionsEcrites = ''
+
+  private sauverSessions(synchrone = false): void {
+    const liste = this.sessionsASauver()
+    const contenu = JSON.stringify(liste)
+    if (contenu === this.sessionsEcrites) return
+    this.sessionsEcrites = contenu
+    this.options.sauverSessions?.(liste, synchrone)
+  }
+
+  /** Fermeture du navigateur ou arrêt de Windows : écrit tout de suite la sauvegarde des sessions qui attendait. */
+  viderSessions(): void {
+    if (this.minuteurSessions) clearTimeout(this.minuteurSessions)
+    this.minuteurSessions = null
+    this.sauverSessions(true)
   }
 
   // ---------- activation ----------
@@ -392,15 +412,25 @@ export class GestionnaireOnglets {
     const groupe = this.groupes.find((g) => g.id === o.etat.groupe)
     if (groupe?.replie) groupe.replie = false
     o.vuLe = Date.now()
-    if (this.actifId === id && !reveil) return
+    if (this.actifId === id && !reveil) {
+      // retour à l'onglet affiché pendant la capture d'un changement en attente : on annule ce changement
+      if (this.cibleEnAttente !== null) {
+        this.cibleEnAttente = null
+        this.generationActivation++
+      }
+      return
+    }
     // l'onglet qu'on quitte compte comme vu jusqu'à maintenant
     const ancien = this.actifId !== null ? this.trouver(this.actifId) : undefined
     if (ancien) ancien.vuLe = Date.now()
     const generation = ++this.generationActivation
     if (ancien?.vue && this.peutFondre(ancien, o)) {
-      // l'image de la page qu'on quitte est prise avant de la cacher (quelques ms), puis le fondu commence
+      // l'image de la page qu'on quitte est prise avant de la cacher (quelques ms), puis le fondu commence ;
+      // la cible est retenue tout de suite : un Ctrl+Tab suivant part d'elle, pas de l'onglet encore affiché
+      this.cibleEnAttente = id
       void capturer(ancien.vue.webContents).then((image) => {
-        if (generation !== this.generationActivation || !this.trouver(id)) return
+        if (generation !== this.generationActivation) return
+        if (!this.trouver(id)) return void (this.cibleEnAttente = null)
         if (image) this.memoriserImage(ancien.etat.id, image)
         this.basculer(id, image)
       })
@@ -428,6 +458,7 @@ export class GestionnaireOnglets {
 
   private basculer(id: number, depart: string | null): void {
     this.actifId = id
+    this.cibleEnAttente = null
     if (this.minuteurFondu) clearTimeout(this.minuteurFondu)
     this.minuteurFondu = null
     if (depart) {
@@ -517,7 +548,9 @@ export class GestionnaireOnglets {
     const ordre = this.ordreAffiche()
     const n = ordre.length
     if (n < 2) return
-    const i = ordre.findIndex((o) => o.etat.id === this.actifId)
+    // pendant la capture d'un changement en attente, on part de l'onglet visé (sinon des Ctrl+Tab rapides se perdent)
+    const depart = this.cibleEnAttente !== null && this.trouver(this.cibleEnAttente) ? this.cibleEnAttente : this.actifId
+    const i = ordre.findIndex((o) => o.etat.id === depart)
     this.activer(ordre[(i + sens + n) % n].etat.id)
   }
 
@@ -572,7 +605,12 @@ export class GestionnaireOnglets {
     const o = this.onglets.find((x) => x.vue?.webContents.id === idWebContents)
     if (!o) return
     o.etat.bloques++
-    this.signaler()
+    // une page peut voir des centaines de requêtes bloquées : le compteur est envoyé 4 fois par seconde au plus
+    if (!this.minuteurBloques)
+      this.minuteurBloques = setTimeout(() => {
+        this.minuteurBloques = null
+        this.signaler()
+      }, 250)
   }
 
   // ---------- groupes d'onglets (rangement par l'IA) ----------
@@ -788,6 +826,7 @@ export class GestionnaireOnglets {
 
   /** Regroupe les notifications d'un même tour (un chargement en déclenche plusieurs d'affilée). */
   private minuteurSessions: NodeJS.Timeout | null = null
+  private minuteurBloques: NodeJS.Timeout | null = null
 
   private signaler(): void {
     if (this.sessions.length > 1 && !this.minuteurSessions)
@@ -849,9 +888,14 @@ export class GestionnaireOnglets {
       maj()
       // le titre et l'icône d'un onglet prioritaire sont gardés pour la prochaine session
       if (o.etat.prioritaire) this.sauverPrioritaires()
+      // une seule lecture par navigation de la page principale : les iframes qui chargent ensuite
+      // (pubs, vidéos…) relancent did-stop-loading sans changer la page
+      if (!o.aLire) return
+      o.aLire = false
       if (!o.etat.pdf && estAdresseAutorisee(o.etat.url)) this.options.pageChargee?.(wc, o.etat)
     })
     wc.on('did-navigate', (_e, url) => {
+      o.aLire = true
       o.etat.favicon = null
       o.etat.bloques = 0
       o.etat.phishing = null

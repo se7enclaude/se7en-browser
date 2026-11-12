@@ -6,13 +6,15 @@ import { execFile } from 'node:child_process'
 import { estAdresseAutorisee } from '../shared/adresse'
 
 const PROGID = 'se7enBrowserHTML'
+/** Clé du registre où Windows note le navigateur choisi pour les liens https. */
+export const CLE_CHOIX_HTTPS = 'HKCU\\Software\\Microsoft\\Windows\\Shell\\Associations\\UrlAssociations\\https\\UserChoice'
 
 /** Vrai si Windows ouvre les liens https avec se7en Browser. */
 export function estNavigateurParDefaut(): Promise<boolean> {
   return new Promise((ok) => {
     execFile(
       'reg',
-      ['query', 'HKCU\Software\Microsoft\Windows\Shell\Associations\UrlAssociations\https\UserChoice', '/v', 'ProgId'],
+      ['query', CLE_CHOIX_HTTPS, '/v', 'ProgId'],
       { windowsHide: true, timeout: 5000 },
       (err, sortie) => ok(!err && sortie.includes(PROGID))
     )
@@ -32,7 +34,7 @@ export function liensDesArguments(argv: string[]): { urls: string[]; pdfs: strin
   for (const a of argv.slice(1)) {
     if (a.startsWith('--')) continue
     if (estAdresseAutorisee(a)) urls.push(a)
-    else if (/^[a-z]:\.+\.pdf$/i.test(a)) pdfs.push(a)
+    else if (/^[a-z]:\\.+\.pdf$/i.test(a)) pdfs.push(a)
   }
   return { urls: urls.slice(0, 20), pdfs: pdfs.slice(0, 20) }
 }

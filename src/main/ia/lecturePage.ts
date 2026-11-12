@@ -86,6 +86,16 @@ export async function lirePage(wc: WebContents, url: string): Promise<PageLue> {
   }
 }
 
+/** Vérification légère (un seul sélecteur) : la page a-t-elle un champ mot de passe ? Évite la lecture complète
+ * quand seule la vérification anti-phishing est utile. */
+export async function aUnMotDePasse(wc: WebContents): Promise<boolean> {
+  try {
+    return (await wc.executeJavaScriptInIsolatedWorld(MONDE_ISOLE, [{ code: `!!document.querySelector('input[type="password"]')` }])) === true
+  } catch {
+    return false
+  }
+}
+
 /** Capture de la page (JPEG, 1280 px de large au plus) pour le modèle vision, quand il y a peu de texte à lire. */
 export async function capturerPage(wc: WebContents): Promise<string | null> {
   try {

@@ -33,6 +33,17 @@ describe('mémoire de navigation', () => {
     expect(new MemoireNavigation(dossier).nombre()).toBe(1)
   })
 
+  it('sait si une adresse a été enregistrée il y a moins de 30 minutes (index relu sans bloquer)', async () => {
+    const dossier = mkdtempSync(join(tmpdir(), 'nav-'))
+    const t = Date.now()
+    await new MemoireNavigation(dossier).enregistrer({ url: 'https://a.fr', titre: 'A', date: t, texte: long('Bonjour le monde des navigateurs.') })
+    const m = new MemoireNavigation(dossier)
+    expect(await m.estRecente('https://a.fr', t + 60_000)).toBe(true)
+    expect(await m.estRecente('https://a.fr', t + 31 * 60_000)).toBe(false)
+    expect(await m.estRecente('https://b.fr', t)).toBe(false)
+    expect(m.nombre()).toBe(1)
+  })
+
   it('efface les jours de plus de 30 jours', async () => {
     const dossier = mkdtempSync(join(tmpdir(), 'nav-'))
     const m = new MemoireNavigation(dossier)

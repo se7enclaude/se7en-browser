@@ -1,7 +1,7 @@
 /* Affichage des réponses de l'IA : un Markdown simple, transformé en éléments React.
  * Aucun HTML n'est jamais injecté tel quel : une réponse (qui peut répéter du texte venu d'une page) ne peut pas
  * insérer de script ni d'élément dans l'interface. Les liens s'ouvrent dans un nouvel onglet, au clic de l'utilisateur. */
-import { memo, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
 function lienSur(url: string): string | null {
   try {
@@ -51,13 +51,31 @@ function enLigne(texte: string, cle: string): ReactNode[] {
 }
 
 export function Markdown({ texte }: { texte: string }): React.JSX.Element {
+  return <div className="markdown">{blocsMarkdown(texte)}</div>
+}
+
+/** Position de la dernière ligne vide hors bloc de code : tout ce qui la précède forme des blocs terminés,
+ * qui ne changeront plus pendant que la réponse s'écrit. */
+function finBlocsTermines(texte: string): number {
+  let dansCode = false
+  let fin = 0
+  let pos = 0
+  for (const ligne of texte.split('\n')) {
+    if (/^```/.test(ligne)) dansCode = !dansCode
+    else if (!dansCode && pos > 0 && !ligne.trim()) fin = pos
+    pos += ligne.length + 1
+  }
+  return fin
+}
+
+function blocsMarkdown(texte: string, prefixe = 'b'): ReactNode[] {
   const blocs: ReactNode[] = []
   const lignes = texte.replace(/\r/g, '').split('\n')
   let i = 0
   let n = 0
   while (i < lignes.length) {
     const l = lignes[i]
-    const k = `b${n++}`
+    const k = `${prefixe}${n++}`
     // bloc de code
     if (/^```/.test(l)) {
       const code: string[] = []
@@ -98,7 +116,7 @@ export function Markdown({ texte }: { texte: string }): React.JSX.Element {
     while (i < lignes.length && lignes[i].trim() && !/^(```|#{1,4}\s|\s*([-*•]|\d+[.)])\s+)/.test(lignes[i])) para.push(lignes[i++])
     blocs.push(<p key={k}>{enLigne(para.join('\n'), k)}</p>)
   }
-  return <div className="markdown">{blocs}</div>
+  return blocs
 }
 
 /** Réponse de l'IA en cours d'écriture : le texte arrive par paquets irréguliers ; on le dévoile à un rythme régulier
@@ -122,7 +140,15 @@ export function ReponseFluide({ texte, enCours, surAvance }: { texte: string; en
     id = requestAnimationFrame(pas)
     return () => cancelAnimationFrame(id)
   }, [texte, enCours])
-  return <MarkdownMemo texte={texte.slice(0, montre)} />
+  // à chaque image, seul le bloc en cours d'écriture est relu : les blocs terminés sont gardés (mémoïsés)
+  const visible = texte.slice(0, montre)
+  const fin = finBlocsTermines(visible)
+  const termine = visible.slice(0, fin)
+  const finis = useMemo(() => blocsMarkdown(termine, 'f'), [termine])
+  return (
+    <div className="markdown">
+      {finis}
+      {blocsMarkdown(visible.slice(fin), 'c')}
+    </div>
+  )
 }
-
-const MarkdownMemo = memo(Markdown)

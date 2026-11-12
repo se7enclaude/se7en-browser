@@ -41,15 +41,33 @@ function afficherMessage(texte: string): void {
 // ---------- dessin d'une page ----------
 
 const enCours = new Set<number>()
+/** Pages proches de l'écran (dans la marge de l'observateur). */
+const visibles = new Set<number>()
+
+/** Libère tout de suite la mémoire d'un canvas (~18 Mo pour une page A4 en grand), sans attendre le ramasse-miettes. */
+function libererCanvas(canvas: HTMLCanvasElement): void {
+  canvas.width = 0
+  canvas.height = 0
+}
+
+/** Page sortie de l'écran : son dessin est libéré (il sera refait si on y revient). */
+function oublier(p: Page): void {
+  for (const c of p.el.querySelectorAll('canvas')) libererCanvas(c)
+  p.el.replaceChildren()
+  p.dessinee = null
+}
+
 async function dessiner(p: Page): Promise<void> {
   if (p.dessinee === echelle || enCours.has(p.n)) return
   enCours.add(p.n)
   const echelleDemandee = echelle
+  let canvas: HTMLCanvasElement | null = null
+  let affiche = false
   try {
     const page: PDFPageProxy = await doc.getPage(p.n)
     const vue = page.getViewport({ scale: echelleDemandee })
     const ratio = window.devicePixelRatio || 1
-    const canvas = document.createElement('canvas')
+    canvas = document.createElement('canvas')
     canvas.width = Math.floor(vue.width * ratio)
     canvas.height = Math.floor(vue.height * ratio)
     canvas.style.width = `${vue.width}px`
@@ -79,21 +97,37 @@ async function dessiner(p: Page): Promise<void> {
       liens.append(lien)
     }
 
-    if (echelleDemandee !== echelle) return // zoom changé pendant le dessin : on recommencera
+    page.cleanup()
+    // zoom changé pendant le dessin (relancé ci-dessous), ou page sortie de l'écran entre-temps : dessin jeté
+    if (echelleDemandee !== echelle || !visibles.has(p.n)) return
+    for (const c of p.el.querySelectorAll('canvas')) libererCanvas(c)
     p.el.replaceChildren(canvas, texte, liens)
     p.el.style.setProperty('--scale-factor', String(echelleDemandee))
     p.dessinee = echelleDemandee
-    page.cleanup()
+    affiche = true
   } catch {
     /* page illisible : on laisse la feuille vide */
   } finally {
     enCours.delete(p.n)
+    if (canvas && !affiche) libererCanvas(canvas)
+    // le zoom a changé pendant le dessin : la page encore à l'écran est redessinée à la bonne échelle
+    if (echelleDemandee !== echelle && visibles.has(p.n)) void dessiner(p)
   }
 }
 
 const observateur = new IntersectionObserver(
   (entrees) => {
-    for (const e of entrees) if (e.isIntersecting) void dessiner(pages[Number((e.target as HTMLElement).dataset.n) - 1])
+    for (const e of entrees) {
+      const p = pages[Number((e.target as HTMLElement).dataset.n) - 1]
+      if (!p) continue
+      if (e.isIntersecting) {
+        visibles.add(p.n)
+        void dessiner(p)
+      } else {
+        visibles.delete(p.n)
+        oublier(p)
+      }
+    }
   },
   { root: conteneur, rootMargin: '1200px 0px' }
 )

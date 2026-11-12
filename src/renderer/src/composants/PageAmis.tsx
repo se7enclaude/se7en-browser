@@ -306,9 +306,10 @@ function EspaceAmis({ etat, profil, onglets }: { etat: EtatSocial; profil: Profi
     void charger()
     void chargerGroupes()
   }
-  if (amiOuvert) return <Conversation cible={{ type: 'ami', id: amiOuvert.id }} ami={amiOuvert} amis={listeAmis} moi={profil} onglets={onglets} retour={retour} />
+  // key : chaque conversation a son propre état (brouillon, défilement…), qui ne passe pas à la suivante
+  if (amiOuvert) return <Conversation key={`ami-${amiOuvert.id}`} cible={{ type: 'ami', id: amiOuvert.id }} ami={amiOuvert} amis={listeAmis} moi={profil} onglets={onglets} retour={retour} />
   if (groupeOuvert)
-    return <Conversation cible={{ type: 'groupe', id: groupeOuvert.id }} groupe={groupeOuvert} amis={listeAmis} moi={profil} onglets={onglets} retour={retour} />
+    return <Conversation key={`groupe-${groupeOuvert.id}`} cible={{ type: 'groupe', id: groupeOuvert.id }} groupe={groupeOuvert} amis={listeAmis} moi={profil} onglets={onglets} retour={retour} />
 
   const ajouter = async (): Promise<void> => {
     const r = await window.se7en.social.ajouter(code.trim())

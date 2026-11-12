@@ -1,7 +1,7 @@
 /* Mémoire de navigation : le texte des pages visitées, gardé sur ce PC pendant 30 jours, pour que l'IA retrouve
  * « l'article sur les SSD que j'ai lu mardi ». Un fichier par jour (navigation/AAAA-MM-JJ.jsonl) : les jours de plus
  * de 30 jours sont simplement supprimés. Jamais envoyé sur Internet. Les pages avec un mot de passe ne sont pas gardées. */
-import { mkdirSync, promises as fs, readdirSync, readFileSync, rmSync } from 'node:fs'
+import { promises as fs, readdirSync, readFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { normaliser } from '../../shared/coffre'
 
@@ -47,6 +47,10 @@ export class MemoireNavigation {
   private readonly dossier: string
   /** Index en mémoire : dernière version de chaque page (par adresse). */
   private pages: Map<string, PageMemorisee & { mots: Map<string, number>; longueur: number }> | null = null
+  /** Lecture asynchrone de l'index en cours (une seule à la fois). */
+  private chargement: Promise<string[]> | null = null
+  /** Change à chaque ménage ou effacement : une lecture commencée avant est jetée. */
+  private generation = 0
 
   constructor(dossierUtilisateur: string) {
     this.dossier = join(dossierUtilisateur, 'navigation')
@@ -62,18 +66,24 @@ export class MemoireNavigation {
         n++
       }
     }
-    if (n) this.pages = null
+    if (n) this.oublierIndex()
     return n
+  }
+
+  /** Vrai si cette adresse a déjà été enregistrée il y a moins de 30 minutes (inutile de relire la page). */
+  async estRecente(url: string, maintenant = Date.now()): Promise<boolean> {
+    const deja = (await this.indexAsync()).get(url)
+    return !!deja && maintenant - deja.date < DELAI_MEME_PAGE
   }
 
   async enregistrer(p: PageMemorisee): Promise<boolean> {
     const texte = p.texte.replace(/\s+/g, ' ').trim().slice(0, MAX_TEXTE)
     if (texte.length < 200) return false
-    const index = this.index()
+    const index = await this.indexAsync()
     const deja = index.get(p.url)
     if (deja && p.date - deja.date < DELAI_MEME_PAGE) return false
     const page = { url: p.url.slice(0, 2000), titre: p.titre.slice(0, 300), date: p.date, texte }
-    mkdirSync(this.dossier, { recursive: true })
+    await fs.mkdir(this.dossier, { recursive: true })
     await fs.appendFile(join(this.dossier, `${jourDe(p.date)}.jsonl`), JSON.stringify(page) + '\n', 'utf8')
     this.indexer(index, page)
     return true
@@ -114,6 +124,7 @@ export class MemoireNavigation {
 
   effacer(): void {
     rmSync(this.dossier, { recursive: true, force: true })
+    this.oublierIndex()
     this.pages = new Map()
   }
 
@@ -127,16 +138,50 @@ export class MemoireNavigation {
     }
   }
 
+  /** L'index devient périmé (ménage, effacement) : une lecture en cours ne doit pas le remettre. */
+  private oublierIndex(): void {
+    this.pages = null
+    this.chargement = null
+    this.generation++
+  }
+
+  /** Index lu sans bloquer le processus (chemin des pages chargées). */
+  private async indexAsync(): Promise<NonNullable<MemoireNavigation['pages']>> {
+    for (;;) {
+      if (this.pages) return this.pages
+      const generation = this.generation
+      if (!this.chargement) {
+        const lecture: Promise<string[]> = Promise.all(this.fichiers().map((f) => fs.readFile(join(this.dossier, f), 'utf8').catch(() => ''))).finally(() => {
+          if (this.chargement === lecture) this.chargement = null
+        })
+        this.chargement = lecture
+      }
+      const contenus = await this.chargement
+      if (this.pages) return this.pages
+      if (generation !== this.generation) continue
+      this.pages = this.construire(contenus)
+      return this.pages
+    }
+  }
+
+  /** Index lu d'un coup (recherche de l'IA, nombre de pages) : déjà en mémoire la plupart du temps. */
   private index(): NonNullable<MemoireNavigation['pages']> {
     if (this.pages) return this.pages
-    const index: NonNullable<MemoireNavigation['pages']> = new Map()
+    const contenus: string[] = []
     for (const f of this.fichiers()) {
-      let contenu = ''
       try {
-        contenu = readFileSync(join(this.dossier, f), 'utf8')
+        contenus.push(readFileSync(join(this.dossier, f), 'utf8'))
       } catch {
-        continue
+        /* fichier illisible : ignoré */
       }
+    }
+    this.pages = this.construire(contenus)
+    return this.pages
+  }
+
+  private construire(contenus: string[]): NonNullable<MemoireNavigation['pages']> {
+    const index: NonNullable<MemoireNavigation['pages']> = new Map()
+    for (const contenu of contenus) {
       for (const ligne of contenu.split('\n')) {
         if (!ligne.trim()) continue
         try {
@@ -147,7 +192,6 @@ export class MemoireNavigation {
         }
       }
     }
-    this.pages = index
     return index
   }
 

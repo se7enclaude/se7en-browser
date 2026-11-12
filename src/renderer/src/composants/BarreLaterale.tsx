@@ -2,7 +2,7 @@
  * et en disposition « à gauche » les onglets normaux en dessous. Ctrl+B l'affiche ou la cache. */
 import { useRef } from 'react'
 import type { EtatOnglets } from '../../../shared/onglets'
-import { useFlip } from '../useFlip'
+import { signatureListe, useFlip } from '../useFlip'
 import type { Glisser } from '../useGlisser'
 import { IconePlus } from './Icones'
 import { OngletItem } from './OngletItem'
@@ -21,7 +21,7 @@ export function BarreLaterale({ etat, glisser, ouverte, avecNormaux }: Props): R
   const prioritaires = etat.onglets.filter((x) => x.prioritaire)
   const normaux = ongletsDeSession(etat)
   const contenu = useRef<HTMLDivElement>(null)
-  useFlip(contenu)
+  useFlip(contenu, `${avecNormaux}|${signatureListe(avecNormaux ? [...prioritaires, ...normaux] : prioritaires, etat.groupes)}`)
 
   return (
     <aside className={`barre-laterale${ouverte ? ' ouverte' : ''}`} aria-hidden={!ouverte}>

@@ -1,7 +1,7 @@
 /* Onglets classiques, dans la barre de titre. Les prioritaires y apparaissent en icônes quand la barre latérale est cachée.
  * Les onglets rangés par l'IA sont précédés de l'étiquette de leur groupe (clic : replier / déplier). */
 import { useRef, useState } from 'react'
-import { useFlip } from '../useFlip'
+import { signatureListe, useFlip } from '../useFlip'
 import type { EtatOnglet, EtatOnglets, GroupeOnglets } from '../../../shared/onglets'
 import type { Glisser } from '../useGlisser'
 import { IconePlus, IconeRanger } from './Icones'
@@ -87,7 +87,7 @@ export function OngletsHaut({ etat, glisser, avecNormaux, avecPrioritaires }: Pr
   const prioritaires = etat.onglets.filter((o) => o.prioritaire)
   const normaux = ongletsDeSession(etat)
   const liste = useRef<HTMLDivElement>(null)
-  useFlip(liste)
+  useFlip(liste, `${avecPrioritaires}|${avecNormaux}|${signatureListe([...prioritaires, ...normaux], etat.groupes)}`)
   return (
     <div ref={liste} className="onglets-haut" role="tablist" {...glisser.zone((id) => window.se7en.onglets.prioritaire(id, false))}>
       {avecPrioritaires &&

@@ -765,7 +765,7 @@ export function enregistrerIpc(s: Services): void {
   // ---------- mise à jour du navigateur ----------
   s.miseAJour.on('etat', (e) => diffuser(CANAUX.majChange, e))
   ipcMain.handle(CANAUX.majEtat, (e) => (fenetreDe(e) ? s.miseAJour.etat() : null))
-  ipcMain.handle(CANAUX.majVerifier, (e) => (fenetreDe(e) ? s.miseAJour.verifier() : null))
+  ipcMain.handle(CANAUX.majVerifier, (e) => (fenetreDe(e) ? s.miseAJour.verifier(true) : null))
   ipcMain.on(CANAUX.majInstaller, (e) => fenetreDe(e) && s.miseAJour.installerMaintenant())
 
   // ---------- mémoire de navigation ----------
