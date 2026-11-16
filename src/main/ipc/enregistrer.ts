@@ -292,6 +292,7 @@ export function enregistrerIpc(s: Services): void {
   ipcMain.on(CANAUX.iaAnnuler, (e) => fenetreDe(e) && ollama.annuler())
   ipcMain.on(CANAUX.iaArreter, (e) => fenetreDe(e) && ollama.arreter())
   ollama.on('change', (etat) => diffuser(CANAUX.iaChange, etat))
+  ipcMain.on(CANAUX.iaPrechauffer, (e) => fenetreDe(e) && ollama.prechauffer(reglages.get().modeleTexte))
 
   // ---------- synchronisation chiffrée ----------
   const { sync } = s

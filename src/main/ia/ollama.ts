@@ -16,6 +16,14 @@ import { cheminModele, versionDeSortieOllama } from '../../shared/composants'
 import { lireNdjson, SuiviPull } from './ndjson'
 
 export const API_OLLAMA = 'http://127.0.0.1:11434'
+
+/* Vitesse : Ollama recharge entièrement un modèle dès que la taille de contexte change d'une requête à l'autre
+ * (≈ 4 s mesurées sur une RTX 5070 Ti), et le décharge après 5 minutes sans requête. Toutes les requêtes du navigateur
+ * utilisent donc la même taille de contexte et gardent le modèle chargé tant que le navigateur est ouvert. */
+export const CONTEXTE_IA = 16384
+export const GARDER_CHARGE = '30m'
+/** Options communes à toutes les requêtes (à compléter : température, nombre de jetons…). */
+export const optionsIA = (o: Record<string, unknown> = {}): Record<string, unknown> => ({ num_ctx: CONTEXTE_IA, ...o })
 const URL_INSTALLEUR = 'https://ollama.com/download/OllamaSetup.exe'
 /** Arguments silencieux de l'installeur (Inno Setup) : aucune fenêtre, pas de redémarrage. */
 const ARGS_INSTALLEUR = ['/SP-', '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART']
@@ -169,7 +177,9 @@ export class Ollama extends EventEmitter<{ change: [EtatOllama] }> {
     try {
       await empecherDemarrageAuto()
       if (!(await this.version())) {
-        const p = spawn(exe, ['serve'], { stdio: 'ignore', windowsHide: true, env: { ...process.env, OLLAMA_HOST: '127.0.0.1:11434' } })
+        // flash attention et cache compact (q8_0) : lecture des pages plus rapide, moins de mémoire vidéo
+        const env = { ...process.env, OLLAMA_HOST: '127.0.0.1:11434', OLLAMA_FLASH_ATTENTION: '1', OLLAMA_KV_CACHE_TYPE: 'q8_0' }
+        const p = spawn(exe, ['serve'], { stdio: 'ignore', windowsHide: true, env })
         this.serveur = p
         p.once('exit', () => {
           if (this.serveur !== p) return
@@ -312,6 +322,16 @@ export class Ollama extends EventEmitter<{ change: [EtatOllama] }> {
   }
 
   /** Arrête le téléchargement en cours (installeur ou modèle). L'installation elle-même ne s'interrompt pas. */
+  /** Charge un modèle en mémoire à l'avance (sans rien générer), pour que la première réponse arrive vite. */
+  prechauffer(modele: string): void {
+    const nom = modele.trim().toLowerCase()
+    const present = this.e.modeles.some((m) => m.toLowerCase() === nom || m.toLowerCase() === `${nom}:latest`)
+    if (this.e.phase !== 'pret' || !present) return
+    void net
+      .fetch(`${API_OLLAMA}/api/generate`, { method: 'POST', body: JSON.stringify({ model: modele, keep_alive: GARDER_CHARGE, options: optionsIA() }) })
+      .catch(() => undefined)
+  }
+
   annuler(): void {
     this.annulation?.abort()
   }

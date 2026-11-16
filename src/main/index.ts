@@ -164,6 +164,17 @@ if (!app.requestSingleInstanceLock()) {
       if (e.phase === 'arrete' && reglages.get().iaDemarrage === 'toujours') void ollama.demarrer()
     })
     app.on('will-quit', () => ollama.arreter())
+    // préchauffage : le modèle texte est chargé dès que l'IA est prête (et quand on en change), pas à la première question
+    let phasePrecedente = ollama.etat().phase
+    ollama.on('change', (e) => {
+      if (e.phase === 'pret' && phasePrecedente !== 'pret') ollama.prechauffer(reglages.get().modeleTexte)
+      phasePrecedente = e.phase
+    })
+    let modelePrecedent = reglages.get().modeleTexte
+    reglages.on('change', (r) => {
+      if (r.modeleTexte !== modelePrecedent) ollama.prechauffer(r.modeleTexte)
+      modelePrecedent = r.modeleTexte
+    })
     const memoire = new Memoire(dossier)
     const conversations = new Conversations(dossier)
     const skills = new Skills(dossier)

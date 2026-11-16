@@ -1,7 +1,7 @@
 /* Service de chat : lit les pages demandées, construit les messages, interroge Ollama et renvoie la réponse en flux.
  * Une seule réponse à la fois. L'IA ne fait que répondre : elle n'a aucun outil, aucune action possible. */
 import { net, type NativeImage } from 'electron'
-import { randomUUID } from 'node:crypto'
+import { randomBytes, randomUUID } from 'node:crypto'
 import { EventEmitter } from 'node:events'
 import { appliquerSkill, type DemandeChat, type FluxChat, type MessageChat, type PageJointe, type ReponseEnvoi } from '../../shared/chat'
 import { modelePresent } from '../../shared/ia'
@@ -14,11 +14,9 @@ import { extraitPdf, lireTextePdf } from '../pdf/texte'
 import { demandeDeRetenir, demandeDOublier, type Memoire } from './memoire'
 import type { MemoireNavigation } from './memoireNavigation'
 import { lireNdjson } from './ndjson'
-import { API_OLLAMA, type Ollama } from './ollama'
+import { API_OLLAMA, GARDER_CHARGE, optionsIA, type Ollama } from './ollama'
 import { alertesManipulation, BUDGET_PAGES, construireMessages, titreConversation, type PageLue } from './prompts'
 
-/** Contexte du modèle : assez pour une page longue et la conversation, et ça tient dans 16 Go de carte graphique. */
-const TAILLE_CONTEXTE = 16384
 /** En dessous, la page n'a presque pas de texte lisible (image, vidéo, canvas) : on regarde une capture. */
 const TEXTE_MINIMUM = 300
 
@@ -31,6 +29,8 @@ const MAX_CAPTURES = 3
 export class ServiceChat extends EventEmitter<{ flux: [FluxChat] }> {
   private enCours: AbortController | null = null
   private readonly captures = new Map<string, NativeImage>()
+  /** Balise des pages, fixe pour toute une conversation : la page jointe reste identique d'une question à l'autre et Ollama réutilise sa lecture. */
+  private readonly balises = new Map<string, string>()
   /** « Préviens-moi quand ce prix baisse… » : crée une tâche en arrière-plan sur la page active (réponse immédiate), ou null. */
   commandeTache: ((texte: string, page: { url: string; titre: string } | null) => string | null) | null = null
 
@@ -133,6 +133,17 @@ export class ServiceChat extends EventEmitter<{ flux: [FluxChat] }> {
     return this.commandeTache(d.texte, page)
   }
 
+  /** Balise aléatoire de la conversation (impossible à deviner pour une page, mais stable d'une question à l'autre). */
+  private balise(idConversation: string): string {
+    let b = this.balises.get(idConversation)
+    if (!b) {
+      b = randomBytes(6).toString('hex')
+      this.balises.set(idConversation, b)
+      if (this.balises.size > 50) this.balises.delete(this.balises.keys().next().value!)
+    }
+    return b
+  }
+
   /** Réponse du navigateur à une demande de mémoire, ou null si ce n'en est pas une. */
   private commandeMemoire(texte: string): string | null {
     const aRetenir = demandeDeRetenir(texte)
@@ -214,10 +225,11 @@ export class ServiceChat extends EventEmitter<{ flux: [FluxChat] }> {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: image ? r.modeleVision : r.modeleTexte,
-          messages: construireMessages(historique, texte, pages, image, undefined, r.memoire ? this.memoire.lire().map((s) => s.texte) : []),
+          messages: construireMessages(historique, texte, pages, image, this.balise(idConversation), r.memoire ? this.memoire.lire().map((s) => s.texte) : []),
           stream: true,
           think: false,
-          options: { num_ctx: TAILLE_CONTEXTE }
+          keep_alive: GARDER_CHARGE,
+          options: optionsIA()
         }),
         signal
       })

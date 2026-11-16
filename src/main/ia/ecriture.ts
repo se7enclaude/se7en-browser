@@ -8,7 +8,7 @@ import { ACTIONS_ECRITURE, type EtatEcriture } from '../../shared/ecriture'
 import { modelePresent } from '../../shared/ia'
 import type { Reglages } from '../../shared/reglages'
 import { lireNdjson } from './ndjson'
-import { API_OLLAMA, type Ollama } from './ollama'
+import { API_OLLAMA, GARDER_CHARGE, optionsIA, type Ollama } from './ollama'
 import { neutraliser } from './prompts'
 
 const MONDE_ISOLE = 7007
@@ -73,7 +73,8 @@ export class AssistantEcriture extends EventEmitter<{ etat: [EtatEcriture | null
           ],
           stream: true,
           think: false,
-          options: { num_ctx: 8192, temperature: 0.4 }
+          keep_alive: GARDER_CHARGE,
+          options: optionsIA({ temperature: 0.4 })
         }),
         signal: abandon.signal
       })

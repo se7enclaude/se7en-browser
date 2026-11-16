@@ -2,10 +2,10 @@
  * avis anti-phishing sur une page douteuse, résumé en deux phrases d'une page envoyée à un ami.
  * Le contenu des pages est une donnée entre balises, jamais une instruction. */
 import { net } from 'electron'
-import { API_OLLAMA } from './ollama'
+import { API_OLLAMA, GARDER_CHARGE, optionsIA } from './ollama'
 import { neutraliser } from './prompts'
 
-export async function demander(modele: string, systeme: string, contenu: string, format?: object, maxJetons = 200, contexte = 4096, delaiMs = 60_000): Promise<string> {
+export async function demander(modele: string, systeme: string, contenu: string, format?: object, maxJetons = 200, delaiMs = 60_000): Promise<string> {
   const r = await net.fetch(`${API_OLLAMA}/api/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -18,7 +18,8 @@ export async function demander(modele: string, systeme: string, contenu: string,
       stream: false,
       think: false,
       ...(format ? { format } : {}),
-      options: { num_ctx: contexte, temperature: 0.2, num_predict: maxJetons }
+      keep_alive: GARDER_CHARGE,
+      options: optionsIA({ temperature: 0.2, num_predict: maxJetons })
     }),
     signal: AbortSignal.timeout(delaiMs)
   })

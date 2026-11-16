@@ -157,6 +157,7 @@ export const CANAUX = {
   tachesVerifier: 'taches:verifier',
   tachesChange: 'taches:change', // main → interface
   iaVitesse: 'ia:vitesse',
+  iaPrechauffer: 'ia:prechauffer',
   // chat avec l'IA
   chatEnvoyer: 'chat:envoyer',
   chatArreter: 'chat:arreter',
@@ -488,6 +489,8 @@ export interface ApiSe7en {
     materiel(): Promise<Materiel>
     /** Mesure la vitesse d'un modèle téléchargé (jetons par seconde), ou null si le test échoue. */
     vitesse(modele: string): Promise<number | null>
+    /** Charge le modèle texte à l'avance (panneau IA ouvert) : la première réponse arrive plus vite. */
+    prechauffer(): void
     surChangement(rappel: (e: EtatOllama) => void): () => void
   }
   chat: {

@@ -4,7 +4,7 @@ import { execFile } from 'node:child_process'
 import { cpus, totalmem } from 'node:os'
 import { net } from 'electron'
 import { analyserReg, type Materiel } from '../../shared/materiel'
-import { API_OLLAMA } from './ollama'
+import { API_OLLAMA, GARDER_CHARGE, optionsIA } from './ollama'
 
 function executer(cmd: string, args: string[]): Promise<string> {
   return new Promise((r) => execFile(cmd, args, { windowsHide: true, timeout: 5000, encoding: 'utf8' }, (err, out) => r(err ? '' : out)))
@@ -58,7 +58,7 @@ export async function testerVitesse(modele: string): Promise<number> {
   const rep = await net.fetch(`${API_OLLAMA}/api/generate`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ model: modele, prompt: 'Écris quatre phrases sur la mer, en français.', stream: false, think: false, options: { num_predict: 96 } })
+    body: JSON.stringify({ model: modele, prompt: 'Écris quatre phrases sur la mer, en français.', stream: false, think: false, keep_alive: GARDER_CHARGE, options: optionsIA({ num_predict: 96 }) })
   })
   if (!rep.ok) throw new Error(`Ollama a répondu ${rep.status}`)
   const d = (await rep.json()) as { eval_count?: number; eval_duration?: number }

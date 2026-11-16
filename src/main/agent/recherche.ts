@@ -286,7 +286,7 @@ export class ServiceRecherche extends EventEmitter<{ change: [Recherche] }> {
       'Relève au plus 6 faits précis et utiles pour la question (chiffres, dates, noms, conclusions), en français, une ligne chacun commençant par « - ». ' +
       'Si la source ne contient rien d\'utile pour la question, réponds exactement : RIEN.'
     const contenu = `Question : ${question}\n<<<SOURCE>>>\nTitre : ${neutraliser(s.titre).slice(0, 200)}\n${neutraliser(texte).slice(0, TEXTE_PAR_SOURCE)}\n<<<FIN-SOURCE>>>`
-    const t = await demander(modele, systeme, contenu, undefined, 350, 8192, 120_000)
+    const t = await demander(modele, systeme, contenu, undefined, 350, 120_000)
     return /^\s*RIEN\b/i.test(t) ? '' : t.split('\n').filter((l) => l.trim().startsWith('-')).slice(0, 6).join('\n')
   }
 
@@ -300,6 +300,6 @@ export class ServiceRecherche extends EventEmitter<{ change: [Recherche] }> {
       .filter((s) => s.notes)
       .map((s) => `[${s.n}] ${neutraliser(s.titre).slice(0, 120)}\n${neutraliser(s.notes)}`)
       .join('\n\n')
-    return demander(modele, systeme, `Question : ${question}\n<<<NOTES>>>\n${notes}\n<<<FIN-NOTES>>>`, undefined, 1400, 8192, 240_000)
+    return demander(modele, systeme, `Question : ${question}\n<<<NOTES>>>\n${notes}\n<<<FIN-NOTES>>>`, undefined, 1400, 240_000)
   }
 }

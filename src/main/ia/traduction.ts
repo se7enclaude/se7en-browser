@@ -8,7 +8,7 @@
 import type { WebContents } from 'electron'
 import { net } from 'electron'
 import type { EtatTraduction } from '../../shared/onglets'
-import { API_OLLAMA } from './ollama'
+import { API_OLLAMA, GARDER_CHARGE, optionsIA } from './ollama'
 
 /** Monde isolé à part : il garde, entre deux appels, les morceaux relevés et leur texte d'origine. */
 const MONDE = 7011
@@ -172,7 +172,8 @@ async function traduirePaquet(modele: string, langue: string, textes: string[], 
       stream: false,
       think: false,
       format: { type: 'object', properties: { t: { type: 'array', items: { type: 'string' } } }, required: ['t'] },
-      options: { num_ctx: 8192, temperature: 0.1 }
+      keep_alive: GARDER_CHARGE,
+      options: optionsIA({ temperature: 0.1 })
     }),
     signal
   })

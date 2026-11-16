@@ -1,7 +1,7 @@
 /* Rangement des onglets par l'IA : elle propose des groupes par sujet, à partir des titres et des sites.
  * Elle ne lit pas le contenu des pages. Sa réponse est contrainte par un schéma : seulement des onglets qui existent. */
 import { net } from 'electron'
-import { API_OLLAMA } from './ollama'
+import { API_OLLAMA, GARDER_CHARGE, optionsIA } from './ollama'
 import { neutraliser } from './prompts'
 
 const CONSIGNE = `Tu ranges les onglets d'un navigateur en groupes par sujet.
@@ -59,7 +59,8 @@ export async function proposerGroupes(onglets: { id: number; titre: string; url:
       format: schema,
       stream: false,
       think: false,
-      options: { temperature: 0.2, num_ctx: 8192 }
+      keep_alive: GARDER_CHARGE,
+      options: optionsIA({ temperature: 0.2 })
     }),
     signal: AbortSignal.timeout(120_000)
   })

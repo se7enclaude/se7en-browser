@@ -104,6 +104,8 @@ export function PanneauIA({ etat, actif, ia, reglages, ouvert, fermer, demande }
   // à l'ouverture : Skills à jour et clavier dans la zone de saisie
   useEffect(() => {
     if (!ouvert) return
+    // le modèle se charge pendant que tu tapes ta question (rien ne se passe s'il l'est déjà)
+    window.se7en.ia.prechauffer()
     window.se7en.skills.lire().then(setSkills)
     requestAnimationFrame(() => champ.current?.focus())
   }, [ouvert])

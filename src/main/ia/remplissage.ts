@@ -4,7 +4,7 @@
  * des clés qui existent. L'utilisateur vérifie tout dans l'aperçu avant de remplir. */
 import { net } from 'electron'
 import type { ChampFormulaire } from '../../shared/formulaire'
-import { API_OLLAMA } from './ollama'
+import { API_OLLAMA, GARDER_CHARGE, optionsIA } from './ollama'
 import { neutraliser } from './prompts'
 
 const MAX_CHAMPS = 150
@@ -67,7 +67,8 @@ export async function associerAvecIA(
       format: schema,
       stream: false,
       think: false,
-      options: { temperature: 0, num_ctx: 16384 }
+      keep_alive: GARDER_CHARGE,
+      options: optionsIA({ temperature: 0 })
     }),
     signal: AbortSignal.timeout(180_000)
   })
